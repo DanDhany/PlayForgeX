@@ -1,7 +1,7 @@
 import React from "react";
-import { Play, Pause, Replace, Check, X, Disc, Music, Sparkles } from "lucide-react";
-import { TransferTrackItem, AppleMusicTrack } from "../../shared/types";
-import { getStatusBadgeProps, formatSeconds, formatMillis } from "../utils/ui-helpers";
+import { Play, Pause, Replace, X, Disc, Music } from "lucide-react";
+import { TransferTrackItem } from "../../shared/types";
+import { getStatusBadgeProps } from "../utils/ui-helpers";
 
 interface TrackRowProps {
   item: TransferTrackItem;

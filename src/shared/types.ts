@@ -42,6 +42,7 @@ export interface PlaylistSummary {
 export interface TransferTrackItem {
   source: TrackMetadata;
   sanitizedTitle: {
+    rawTitle?: string;
     originalTitle: string;
     cleanTitle: string;
     subtitle?: string;

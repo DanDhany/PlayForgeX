@@ -1,5 +1,5 @@
 import React from "react";
-import { Disc3, CheckCircle2, AlertCircle, LogIn, LogOut, RefreshCw } from "lucide-react";
+import { Disc3, CheckCircle2, LogIn, LogOut, RefreshCw } from "lucide-react";
 import { ServiceAuthStatus } from "../../shared/types";
 
 interface HeaderProps {

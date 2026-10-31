@@ -377,7 +377,6 @@ export const App: React.FC = () => {
           isMatching={isMatching}
           isTransferring={transferJob?.status === "processing"}
           onToggleExclude={handleToggleExclude}
-          onSelectAlternative={handleSelectAlternative}
           onOpenAlternativePicker={setEditingItem}
           onStartTransfer={handleStartTransfer}
           onReMatch={() => selectedPlaylist && handleSelectPlaylist(selectedPlaylist)}

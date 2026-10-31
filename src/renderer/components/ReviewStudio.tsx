@@ -2,18 +2,17 @@ import React, { useState, useRef } from "react";
 import {
   Sparkles,
   CheckCheck,
-  Filter,
   ArrowRight,
   Disc3,
   Search,
   Music2,
   CheckCircle2,
   AlertTriangle,
-  HelpCircle,
-  Play,
   RotateCcw,
+  CheckSquare,
+  Square,
 } from "lucide-react";
-import { TransferTrackItem, PlaylistSummary, AppleMusicTrack } from "../../shared/types";
+import { TransferTrackItem, PlaylistSummary } from "../../shared/types";
 import {
   FilterTab,
   filterReviewTracks,
@@ -27,7 +26,6 @@ interface ReviewStudioProps {
   isMatching: boolean;
   isTransferring: boolean;
   onToggleExclude: (item: TransferTrackItem) => void;
-  onSelectAlternative: (item: TransferTrackItem, candidate: AppleMusicTrack) => void;
   onOpenAlternativePicker: (item: TransferTrackItem) => void;
   onStartTransfer: () => void;
   onReMatch: () => void;
@@ -39,7 +37,6 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
   isMatching,
   isTransferring,
   onToggleExclude,
-  onSelectAlternative,
   onOpenAlternativePicker,
   onStartTransfer,
   onReMatch,
@@ -260,8 +257,24 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
       </div>
 
       {/* 3. Table Column Headers */}
-      <div className="grid grid-cols-12 gap-3 px-8 py-2 text-[10px] uppercase font-semibold tracking-wider text-slate-500 border-b border-border bg-surface/40 flex-shrink-0">
-        <div className="col-span-1">#</div>
+      <div className="grid grid-cols-12 gap-3 px-8 py-2 text-[10px] uppercase font-semibold tracking-wider text-slate-500 border-b border-border bg-surface/40 flex-shrink-0 items-center">
+        <div className="col-span-1 flex items-center space-x-1">
+          <button
+            onClick={() => handleToggleSelectAll(true)}
+            title="Include all tracks"
+            className="hover:text-white transition"
+          >
+            <CheckSquare className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => handleToggleSelectAll(false)}
+            title="Exclude all tracks"
+            className="hover:text-white transition"
+          >
+            <Square className="w-3.5 h-3.5" />
+          </button>
+          <span>#</span>
+        </div>
         <div className="col-span-4">Source Track (YouTube Music)</div>
         <div className="col-span-2 text-center">Match Confidence</div>
         <div className="col-span-5 pl-2">Target Track (Apple Music)</div>

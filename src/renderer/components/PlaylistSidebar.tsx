@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ListMusic, Search, CheckSquare, Square, Music, RefreshCw } from "lucide-react";
+import { ListMusic, Search, Music, RefreshCw } from "lucide-react";
 import { PlaylistSummary } from "../../shared/types";
 
 interface PlaylistSidebarProps {
