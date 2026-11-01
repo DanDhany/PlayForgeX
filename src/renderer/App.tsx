@@ -31,6 +31,7 @@ export const App: React.FC = () => {
   const [editingItem, setEditingItem] = useState<TransferTrackItem | null>(null);
   const [transferJob, setTransferJob] = useState<TransferJob | null>(null);
   const [webAuthService, setWebAuthService] = useState<"youtube" | "apple" | null>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Check if running in Electron environment
   const isElectron = typeof window !== "undefined" && !!window.api;
@@ -51,7 +52,7 @@ export const App: React.FC = () => {
           }
         }
       } catch (err) {
-        console.warn("Web API not available, loading mock data:", err);
+        console.warn("Web API not reachable:", err);
       }
       return;
     }
@@ -330,7 +331,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-background overflow-hidden text-slate-100 font-sans">
+    <div className="flex flex-col min-h-[100dvh] w-screen bg-background overflow-x-hidden text-slate-100 font-sans selection:bg-primary selection:text-white">
       <Header
         authStatus={authStatus}
         isLoadingYt={isLoadingYt}
@@ -339,15 +340,18 @@ export const App: React.FC = () => {
         onLoginApple={handleLoginApple}
         onLogout={handleLogout}
         onRefresh={refreshStatus}
+        onToggleMobileDrawer={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         <PlaylistSidebar
           playlists={playlists}
           selectedPlaylistId={selectedPlaylist?.id || null}
           onSelectPlaylist={handleSelectPlaylist}
           isLoading={isLoadingPlaylists}
           onRefreshPlaylists={isElectron ? loadPlaylistsElectron : loadPlaylistsWeb}
+          isOpenMobile={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
 
         <ReviewStudio
@@ -359,6 +363,7 @@ export const App: React.FC = () => {
           onOpenAlternativePicker={setEditingItem}
           onStartTransfer={handleStartTransfer}
           onReMatch={() => selectedPlaylist && handleSelectPlaylist(selectedPlaylist)}
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
         />
       </div>
 

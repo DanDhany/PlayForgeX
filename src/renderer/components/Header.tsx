@@ -1,5 +1,5 @@
 import React from "react";
-import { Disc3, CheckCircle2, LogIn, LogOut, RefreshCw } from "lucide-react";
+import { Disc3, CheckCircle2, LogIn, LogOut, RefreshCw, Menu } from "lucide-react";
 import { ServiceAuthStatus } from "../../shared/types";
 
 interface HeaderProps {
@@ -10,6 +10,7 @@ interface HeaderProps {
   onLoginApple: () => void;
   onLogout: (service: "youtube" | "apple") => void;
   onRefresh: () => void;
+  onToggleMobileDrawer?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,102 +21,125 @@ export const Header: React.FC<HeaderProps> = ({
   onLoginApple,
   onLogout,
   onRefresh,
+  onToggleMobileDrawer,
 }) => {
   return (
-    <header className="h-16 border-b border-border bg-surface px-6 flex items-center justify-between select-none">
-      {/* Brand & App Info */}
+    <header className="h-16 md:h-18 border-b border-white/[0.08] bg-surface/90 backdrop-blur-xl px-4 md:px-6 flex items-center justify-between select-none sticky top-0 z-40 transition-all">
+      {/* Brand & Mobile Drawer Trigger */}
       <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-600 to-primary flex items-center justify-center shadow-lg shadow-primary/20">
-          <Disc3 className="w-6 h-6 text-white animate-spin-slow" />
+        {onToggleMobileDrawer && (
+          <button
+            onClick={onToggleMobileDrawer}
+            className="md:hidden p-2 rounded-xl bg-card border border-white/[0.08] text-slate-300 hover:text-white btn-press"
+            aria-label="Toggle Playlists Menu"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+        )}
+
+        <div className="relative group">
+          <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl bg-gradient-to-tr from-red-600 via-rose-600 to-primary flex items-center justify-center shadow-lg shadow-primary/25 border border-white/20">
+            <Disc3 className="w-5 h-5 md:w-6 md:h-6 text-white group-hover:rotate-45 transition-transform duration-500" />
+          </div>
+          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-surface animate-pulse" />
         </div>
+
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className="text-base font-semibold tracking-tight text-white">MirrorSong</h1>
-            <span className="px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase bg-border/60 text-slate-300 rounded border border-border">
-              Original Title 1st
-            </span>
+            <h1 className="text-sm md:text-base font-bold tracking-tight text-white flex items-center gap-1.5">
+              MirrorSong
+              <span className="hidden sm:inline-block px-1.5 py-0.5 text-[9px] font-mono tracking-wider uppercase bg-primary/15 text-rose-300 border border-primary/25 rounded-md">
+                Studio
+              </span>
+            </h1>
           </div>
-          <p className="text-xs text-slate-400">Zero-Dev-Key Playlist Studio • YTM ➔ Apple Music</p>
+          <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
+            Original Title Priority • YTM ➔ Apple Music
+          </p>
         </div>
       </div>
 
-      {/* Account Connections (Cookie/Modal Based) */}
-      <div className="flex items-center space-x-3">
-        {/* YouTube Music Status Pill */}
-        <div className="flex items-center space-x-2 bg-card border border-border rounded-lg px-3 py-1.5 text-xs">
-          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="font-medium text-slate-200">YouTube Music</span>
+      {/* Account Connections (Responsive Pills) */}
+      <div className="flex items-center space-x-2 md:space-x-3">
+        {/* YouTube Music Pill */}
+        <div className="flex items-center bg-card/90 border border-white/[0.08] rounded-xl px-2.5 md:px-3 py-1.5 text-xs shadow-sm">
+          <div className="w-2 h-2 rounded-full bg-red-500 mr-2 shadow-sm shadow-red-500/50" />
+          <span className="font-semibold text-slate-200 hidden sm:inline">YouTube Music</span>
+          <span className="font-semibold text-slate-200 sm:hidden">YTM</span>
+
           {authStatus.youtube.connected ? (
-            <div className="flex items-center space-x-2 pl-2 border-l border-border/60">
-              <span className="text-emerald-400 flex items-center gap-1 font-mono">
+            <div className="flex items-center space-x-1.5 pl-2 ml-2 border-l border-white/[0.08]">
+              <span className="text-emerald-400 flex items-center gap-1 text-[11px] font-mono font-medium">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                {authStatus.youtube.playlistCount || 0} Playlists
+                <span className="hidden md:inline">{authStatus.youtube.playlistCount || 0} Playlists</span>
               </span>
               <button
                 onClick={() => onLogout("youtube")}
                 title="Disconnect YouTube Music"
-                className="text-slate-400 hover:text-rose-400 transition"
+                className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-white/[0.05] transition"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="w-3 h-3" />
               </button>
             </div>
           ) : (
             <button
               onClick={onLoginYouTube}
               disabled={isLoadingYt}
-              className="ml-2 px-2.5 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-300 hover:text-red-200 border border-red-500/30 rounded font-medium flex items-center gap-1 transition"
+              className="ml-2 px-2.5 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-300 hover:text-white border border-red-500/30 rounded-lg font-medium text-[11px] flex items-center gap-1.5 btn-press transition"
             >
               {isLoadingYt ? (
                 <RefreshCw className="w-3 h-3 animate-spin" />
               ) : (
                 <LogIn className="w-3 h-3" />
               )}
-              Modal Login
+              <span className="hidden sm:inline">Connect</span>
             </button>
           )}
         </div>
 
-        {/* Apple Music Status Pill */}
-        <div className="flex items-center space-x-2 bg-card border border-border rounded-lg px-3 py-1.5 text-xs">
-          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="font-medium text-slate-200">Apple Music</span>
+        {/* Apple Music Pill */}
+        <div className="flex items-center bg-card/90 border border-white/[0.08] rounded-xl px-2.5 md:px-3 py-1.5 text-xs shadow-sm">
+          <div className="w-2 h-2 rounded-full bg-primary mr-2 shadow-sm shadow-primary/50" />
+          <span className="font-semibold text-slate-200 hidden sm:inline">Apple Music</span>
+          <span className="font-semibold text-slate-200 sm:hidden">Apple</span>
+
           {authStatus.apple.connected ? (
-            <div className="flex items-center space-x-2 pl-2 border-l border-border/60">
-              <span className="text-emerald-400 flex items-center gap-1 font-mono">
+            <div className="flex items-center space-x-1.5 pl-2 ml-2 border-l border-white/[0.08]">
+              <span className="text-emerald-400 flex items-center gap-1 text-[11px] font-mono font-medium">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                Storefront: {authStatus.apple.storefront?.toUpperCase() || "US"}
+                <span className="hidden md:inline">{authStatus.apple.storefront?.toUpperCase() || "US"}</span>
               </span>
               <button
                 onClick={() => onLogout("apple")}
                 title="Disconnect Apple Music"
-                className="text-slate-400 hover:text-rose-400 transition"
+                className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-white/[0.05] transition"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="w-3 h-3" />
               </button>
             </div>
           ) : (
             <button
               onClick={onLoginApple}
               disabled={isLoadingApple}
-              className="ml-2 px-2.5 py-1 bg-primary/20 hover:bg-primary/30 text-rose-300 hover:text-rose-200 border border-primary/30 rounded font-medium flex items-center gap-1 transition"
+              className="ml-2 px-2.5 py-1 bg-primary/20 hover:bg-primary/30 text-rose-300 hover:text-white border border-primary/30 rounded-lg font-medium text-[11px] flex items-center gap-1.5 btn-press transition"
             >
               {isLoadingApple ? (
                 <RefreshCw className="w-3 h-3 animate-spin" />
               ) : (
                 <LogIn className="w-3 h-3" />
               )}
-              Modal Login
+              <span className="hidden sm:inline">Connect</span>
             </button>
           )}
         </div>
 
-        {/* Global Refresh Button */}
+        {/* Refresh Button */}
         <button
           onClick={onRefresh}
-          title="Refresh Connections and Playlists"
-          className="p-2 bg-card hover:bg-card-hover border border-border rounded-lg text-slate-400 hover:text-slate-200 transition"
+          title="Refresh Connections"
+          className="p-2 md:p-2.5 bg-card hover:bg-card-hover border border-white/[0.08] rounded-xl text-slate-400 hover:text-white btn-press transition shadow-sm"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </button>
       </div>
     </header>
