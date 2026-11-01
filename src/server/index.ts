@@ -134,6 +134,14 @@ app.get("/api/auth/me", (req: Request, res: Response) => {
   res.json({ user: (req as any).user || null });
 });
 
+// GET /api/platforms - List all supported and active platform adapters
+app.get("/api/platforms", (_req: Request, res: Response) => {
+  res.json({
+    platforms: PlatformRegistry.list(),
+    active: PlatformRegistry.listActive(),
+  });
+});
+
 // ==========================================
 // Admin User Management APIs
 // ==========================================
