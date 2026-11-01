@@ -107,4 +107,20 @@ describe("Landing Page & Interactive Migration Preview Logic", () => {
     ];
     expect(platformIds.length).toBe(7);
   });
+
+  it("verifies aesthetic scroll components are created and export React functional components", async () => {
+    const { HowItWorksSection } = await import("../src/renderer/components/landing/HowItWorksSection");
+    const { ComparisonSection } = await import("../src/renderer/components/landing/ComparisonSection");
+    const { SpotlightCard } = await import("../src/renderer/components/landing/SpotlightCard");
+    const { FloatingDock } = await import("../src/renderer/components/landing/FloatingDock");
+    const { Reveal } = await import("../src/renderer/components/landing/Reveal");
+    const { FaqSection } = await import("../src/renderer/components/landing/FaqSection");
+
+    expect(typeof HowItWorksSection).toBe("function");
+    expect(typeof ComparisonSection).toBe("function");
+    expect(typeof SpotlightCard).toBe("function");
+    expect(typeof FloatingDock).toBe("function");
+    expect(typeof Reveal).toBe("function");
+    expect(typeof FaqSection).toBe("function");
+  });
 });

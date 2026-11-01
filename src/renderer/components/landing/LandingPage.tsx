@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Disc3, ArrowRight, Menu, X } from "lucide-react";
 import { HeroSection } from "./HeroSection";
+import { HowItWorksSection } from "./HowItWorksSection";
 import { FeaturesSection } from "./FeaturesSection";
+import { ComparisonSection } from "./ComparisonSection";
 import { PlatformMatrixSection } from "./PlatformMatrixSection";
 import { FaqSection } from "./FaqSection";
 import { LandingFooter } from "./LandingFooter";
+import { FloatingDock } from "./FloatingDock";
 
 const GithubIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -21,10 +24,43 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const totalScroll = el.scrollHeight - el.clientHeight;
+      if (totalScroll > 0) {
+        const currentProgress = (el.scrollTop / totalScroll) * 100;
+        setScrollProgress(currentProgress);
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener("scroll", handleScroll, { passive: true });
+    }
+    return () => {
+      if (container) {
+        container.removeEventListener("scroll", handleScroll);
+      }
+    };
+  }, []);
 
   return (
-    <div className="h-[100dvh] w-full overflow-y-auto overflow-x-hidden bg-[#0B0C0F] text-text-primary scroll-smooth selection:bg-accent selection:text-background font-sans relative">
+    <div
+      ref={containerRef}
+      className="h-[100dvh] w-full overflow-y-auto overflow-x-hidden bg-[#0B0C0F] text-text-primary scroll-smooth selection:bg-accent selection:text-background font-sans relative"
+    >
+      {/* Scroll-Driven Gradient Progress Bar at Viewport Top */}
+      <div
+        className="fixed top-0 left-0 right-0 h-[2.5px] z-[60] bg-gradient-to-r from-accent via-service-apple to-status-success pointer-events-none transition-all duration-75"
+        style={{ width: `${scrollProgress}%` }}
+      />
+
       {/* Sticky Top Navigation Bar */}
       <header className="sticky top-0 z-50 w-full h-16 bg-[#0B0C0F]/85 backdrop-blur-xl border-b border-white/[0.08] px-4 sm:px-6 md:px-8 select-none">
         <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
@@ -49,13 +85,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
               href="#interactive-preview"
               className="hover:text-text-primary transition-colors font-medium"
             >
-              Demo Interaktif
+              Demo
+            </a>
+            <a
+              href="#how-it-works"
+              className="hover:text-text-primary transition-colors font-medium"
+            >
+              Cara Kerja
             </a>
             <a
               href="#features-section"
               className="hover:text-text-primary transition-colors font-medium"
             >
               Fitur
+            </a>
+            <a
+              href="#comparison-section"
+              className="hover:text-text-primary transition-colors font-medium"
+            >
+              Perbandingan
             </a>
             <a
               href="#platform-matrix-section"
@@ -112,11 +160,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
               Demo Interaktif
             </a>
             <a
+              href="#how-it-works"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
+            >
+              Cara Kerja
+            </a>
+            <a
               href="#features-section"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
             >
               Fitur Utama
+            </a>
+            <a
+              href="#comparison-section"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
+            >
+              Perbandingan
             </a>
             <a
               href="#platform-matrix-section"
@@ -149,10 +211,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
       {/* Main Content Sections */}
       <main className="flex flex-col items-center w-full">
         <HeroSection onOpenStudio={onOpenStudio} />
+        <HowItWorksSection />
         <FeaturesSection />
+        <div id="comparison-section" className="w-full">
+          <ComparisonSection />
+        </div>
         <PlatformMatrixSection />
         <FaqSection />
       </main>
+
+      {/* Floating Bottom Quick Nav Dock */}
+      <FloatingDock onOpenStudio={onOpenStudio} show={scrollProgress > 8} />
 
       {/* Footer */}
       <LandingFooter onOpenStudio={onOpenStudio} />
