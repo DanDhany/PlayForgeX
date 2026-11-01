@@ -35,6 +35,7 @@ interface ReviewStudioProps {
   onOpenMobileSidebar?: () => void;
   sourcePlatform?: string;
   targetPlatform?: string;
+  onChangeTargetPlatform?: (platform: string) => void;
 }
 
 export const ReviewStudio: React.FC<ReviewStudioProps> = ({
@@ -50,6 +51,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
   onOpenMobileSidebar,
   sourcePlatform = "youtube",
   targetPlatform = "apple",
+  onChangeTargetPlatform,
 }) => {
   const { t, lang } = useLanguage();
   const isEn = lang === "en";
@@ -176,6 +178,26 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
 
           {/* Desktop Actions */}
           <div className="hidden sm:flex items-center space-x-2 flex-shrink-0">
+            {/* Quick Export Destination Selector */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-elevated border border-border rounded-lg text-xs">
+              <span className="text-[11px] font-medium text-text-secondary whitespace-nowrap">
+                {isEn ? "Export To:" : "Ekspor Ke:"}
+              </span>
+              <select
+                value={targetPlatform}
+                onChange={(e) => onChangeTargetPlatform?.(e.target.value)}
+                className="bg-transparent text-xs font-semibold text-accent focus:outline-none cursor-pointer"
+              >
+                <option value="spotify" className="bg-surface text-text-primary">Spotify</option>
+                <option value="apple" className="bg-surface text-text-primary">Apple Music</option>
+                <option value="youtube" className="bg-surface text-text-primary">YouTube Music</option>
+                <option value="file" className="bg-surface text-text-primary">File Snapshot</option>
+                <option value="youtube_video" className="bg-surface text-text-primary">YouTube Video</option>
+                <option value="deezer" className="bg-surface text-text-primary">Deezer</option>
+                <option value="soundcloud" className="bg-surface text-text-primary">SoundCloud</option>
+              </select>
+            </div>
+
             <button
               onClick={onReMatch}
               disabled={isMatching || isTransferring}

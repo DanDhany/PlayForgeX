@@ -8,6 +8,7 @@ import {
 } from "../shared/types.js";
 import { cleanTitle } from "../core/sanitizer.js";
 import { AccountManager } from "./account-manager.js";
+import { PlatformRegistry } from "../core/platform-registry.js";
 
 export interface AggregatedTrack {
   sourceAccountId: string;
@@ -39,15 +40,28 @@ export class MergeEngine {
       if (!acc) continue;
 
       let tracks: TrackMetadata[] = [];
-      if (acc.platform === "youtube") {
+      if (this.accountManager.hasSnapshotTracks(sel.accountId, sel.playlistId)) {
+        tracks = this.accountManager.getPlaylistTracks(sel.accountId, sel.playlistId);
+      } else if (acc.platform === "youtube") {
         const client = this.accountManager.getYTMClient(sel.accountId);
         if (client && client.hasValidAuth()) {
           tracks = await client.fetchPlaylistTracks(sel.playlistId);
         }
-      } else {
+      } else if (acc.platform === "apple") {
         const client = this.accountManager.getAppleClient(sel.accountId);
         if (client) {
           tracks = await client.getPlaylistTracks(sel.playlistId);
+        }
+      } else {
+        const adapter = PlatformRegistry.getAdapter(acc.platform as any);
+        if (adapter && adapter.fetchPlaylistTracks) {
+          try {
+            const secret = this.accountManager.getSecret(sel.accountId);
+            const token = (acc as any)?.accessToken || secret?.appleUserToken || secret?.ytCookieString;
+            tracks = await adapter.fetchPlaylistTracks(sel.playlistId, token);
+          } catch (e) {
+            console.warn(`[MergeEngine] Failed fetching tracks from adapter ${acc.platform}:`, e);
+          }
         }
       }
 

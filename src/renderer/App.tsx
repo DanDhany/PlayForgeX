@@ -26,6 +26,7 @@ import {
   PlaylistDraft,
   User,
   PlatformType,
+  TrackMetadata,
 } from "../shared/types";
 import {
   IS_PAGES_OR_STATIC,
@@ -376,7 +377,12 @@ export const App: React.FC = () => {
 
   const handleSelectPlaylistForTransfer = async (
     playlist: PlaylistSummary,
-    force: boolean = false
+    force: boolean = false,
+    options?: {
+      targetPlatform?: PlatformType | string;
+      targetAccountId?: string;
+      presetTracks?: TrackMetadata[];
+    }
   ) => {
     stopMatchingPoller();
     setSelectedPlaylist(playlist);
@@ -385,12 +391,18 @@ export const App: React.FC = () => {
 
     const sourcePl = allPlaylists.find((p) => p.id === playlist.id);
     const sourcePlatform = sourcePl?.platform || playlist.platform || "youtube";
+
+    const explicitTarget = options?.targetPlatform || selectedTargetPlatform;
+    if (options?.targetPlatform && options.targetPlatform !== selectedTargetPlatform) {
+      setSelectedTargetPlatform(options.targetPlatform as PlatformType);
+    }
+
     const targetPlatform =
-      selectedTargetPlatform === sourcePlatform
+      explicitTarget === sourcePlatform
         ? sourcePlatform === "apple"
           ? "youtube"
           : "apple"
-        : selectedTargetPlatform;
+        : explicitTarget;
 
     try {
       let draft: PlaylistDraft | null = null;
@@ -435,10 +447,12 @@ export const App: React.FC = () => {
         headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           sourceAccountId: sourcePl?.accountId,
+          targetAccountId: options?.targetAccountId,
           sourcePlatform,
           targetPlatform,
           playlist,
           force,
+          presetTracks: options?.presetTracks,
         }),
       });
 
@@ -713,6 +727,12 @@ export const App: React.FC = () => {
                 onStartTransfer={() => setIsExportModalOpen(true)}
                 onReMatch={() => selectedPlaylist && handleSelectPlaylistForTransfer(selectedPlaylist, true)}
                 onNavigateAccounts={() => setActiveTab("accounts")}
+                onChangeTargetPlatform={(plat) => {
+                  setSelectedTargetPlatform(plat as PlatformType);
+                  if (selectedPlaylist) {
+                    handleSelectPlaylistForTransfer(selectedPlaylist, true, { targetPlatform: plat });
+                  }
+                }}
               />
             )}
 

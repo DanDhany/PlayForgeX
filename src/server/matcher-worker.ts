@@ -82,7 +82,8 @@ export async function startBackgroundMatching(
   ytClient: YouTubeMusicClient | null,
   appleClient: AppleMusicClient | null,
   force: boolean = false,
-  presetTracks?: TrackMetadata[]
+  presetTracks?: TrackMetadata[],
+  targetCredentials?: unknown
 ): Promise<PlaylistDraft> {
   const key = `${sourcePlatform}_${playlist.id}`;
 
@@ -212,16 +213,36 @@ export async function startBackgroundMatching(
           } else {
             const adapter = PlatformRegistry.getAdapter(targetPlatform as any);
             if (adapter && adapter.searchCatalog) {
-              const resItems = (await adapter.searchCatalog(`${track.artist} ${track.title}`)) as any[];
+              const resItems = (await adapter.searchCatalog(
+                `${track.artist} ${track.title}`,
+                targetCredentials
+              )) as any[];
               if (resItems && resItems.length > 0) {
                 const c = resItems[0];
+                const candidateArtist =
+                  c.artist ||
+                  c.artistName ||
+                  (Array.isArray(c.artists) ? c.artists.map((a: any) => a.name).join(", ") : undefined) ||
+                  track.artist;
+                const candidateTitle = c.title || c.name || track.title;
+                const candidateAlbum = c.album?.name || c.album || c.albumName || track.album;
+                const candidateDuration =
+                  c.duration_ms ||
+                  (c.durationSeconds ? c.durationSeconds * 1000 : undefined) ||
+                  (track.durationSeconds ? track.durationSeconds * 1000 : undefined);
+                const candidateArtwork =
+                  (Array.isArray(c.album?.images) && c.album.images[0]?.url) ||
+                  c.artworkUrl ||
+                  c.thumbnailUrl ||
+                  track.thumbnailUrl;
+
                 candidate = {
-                  id: c.id || c.videoId || String(Math.random()),
-                  name: c.title || c.name || track.title,
-                  artistName: c.artist || c.artistName || track.artist,
-                  albumName: c.album || c.albumName,
-                  durationInMillis: c.durationSeconds ? c.durationSeconds * 1000 : undefined,
-                  artworkUrl: c.thumbnailUrl,
+                  id: c.id || c.videoId || `cand_${Date.now()}_${i}`,
+                  name: candidateTitle,
+                  artistName: candidateArtist,
+                  albumName: candidateAlbum,
+                  durationInMillis: candidateDuration,
+                  artworkUrl: candidateArtwork,
                 };
                 match = {
                   status: "EXACT_MATCH",

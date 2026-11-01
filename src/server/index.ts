@@ -875,6 +875,7 @@ app.post("/api/matching/start", async (req: Request, res: Response) => {
     force = false,
     sourceAccountId,
     targetAccountId,
+    presetTracks: inputPresetTracks,
   } = req.body as {
     sourcePlatform: PlatformType | string;
     targetPlatform: PlatformType | string;
@@ -882,6 +883,7 @@ app.post("/api/matching/start", async (req: Request, res: Response) => {
     force?: boolean;
     sourceAccountId?: string;
     targetAccountId?: string;
+    presetTracks?: TrackMetadata[];
   };
 
   if (!playlist || !playlist.id) return res.status(400).json({ error: "playlist is required" });
@@ -905,19 +907,29 @@ app.post("/api/matching/start", async (req: Request, res: Response) => {
       ? accountManager.getAppleClient(sourceAcc?.id || "")
       : accountManager.getAppleClient(targetAcc?.id || "");
 
-  let presetTracks: TrackMetadata[] | undefined = undefined;
-  if (sourceAcc && accountManager.hasSnapshotTracks(sourceAcc.id, playlist.id)) {
-    presetTracks = accountManager.getPlaylistTracks(sourceAcc.id, playlist.id);
-  } else {
-    // Fallback: search across all snapshot accounts for matching playlist id
-    const allAccs = accountManager.getAccounts(userId);
-    for (const acc of allAccs) {
-      if (accountManager.hasSnapshotTracks(acc.id, playlist.id)) {
-        presetTracks = accountManager.getPlaylistTracks(acc.id, playlist.id);
-        break;
+  let presetTracks: TrackMetadata[] | undefined =
+    Array.isArray(inputPresetTracks) && inputPresetTracks.length > 0
+      ? inputPresetTracks
+      : undefined;
+
+  if (!presetTracks) {
+    if (sourceAcc && accountManager.hasSnapshotTracks(sourceAcc.id, playlist.id)) {
+      presetTracks = accountManager.getPlaylistTracks(sourceAcc.id, playlist.id);
+    } else {
+      // Fallback: search across all snapshot accounts for matching playlist id
+      const allAccs = accountManager.getAccounts(userId);
+      for (const acc of allAccs) {
+        if (accountManager.hasSnapshotTracks(acc.id, playlist.id)) {
+          presetTracks = accountManager.getPlaylistTracks(acc.id, playlist.id);
+          break;
+        }
       }
     }
   }
+
+  const secret = targetAcc ? accountManager.getSecret(targetAcc.id) : null;
+  const targetCredentials =
+    (targetAcc as any)?.accessToken || secret?.appleUserToken || secret?.ytCookieString;
 
   try {
     const draft = await startBackgroundMatching(
@@ -927,7 +939,8 @@ app.post("/api/matching/start", async (req: Request, res: Response) => {
       ytClient,
       appleClient,
       force,
-      presetTracks
+      presetTracks,
+      targetCredentials
     );
     res.json({ success: true, draft, isRunning: isJobRunning(sourcePlatform, playlist.id) });
   } catch (err: any) {
@@ -954,11 +967,31 @@ app.post("/api/workflows/merge/preview", async (req: Request, res: Response) => 
     const discovered = await mergeEngine.fetchDiscoveredTracks(sourceSelections);
     const { uniqueTracks, duplicates } = mergeEngine.deduplicateTracks(discovered, deduplicationPolicy);
 
+    const virtualPlaylistId = `virtual_merge_${Date.now()}`;
+    const flatTracks: TrackMetadata[] = uniqueTracks.map((u) => u.track);
+    const userId = (req as any).user?.id;
+
+    accountManager.importSnapshotAccount(
+      `Merged Collection (${sourceSelections.length} Playlists)`,
+      [
+        {
+          id: virtualPlaylistId,
+          title: `Merged Collection (${sourceSelections.length} Playlists)`,
+          trackCount: flatTracks.length,
+          tracks: flatTracks,
+          platform: "merge",
+        },
+      ],
+      userId,
+      "merge"
+    );
+
     res.json({
       totalDiscovered: discovered.length,
       uniqueCount: uniqueTracks.length,
       duplicatesCount: duplicates.length,
-      uniqueTracks,
+      virtualPlaylistId,
+      uniqueTracks: flatTracks,
       duplicates,
     });
   } catch (err: any) {
@@ -1022,9 +1055,9 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
 
   let targetAcc = targetAccountId
     ? accountManager.getAccount(targetAccountId)
-    : accountManager.getPrimaryAccount(targetPlatform);
+    : accountManager.getPrimaryAccount(targetPlatform, (req as any).user?.id);
 
-  if (!targetAcc && targetPlatform !== "file") {
+  if (!targetAcc && (targetPlatform === "apple" || targetPlatform === "youtube")) {
     return res.status(401).json({ error: `Target ${targetPlatform} account not connected` });
   }
 

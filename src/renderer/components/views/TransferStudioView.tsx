@@ -27,12 +27,17 @@ interface TransferStudioViewProps {
   isTransferring: boolean;
   sourcePlatform: string;
   targetPlatform: string;
-  onSelectPlaylist: (playlist: PlaylistSummary, force?: boolean) => void;
+  onSelectPlaylist: (
+    playlist: PlaylistSummary,
+    force?: boolean,
+    options?: { targetPlatform?: string; targetAccountId?: string; presetTracks?: any[] }
+  ) => void;
   onToggleExclude: (item: TransferTrackItem) => void;
   onOpenAlternativePicker: (item: TransferTrackItem) => void;
   onStartTransfer: () => void;
   onReMatch: () => void;
   onNavigateAccounts: () => void;
+  onChangeTargetPlatform?: (platform: string) => void;
 }
 
 export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
@@ -51,6 +56,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
   onStartTransfer,
   onReMatch,
   onNavigateAccounts,
+  onChangeTargetPlatform,
 }) => {
   const { t, lang } = useLanguage();
   const isEn = lang === "en";
@@ -139,16 +145,30 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
       });
 
       // Synthesize a virtual playlist for Review Studio
+      const virtualPlaylistId = data.virtualPlaylistId || `virtual_merge_${Date.now()}`;
       const virtualPlaylist: PlaylistSummary = {
-        id: `virtual_merge_${Date.now()}`,
+        id: virtualPlaylistId,
         title: isEn
           ? `Merged Collection (${selectedPlaylistSelections.length} Playlists)`
           : `Merge Koleksi (${selectedPlaylistSelections.length} Playlist)`,
         trackCount: data.uniqueCount,
+        platform: "merge",
       };
 
-      // Call onSelectPlaylist to start matching into target catalog
-      onSelectPlaylist(virtualPlaylist, true);
+      // Determine target destination platform
+      const destAcc = accounts.find((a) => a.id === destinationAccountId);
+      const targetPlat = destAcc?.platform || targetPlatform || "spotify";
+
+      // Switch to quick mode / review tab immediately
+      setStudioMode("quick");
+      setMobileQuickTab("review");
+
+      // Call onSelectPlaylist with destination details and preset tracks
+      onSelectPlaylist(virtualPlaylist, true, {
+        targetPlatform: targetPlat,
+        targetAccountId: destinationAccountId,
+        presetTracks: data.uniqueTracks,
+      });
     } catch (err) {
       console.error("Merge preview error:", err);
       alert(isEn ? "Failed to generate playlist merge preview" : "Gagal memproses penggabungan playlist");
@@ -188,7 +208,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
       {/* Studio Top Control Ribbon */}
       <div className="h-13 bg-surface border-b border-border px-4 md:px-6 flex items-center justify-between flex-shrink-0 select-none">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {/* Mode Switcher */}
           <div className="flex items-center p-0.5 bg-surface-elevated rounded-lg border border-border text-xs">
             <button
@@ -216,6 +236,26 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                 NEW
               </span>
             </button>
+          </div>
+
+          {/* Prominent Export Target Destination Selector */}
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-elevated border border-border text-xs">
+            <span className="text-[11px] font-medium text-text-secondary">
+              {isEn ? "Export Target:" : "Tujuan Ekspor:"}
+            </span>
+            <select
+              value={targetPlatform}
+              onChange={(e) => onChangeTargetPlatform?.(e.target.value)}
+              className="bg-transparent text-xs font-semibold text-accent focus:outline-none cursor-pointer"
+            >
+              <option value="spotify" className="bg-surface text-text-primary">Spotify</option>
+              <option value="apple" className="bg-surface text-text-primary">Apple Music</option>
+              <option value="youtube" className="bg-surface text-text-primary">YouTube Music</option>
+              <option value="file" className="bg-surface text-text-primary">File Snapshot</option>
+              <option value="youtube_video" className="bg-surface text-text-primary">YouTube Video</option>
+              <option value="deezer" className="bg-surface text-text-primary">Deezer</option>
+              <option value="soundcloud" className="bg-surface text-text-primary">SoundCloud</option>
+            </select>
           </div>
         </div>
 
@@ -325,6 +365,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
               onOpenMobileSidebar={() => setMobileQuickTab("picker")}
               sourcePlatform={sourcePlatform}
               targetPlatform={targetPlatform}
+              onChangeTargetPlatform={onChangeTargetPlatform}
             />
           </div>
         </div>
@@ -403,7 +444,10 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                 return (
                   <div
                     key={acc.id}
-                    onClick={() => setDestinationAccountId(acc.id)}
+                    onClick={() => {
+                      setDestinationAccountId(acc.id);
+                      onChangeTargetPlatform?.(acc.platform);
+                    }}
                     className={`p-3.5 rounded-lg border text-xs cursor-pointer transition-colors flex items-center justify-between btn-press ${
                       isSelected
                         ? "bg-accent/15 border-accent text-text-primary font-semibold shadow-sm"
@@ -429,6 +473,37 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                   </div>
                 );
               })}
+            </div>
+
+            {/* Direct Platform Export Selector */}
+            <div className="pt-2 border-t border-border/60">
+              <span className="text-[11px] font-medium text-text-secondary block mb-2">
+                {isEn ? "Or export directly to platform library / snapshot:" : "Atau ekspor langsung ke platform / snapshot:"}
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {(["spotify", "apple", "youtube", "file", "youtube_video", "deezer", "soundcloud"] as const).map((plat) => {
+                  const meta = getPlatformMeta(plat);
+                  const isPlatActive = targetPlatform === plat && !destinationAccountId;
+                  return (
+                    <button
+                      key={plat}
+                      type="button"
+                      onClick={() => {
+                        setDestinationAccountId("");
+                        onChangeTargetPlatform?.(plat);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition btn-press ${
+                        isPlatActive
+                          ? "bg-accent/15 border-accent text-accent font-semibold"
+                          : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${meta.dotColor}`} />
+                      <span>{meta.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
