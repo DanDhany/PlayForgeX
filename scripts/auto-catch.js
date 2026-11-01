@@ -97,28 +97,49 @@ async function main() {
     const checkCookies = async () => {
       if (isCaptured) return;
       try {
-        const cookies = await page.cookies(
+        const currentUrl = page.url();
+        // Do NOT capture while user is still typing on Google Accounts / login flow
+        if (
+          currentUrl.includes("accounts.google.com") ||
+          currentUrl.includes("ServiceLogin") ||
+          currentUrl.includes("signin/v2") ||
+          currentUrl.includes("identifier")
+        ) {
+          return;
+        }
+
+        // Must be on music.youtube.com
+        if (!currentUrl.includes("music.youtube.com")) {
+          return;
+        }
+
+        const ytCookies = await page.cookies(
           "https://music.youtube.com",
-          "https://youtube.com",
-          "https://google.com"
+          "https://youtube.com"
         );
 
-        const hasSapisid = cookies.some(
+        const hasLoginInfo = ytCookies.some((c) => c.name === "LOGIN_INFO");
+        const hasSapisid = ytCookies.some(
           (c) => c.name === "SAPISID" || c.name === "__Secure-3PAPISID"
         );
 
-        if (hasSapisid) {
+        if (hasLoginInfo && hasSapisid) {
           isCaptured = true;
-          const cookieString = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+          const allCookies = await page.cookies(
+            "https://music.youtube.com",
+            "https://youtube.com",
+            "https://google.com"
+          );
+          const cookieString = allCookies.map((c) => `${c.name}=${c.value}`).join("; ");
 
-          console.log(`\n🎉 Berhasil! Cookie sesi YouTube Music tertangkap otomatis!`);
+          console.log(`\n🎉 Berhasil! Akun YouTube Music terverifikasi dan cookie sesi tertangkap!`);
           saveSession({ ytCookieString: cookieString });
           await notifyDocker("youtube", { cookieString });
 
           setTimeout(async () => {
             await browser.close();
             process.exit(0);
-          }, 1000);
+          }, 1500);
         }
       } catch (err) {
         // ignore polling errors

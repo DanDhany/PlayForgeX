@@ -21,65 +21,81 @@ export function parseDuration(durationStr?: string): number {
   return 0;
 }
 
+function findItemRenderers(obj: any, results: any[] = []): any[] {
+  if (!obj || typeof obj !== "object") return results;
+
+  if (obj.musicTwoRowItemRenderer || obj.musicResponsiveListItemRenderer) {
+    results.push(obj);
+    return results;
+  }
+
+  if (Array.isArray(obj)) {
+    for (const element of obj) {
+      findItemRenderers(element, results);
+    }
+  } else {
+    for (const key of Object.keys(obj)) {
+      if (key === "musicPlaylistShelfRenderer") continue;
+      findItemRenderers(obj[key], results);
+    }
+  }
+
+  return results;
+}
+
 export function parseYouTubeMusicPlaylists(response: any): PlaylistSummary[] {
   const playlists: PlaylistSummary[] = [];
   if (!response) return playlists;
 
   try {
-    const tabs = response?.contents?.singleColumnBrowseResultsRenderer?.tabs || [];
-    for (const tab of tabs) {
-      const sections = tab?.tabRenderer?.content?.sectionListRenderer?.contents || [];
-      for (const section of sections) {
-        // Items can be in gridRenderer or musicCarouselShelfRenderer
-        const items =
-          section?.gridRenderer?.items ||
-          section?.musicCarouselShelfRenderer?.contents ||
-          [];
+    const renderers = findItemRenderers(response);
+    const seenIds = new Set<string>();
 
-        for (const item of items) {
-          const renderer =
-            item?.musicTwoRowItemRenderer ||
-            item?.musicResponsiveListItemRenderer;
+    for (const item of renderers) {
+      const renderer = item?.musicTwoRowItemRenderer || item?.musicResponsiveListItemRenderer;
+      if (!renderer) continue;
 
-          if (!renderer) continue;
+      const browseEndpoint =
+        renderer?.navigationEndpoint?.browseEndpoint ||
+        renderer?.title?.runs?.[0]?.navigationEndpoint?.browseEndpoint;
+      const browseId = browseEndpoint?.browseId;
+      if (!browseId) continue;
 
-          const title =
-            renderer?.title?.runs?.map((r: any) => r.text).join("") ||
-            renderer?.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.map((r: any) => r.text).join("") ||
-            "";
+      const isPlaylist =
+        browseId.startsWith("VL") ||
+        browseId.startsWith("PL") ||
+        browseId.startsWith("RDAMPL") ||
+        browseId === "FEmusic_liked_videos" ||
+        browseId === "LM";
 
-          const browseEndpoint =
-            renderer?.navigationEndpoint?.browseEndpoint ||
-            renderer?.title?.runs?.[0]?.navigationEndpoint?.browseEndpoint;
+      if (!isPlaylist || seenIds.has(browseId)) continue;
+      seenIds.add(browseId);
 
-          const browseId = browseEndpoint?.browseId;
-          if (!browseId || (!browseId.startsWith("VL") && !browseId.startsWith("PL") && !browseId.startsWith("FEmusic_liked_videos"))) {
-            continue;
-          }
+      const title =
+        renderer?.title?.runs?.map((r: any) => r.text).join("") ||
+        renderer?.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.map((r: any) => r.text).join("") ||
+        "";
 
-          const subtitleRuns =
-            renderer?.subtitle?.runs ||
-            renderer?.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs ||
-            [];
+      const subtitleRuns =
+        renderer?.subtitle?.runs ||
+        renderer?.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs ||
+        [];
+      const subtitleText = subtitleRuns.map((r: any) => r.text).join("");
+      const trackCountMatch = subtitleText.match(/(\d+)\s+(?:songs?|tracks?|lagu)/i);
+      const trackCount = trackCountMatch ? parseInt(trackCountMatch[1], 10) : 0;
 
-          const subtitleText = subtitleRuns.map((r: any) => r.text).join("");
-          const trackCountMatch = subtitleText.match(/(\d+)\s+(?:songs?|tracks?|lagu)/i);
-          const trackCount = trackCountMatch ? parseInt(trackCountMatch[1], 10) : 0;
+      const thumbnails =
+        renderer?.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
+        renderer?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
+        [];
+      const thumbnailUrl = thumbnails[thumbnails.length - 1]?.url;
 
-          const thumbnails =
-            renderer?.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
-            renderer?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
-            [];
-          const thumbnailUrl = thumbnails[thumbnails.length - 1]?.url;
-
-          playlists.push({
-            id: browseId,
-            title,
-            trackCount,
-            thumbnailUrl,
-          });
-        }
-      }
+      playlists.push({
+        id: browseId,
+        title: title || "Untitled Playlist",
+        trackCount,
+        thumbnailUrl,
+      });
     }
   } catch (err) {
     console.error("Error parsing YTM playlists:", err);
@@ -203,30 +219,45 @@ export class YouTubeMusicClient {
       throw new Error("Missing YouTube Music SAPISID session cookie");
     }
 
-    const payload = {
-      context: {
-        client: {
-          clientName: "WEB_REMIX",
-          clientVersion: "1.20241028.01.00",
-          hl: "en",
-          gl: "US",
-        },
-      },
-      browseId: "FEmusic_liked_playlists",
-    };
+    const endpoints = ["FEmusic_library_playlists", "FEmusic_liked_playlists", "FEmusic_library_landing"];
+    const allPlaylists: PlaylistSummary[] = [];
+    const seenIds = new Set<string>();
 
-    const res = await fetch("https://music.youtube.com/youtubei/v1/browse", {
-      method: "POST",
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(payload),
-    });
+    for (const browseId of endpoints) {
+      try {
+        const payload = {
+          context: {
+            client: {
+              clientName: "WEB_REMIX",
+              clientVersion: "1.20241028.01.00",
+              hl: "en",
+              gl: "US",
+            },
+          },
+          browseId,
+        };
 
-    if (!res.ok) {
-      throw new Error(`YouTube Music browse failed with status ${res.status}`);
+        const res = await fetch("https://music.youtube.com/youtubei/v1/browse", {
+          method: "POST",
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          const list = parseYouTubeMusicPlaylists(json);
+          for (const p of list) {
+            if (!seenIds.has(p.id)) {
+              seenIds.add(p.id);
+              allPlaylists.push(p);
+            }
+          }
+        }
+      } catch {}
+      if (allPlaylists.length > 0) break;
     }
 
-    const json = await res.json();
-    return parseYouTubeMusicPlaylists(json);
+    return allPlaylists;
   }
 
   public async fetchPlaylistTracks(browseId: string): Promise<TrackMetadata[]> {

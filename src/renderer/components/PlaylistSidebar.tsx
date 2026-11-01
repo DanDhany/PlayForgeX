@@ -10,6 +10,10 @@ interface PlaylistSidebarProps {
   onRefreshPlaylists: () => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
+  activeSource?: "youtube" | "apple";
+  onChangeSource?: (source: "youtube" | "apple") => void;
+  youtubeCount?: number;
+  appleCount?: number;
 }
 
 export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
@@ -20,6 +24,10 @@ export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
   onRefreshPlaylists,
   isOpenMobile = false,
   onCloseMobile,
+  activeSource = "youtube",
+  onChangeSource,
+  youtubeCount,
+  appleCount,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -73,6 +81,38 @@ export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
               )}
             </div>
           </div>
+
+          {/* Service Switcher Tabs: YouTube Music vs Apple Music */}
+          {onChangeSource && (
+            <div className="grid grid-cols-2 p-1 bg-card/90 border border-white/[0.08] rounded-xl text-xs">
+              <button
+                onClick={() => onChangeSource("youtube")}
+                className={`py-1.5 px-2 rounded-lg font-medium transition flex items-center justify-center gap-1.5 ${
+                  activeSource === "youtube"
+                    ? "bg-red-500/20 text-red-300 border border-red-500/30 shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <span>YouTube</span>
+                {youtubeCount !== undefined && (
+                  <span className="text-[10px] opacity-75 font-mono">({youtubeCount})</span>
+                )}
+              </button>
+              <button
+                onClick={() => onChangeSource("apple")}
+                className={`py-1.5 px-2 rounded-lg font-medium transition flex items-center justify-center gap-1.5 ${
+                  activeSource === "apple"
+                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <span>Apple</span>
+                {appleCount !== undefined && (
+                  <span className="text-[10px] opacity-75 font-mono">({appleCount})</span>
+                )}
+              </button>
+            </div>
+          )}
 
           {/* Search Playlists */}
           <div className="relative">

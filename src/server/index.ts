@@ -78,11 +78,14 @@ app.get("/api/status", async (_req: Request, res: Response) => {
     } catch {}
   }
 
+  let appleCount = 0;
   let sf = sessionData.appleStorefront || "us";
   if (appleClient) {
     try {
       sf = await appleClient.getUserStorefront();
       sessionData.appleStorefront = sf;
+      const applePlaylists = await appleClient.getUserPlaylists();
+      appleCount = applePlaylists.length;
     } catch {}
   }
 
@@ -94,6 +97,7 @@ app.get("/api/status", async (_req: Request, res: Response) => {
     apple: {
       connected: !!appleClient,
       storefront: sf,
+      playlistCount: appleCount,
     },
   });
 });
@@ -134,13 +138,19 @@ app.post("/api/auth/apple", async (req: Request, res: Response) => {
   try {
     const client = new AppleMusicClient(musicUserToken, developerToken);
     const sf = await client.getUserStorefront();
+    let playlistCount = 0;
+    try {
+      const playlists = await client.getUserPlaylists();
+      playlistCount = playlists.length;
+    } catch {}
+
     appleClient = client;
     sessionData.appleUserToken = musicUserToken;
     sessionData.appleDevToken = developerToken;
     sessionData.appleStorefront = sf;
     persistSession();
 
-    res.json({ success: true, storefront: sf });
+    res.json({ success: true, storefront: sf, playlistCount });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed to authenticate Apple Music" });
   }
@@ -163,8 +173,23 @@ app.post("/api/auth/logout", (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
-// 5. Fetch Playlists
-app.get("/api/playlists", async (_req: Request, res: Response) => {
+// 5. Fetch Playlists (supports source=youtube | apple)
+app.get("/api/playlists", async (req: Request, res: Response) => {
+  const source = (req.query.source as string) || "youtube";
+
+  if (source === "apple") {
+    if (!appleClient) {
+      return res.status(401).json({ error: "Apple Music not connected" });
+    }
+    try {
+      const playlists = await appleClient.getUserPlaylists();
+      return res.json(playlists);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // Default: YouTube Music
   if (!ytClient) {
     return res.status(401).json({ error: "YouTube Music not connected" });
   }
@@ -176,13 +201,28 @@ app.get("/api/playlists", async (_req: Request, res: Response) => {
   }
 });
 
-// 6. Fetch Tracks
+// 6. Fetch Tracks (supports source=youtube | apple or auto-detect by prefix)
 app.get("/api/playlists/:id/tracks", async (req: Request, res: Response) => {
+  const playlistId = req.params.id as string;
+  const source = (req.query.source as string) || (playlistId.startsWith("p.") ? "apple" : "youtube");
+
+  if (source === "apple") {
+    if (!appleClient) {
+      return res.status(401).json({ error: "Apple Music not connected" });
+    }
+    try {
+      const tracks = await appleClient.getPlaylistTracks(playlistId);
+      return res.json(tracks);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // Default: YouTube Music
   if (!ytClient) {
     return res.status(401).json({ error: "YouTube Music not connected" });
   }
   try {
-    const playlistId = req.params.id as string;
     const tracks = await ytClient.fetchPlaylistTracks(playlistId);
     res.json(tracks);
   } catch (err: any) {

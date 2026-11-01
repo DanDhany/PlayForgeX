@@ -77,5 +77,6 @@ export interface ServiceAuthStatus {
     connected: boolean;
     storefront?: string;
     user?: string;
+    playlistCount?: number;
   };
 }

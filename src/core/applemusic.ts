@@ -105,6 +105,72 @@ export class AppleMusicClient {
     return "us";
   }
 
+  public async getUserPlaylists(): Promise<any[]> {
+    const url = "https://amp-api.music.apple.com/v1/me/library/playlists";
+    const res = await fetch(url, {
+      headers: this.getHeaders(),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch Apple Music playlists (${res.status})`);
+    }
+
+    const json = await res.json();
+    const data = json?.data || [];
+
+    return data.map((item: any) => {
+      const attrs = item?.attributes || {};
+      let thumbnailUrl: string | undefined;
+      if (attrs?.artwork?.url) {
+        thumbnailUrl = attrs.artwork.url
+          .replace("{w}", "120")
+          .replace("{h}", "120")
+          .replace("{f}", "jpg");
+      }
+
+      return {
+        id: item.id,
+        title: attrs.name || "Untitled Playlist",
+        trackCount: attrs?.trackTypes?.length || 0,
+        thumbnailUrl,
+      };
+    });
+  }
+
+  public async getPlaylistTracks(playlistId: string): Promise<TrackMetadata[]> {
+    const url = `https://amp-api.music.apple.com/v1/me/library/playlists/${playlistId}/tracks`;
+    const res = await fetch(url, {
+      headers: this.getHeaders(),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch Apple Music tracks (${res.status})`);
+    }
+
+    const json = await res.json();
+    const data = json?.data || [];
+
+    return data.map((item: any) => {
+      const attrs = item?.attributes || {};
+      let thumbnailUrl: string | undefined;
+      if (attrs?.artwork?.url) {
+        thumbnailUrl = attrs.artwork.url
+          .replace("{w}", "120")
+          .replace("{h}", "120")
+          .replace("{f}", "jpg");
+      }
+
+      return {
+        videoId: item.id,
+        title: attrs.name || "",
+        artist: attrs.artistName || "",
+        album: attrs.albumName,
+        durationSeconds: attrs.durationInMillis ? Math.round(attrs.durationInMillis / 1000) : undefined,
+        thumbnailUrl,
+      };
+    });
+  }
+
   public async searchCatalog(query: string, storefront?: string): Promise<AppleMusicTrack[]> {
     const sf = storefront || (await this.getUserStorefront());
     const url = formatCatalogSearchUrl(sf, query, 15);

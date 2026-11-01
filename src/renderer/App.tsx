@@ -24,6 +24,7 @@ export const App: React.FC = () => {
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
 
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
+  const [playlistSource, setPlaylistSource] = useState<"youtube" | "apple">("youtube");
   const [selectedPlaylist, setSelectedPlaylist] = useState<PlaylistSummary | null>(null);
   const [trackItems, setTrackItems] = useState<TransferTrackItem[]>([]);
   const [isMatching, setIsMatching] = useState(false);
@@ -47,8 +48,12 @@ export const App: React.FC = () => {
         if (res.ok) {
           const status = await res.json();
           setAuthStatus(status);
-          if (status.youtube.connected) {
-            loadPlaylistsWeb();
+          // If YTM has 0 playlists but Apple has playlists, default to Apple tab
+          if (!status.youtube.connected && status.apple.connected) {
+            setPlaylistSource("apple");
+            loadPlaylistsWeb("apple");
+          } else {
+            loadPlaylistsWeb(playlistSource);
           }
         }
       } catch (err) {
@@ -80,10 +85,10 @@ export const App: React.FC = () => {
     }
   };
 
-  const loadPlaylistsWeb = async () => {
+  const loadPlaylistsWeb = async (source = playlistSource) => {
     setIsLoadingPlaylists(true);
     try {
-      const res = await fetch("/api/playlists");
+      const res = await fetch(`/api/playlists?source=${source}`);
       if (res.ok) {
         const list = await res.json();
         setPlaylists(list);
@@ -93,6 +98,13 @@ export const App: React.FC = () => {
     } finally {
       setIsLoadingPlaylists(false);
     }
+  };
+
+  const handleChangePlaylistSource = (source: "youtube" | "apple") => {
+    setPlaylistSource(source);
+    setSelectedPlaylist(null);
+    setTrackItems([]);
+    loadPlaylistsWeb(source);
   };
 
   const handleLoginYouTube = async () => {
@@ -176,9 +188,41 @@ export const App: React.FC = () => {
 
     if (!isElectron) {
       try {
-        const tracksRes = await fetch(`/api/playlists/${playlist.id}/tracks`);
+        const tracksRes = await fetch(`/api/playlists/${playlist.id}/tracks?source=${playlistSource}`);
         if (!tracksRes.ok) throw new Error("Failed to fetch tracks");
         const tracks = await tracksRes.json();
+
+        if (playlistSource === "apple") {
+          // It is an Apple Music playlist: map directly into view
+          const items: TransferTrackItem[] = tracks.map((t: any) => ({
+            source: t,
+            sanitizedTitle: {
+              rawTitle: t.title,
+              originalTitle: t.title,
+              cleanTitle: t.title,
+              hasNonLatin: /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(t.title),
+            },
+            match: {
+              status: "EXACT_MATCH",
+              totalScore: 100,
+              titleScore: 100,
+              artistScore: 100,
+              albumScore: 100,
+            },
+            selectedCandidate: {
+              id: t.videoId,
+              name: t.title,
+              artistName: t.artist,
+              albumName: t.album,
+              durationInMillis: t.durationSeconds ? t.durationSeconds * 1000 : undefined,
+              artworkUrl: t.thumbnailUrl,
+            },
+            excluded: false,
+          }));
+          setTrackItems(items);
+          setIsMatching(false);
+          return;
+        }
 
         const matchRes = await fetch("/api/tracks/match", {
           method: "POST",
@@ -349,9 +393,13 @@ export const App: React.FC = () => {
           selectedPlaylistId={selectedPlaylist?.id || null}
           onSelectPlaylist={handleSelectPlaylist}
           isLoading={isLoadingPlaylists}
-          onRefreshPlaylists={isElectron ? loadPlaylistsElectron : loadPlaylistsWeb}
+          onRefreshPlaylists={() => (isElectron ? loadPlaylistsElectron() : loadPlaylistsWeb(playlistSource))}
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          activeSource={playlistSource}
+          onChangeSource={handleChangePlaylistSource}
+          youtubeCount={authStatus.youtube.playlistCount}
+          appleCount={authStatus.apple.playlistCount}
         />
 
         <ReviewStudio
