@@ -8,7 +8,15 @@ import { cleanTitle } from "../core/sanitizer.js";
 import {
   TrackMetadata,
   TransferTrackItem,
+  PlaylistSummary,
 } from "../shared/types.js";
+import {
+  loadDraft,
+  saveDraft,
+  updateDraftItem,
+  startBackgroundMatching,
+  isJobRunning,
+} from "./matcher-worker.js";
 
 const app = express();
 const PORT = parseInt(process.env.APP_PORT || process.env.PORT || "3080", 10);
@@ -340,17 +348,84 @@ app.post(["/api/search", "/api/search/apple", "/api/search/youtube"], async (req
   }
 });
 
-// 9. Transfer Progress polling
+// 9. Draft & Background Matching API
+app.get("/api/drafts/:sourcePlatform/:playlistId", (req: Request, res: Response) => {
+  const sourcePlatform = String(req.params.sourcePlatform);
+  const playlistId = String(req.params.playlistId);
+  const draft = loadDraft(sourcePlatform, playlistId);
+  const isRunning = isJobRunning(sourcePlatform, playlistId);
+  res.json({ draft, isRunning });
+});
+
+app.put("/api/drafts/:sourcePlatform/:playlistId/item", (req: Request, res: Response) => {
+  const sourcePlatform = String(req.params.sourcePlatform);
+  const playlistId = String(req.params.playlistId);
+  const { item } = req.body as { item: TransferTrackItem };
+  if (!item) {
+    return res.status(400).json({ error: "item is required" });
+  }
+  const updated = updateDraftItem(sourcePlatform, playlistId, item);
+  res.json({ success: updated });
+});
+
+app.post("/api/matching/start", async (req: Request, res: Response) => {
+  const { sourcePlatform, targetPlatform, playlist, force = false } = req.body as {
+    sourcePlatform: "youtube" | "apple";
+    targetPlatform: "apple" | "youtube";
+    playlist: PlaylistSummary;
+    force?: boolean;
+  };
+
+  if (!playlist || !playlist.id) {
+    return res.status(400).json({ error: "playlist is required" });
+  }
+
+  try {
+    const draft = await startBackgroundMatching(
+      sourcePlatform,
+      targetPlatform,
+      playlist,
+      ytClient,
+      appleClient,
+      force
+    );
+    res.json({ success: true, draft, isRunning: isJobRunning(sourcePlatform, playlist.id) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/matching/status/:sourcePlatform/:playlistId", (req: Request, res: Response) => {
+  const sourcePlatform = String(req.params.sourcePlatform);
+  const playlistId = String(req.params.playlistId);
+  const draft = loadDraft(sourcePlatform, playlistId);
+  const isRunning = isJobRunning(sourcePlatform, playlistId);
+  res.json({ draft, isRunning });
+});
+
+// 10. Transfer Progress polling
 app.get("/api/transfer/progress", (_req: Request, res: Response) => {
   res.json(currentProgress);
 });
 
-// 10. Execute Transfer (Bidirectional: yt2apple or apple2yt)
+// 11. Execute Transfer (Bidirectional & Flexible mode: Create New or Embed into Existing)
 app.post("/api/transfer", async (req: Request, res: Response) => {
-  const { playlistTitle, items, targetPlatform = "apple" } = req.body as {
+  const {
+    playlistTitle,
+    items,
+    targetPlatform = "apple",
+    mode = "create",
+    existingPlaylistId,
+    sourcePlaylistId,
+    sourcePlatform = "youtube",
+  } = req.body as {
     playlistTitle: string;
     items: TransferTrackItem[];
     targetPlatform?: "apple" | "youtube";
+    mode?: "create" | "existing";
+    existingPlaylistId?: string;
+    sourcePlaylistId?: string;
+    sourcePlatform?: "youtube" | "apple";
   };
 
   const activeItems = (items || []).filter((item) => !item.excluded && item.selectedCandidate);
@@ -358,6 +433,10 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
 
   if (trackIds.length === 0) {
     return res.status(400).json({ error: "No tracks selected for transfer" });
+  }
+
+  if (mode === "existing" && !existingPlaylistId) {
+    return res.status(400).json({ error: "existingPlaylistId is required when mode is 'existing'" });
   }
 
   const total = trackIds.length;
@@ -371,11 +450,16 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
         return res.status(401).json({ error: "Apple Music not connected" });
       }
 
-      const createdId = await appleClient.createPlaylist(playlistTitle);
+      let destinationId: string;
+      if (mode === "existing") {
+        destinationId = existingPlaylistId!;
+      } else {
+        destinationId = await appleClient.createPlaylist(playlistTitle);
+      }
 
       for (let i = 0; i < total; i += 25) {
         const chunk = trackIds.slice(i, i + 25);
-        const resChunk = await appleClient.addTracksToPlaylist(createdId, chunk);
+        const resChunk = await appleClient.addTracksToPlaylist(destinationId, chunk);
         success += resChunk.added;
         failed += resChunk.failed;
         currentProgress = {
@@ -386,10 +470,20 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
         };
       }
 
+      if (sourcePlaylistId) {
+        const draft = loadDraft(sourcePlatform, sourcePlaylistId);
+        if (draft) {
+          draft.status = "transferred";
+          saveDraft(draft);
+        }
+      }
+
       return res.json({
         success: true,
         targetPlatform: "apple",
-        createdPlaylistId: createdId,
+        mode,
+        destinationPlaylistId: destinationId,
+        createdPlaylistId: destinationId,
         added: success,
         failed,
       });
@@ -399,38 +493,65 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
         return res.status(401).json({ error: "YouTube Music not connected" });
       }
 
-      const initialBatch = trackIds.slice(0, 25);
-      const remaining = trackIds.slice(25);
+      let destinationId: string;
+      if (mode === "existing") {
+        destinationId = existingPlaylistId!;
+        for (let i = 0; i < total; i += 25) {
+          const chunk = trackIds.slice(i, i + 25);
+          const resChunk = await ytClient.addTracksToPlaylist(destinationId, chunk);
+          success += resChunk.added;
+          failed += resChunk.failed;
+          currentProgress = {
+            current: Math.min(i + 25, total),
+            total,
+            success,
+            failed,
+          };
+        }
+      } else {
+        const initialBatch = trackIds.slice(0, 25);
+        const remaining = trackIds.slice(25);
 
-      const createdId = await ytClient.createPlaylist(
-        playlistTitle,
-        "Imported from Apple Music via MirrorSong",
-        initialBatch
-      );
-      success += initialBatch.length;
-      currentProgress = {
-        current: initialBatch.length,
-        total,
-        success,
-        failed: 0,
-      };
-
-      if (remaining.length > 0) {
-        const resChunk = await ytClient.addTracksToPlaylist(createdId, remaining);
-        success += resChunk.added;
-        failed += resChunk.failed;
+        destinationId = await ytClient.createPlaylist(
+          playlistTitle,
+          "Imported from Apple Music via MirrorSong",
+          initialBatch
+        );
+        success += initialBatch.length;
         currentProgress = {
-          current: total,
+          current: initialBatch.length,
           total,
           success,
-          failed,
+          failed: 0,
         };
+
+        if (remaining.length > 0) {
+          const resChunk = await ytClient.addTracksToPlaylist(destinationId, remaining);
+          success += resChunk.added;
+          failed += resChunk.failed;
+          currentProgress = {
+            current: total,
+            total,
+            success,
+            failed,
+          };
+        }
+      }
+
+      if (sourcePlaylistId) {
+        const draft = loadDraft(sourcePlatform, sourcePlaylistId);
+        if (draft) {
+          draft.status = "transferred";
+          saveDraft(draft);
+        }
       }
 
       return res.json({
         success: true,
         targetPlatform: "youtube",
-        createdPlaylistId: createdId,
+        mode,
+        destinationPlaylistId: destinationId,
+        createdPlaylistId: destinationId,
         added: success,
         failed,
       });

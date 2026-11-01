@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Header } from "./components/Header";
 import { PlaylistSidebar } from "./components/PlaylistSidebar";
 import { ReviewStudio } from "./components/ReviewStudio";
 import { AlternativePickerModal } from "./components/AlternativePickerModal";
 import { TransferProgressModal } from "./components/TransferProgressModal";
 import { AuthModalWeb } from "./components/AuthModalWeb";
+import { ExportModal } from "./components/ExportModal";
 import {
   ServiceAuthStatus,
   PlaylistSummary,
   TransferTrackItem,
   AppleMusicTrack,
   TransferJob,
+  PlaylistDraft,
 } from "../shared/types";
 
 export const App: React.FC = () => {
@@ -28,11 +30,26 @@ export const App: React.FC = () => {
   const [selectedPlaylist, setSelectedPlaylist] = useState<PlaylistSummary | null>(null);
   const [trackItems, setTrackItems] = useState<TransferTrackItem[]>([]);
   const [isMatching, setIsMatching] = useState(false);
+  const [totalTracksToMatch, setTotalTracksToMatch] = useState(0);
 
   const [editingItem, setEditingItem] = useState<TransferTrackItem | null>(null);
   const [transferJob, setTransferJob] = useState<TransferJob | null>(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [webAuthService, setWebAuthService] = useState<"youtube" | "apple" | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const matchingPollerRef = useRef<any>(null);
+
+  const stopMatchingPoller = () => {
+    if (matchingPollerRef.current) {
+      clearInterval(matchingPollerRef.current);
+      matchingPollerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => stopMatchingPoller();
+  }, []);
 
   // Check if running in Electron environment
   const isElectron = typeof window !== "undefined" && !!window.api;
@@ -182,35 +199,107 @@ export const App: React.FC = () => {
     await refreshStatus();
   };
 
-  const handleSelectPlaylist = async (playlist: PlaylistSummary) => {
+  const handleSelectPlaylist = async (playlist: PlaylistSummary, force: boolean = false) => {
+    stopMatchingPoller();
     setSelectedPlaylist(playlist);
-    setIsMatching(true);
+    setTotalTracksToMatch(playlist.trackCount || 0);
 
     const targetPlatform = playlistSource === "youtube" ? "apple" : "youtube";
 
     if (!isElectron) {
       try {
-        const tracksRes = await fetch(`/api/playlists/${playlist.id}/tracks?source=${playlistSource}`);
-        if (!tracksRes.ok) throw new Error("Failed to fetch tracks");
-        const tracks = await tracksRes.json();
+        // 1. Check existing draft first to show immediate cached results
+        let draft: PlaylistDraft | null = null;
+        let isRunning = false;
 
-        const matchRes = await fetch("/api/tracks/match", {
+        if (!force) {
+          try {
+            const draftRes = await fetch(`/api/drafts/${playlistSource}/${playlist.id}`);
+            if (draftRes.ok) {
+              const data = await draftRes.json();
+              draft = data.draft;
+              isRunning = data.isRunning;
+              if (draft && draft.items && draft.items.length > 0) {
+                setTrackItems(draft.items);
+                if (draft.totalTracks) {
+                  setTotalTracksToMatch(draft.totalTracks);
+                }
+              }
+            }
+          } catch (e) {
+            console.warn("Failed checking draft:", e);
+          }
+        }
+
+        const isComplete =
+          draft &&
+          draft.targetPlatform === targetPlatform &&
+          draft.status === "ready" &&
+          draft.items.length >= (draft.totalTracks || playlist.trackCount || 1);
+
+        if (!force && isComplete && !isRunning) {
+          setIsMatching(false);
+          return;
+        }
+
+        // 2. Start or attach to background matching
+        setIsMatching(true);
+
+        const startRes = await fetch("/api/matching/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tracks, targetPlatform }),
+          body: JSON.stringify({
+            sourcePlatform: playlistSource,
+            targetPlatform,
+            playlist,
+            force,
+          }),
         });
-        if (!matchRes.ok) throw new Error("Failed to match tracks");
-        const matched = await matchRes.json();
-        setTrackItems(matched);
+
+        if (startRes.ok) {
+          const startData = await startRes.json();
+          if (startData.draft?.items && startData.draft.items.length > 0) {
+            setTrackItems(startData.draft.items);
+          }
+          if (startData.draft?.totalTracks) {
+            setTotalTracksToMatch(startData.draft.totalTracks);
+          }
+        }
+
+        // 3. Poll matching progress in background every 1.2s
+        matchingPollerRef.current = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`/api/matching/status/${playlistSource}/${playlist.id}`);
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              const curDraft: PlaylistDraft | null = statusData.draft;
+              const running: boolean = statusData.isRunning;
+
+              if (curDraft?.items) {
+                setTrackItems(curDraft.items);
+              }
+              if (curDraft?.totalTracks) {
+                setTotalTracksToMatch(curDraft.totalTracks);
+              }
+
+              if (!running || curDraft?.status === "ready" || curDraft?.status === "transferred") {
+                setIsMatching(false);
+                stopMatchingPoller();
+              }
+            }
+          } catch (pollErr) {
+            console.error("Matching poller error:", pollErr);
+          }
+        }, 1200);
       } catch (err) {
-        console.error("Web match error:", err);
-      } finally {
+        console.error("Failed to select playlist / start background match:", err);
         setIsMatching(false);
       }
       return;
     }
 
     try {
+      setIsMatching(true);
       const tracks = await window.api.fetchTracks(playlist.id);
       const matched = await window.api.matchTracks(tracks);
       setTrackItems(matched);
@@ -222,30 +311,43 @@ export const App: React.FC = () => {
   };
 
   const handleToggleExclude = (item: TransferTrackItem) => {
+    const updated = { ...item, excluded: !item.excluded };
     setTrackItems((prev) =>
-      prev.map((t) => (t === item ? { ...t, excluded: !t.excluded } : t))
+      prev.map((t) => (t === item ? updated : t))
     );
+
+    if (!isElectron && selectedPlaylist) {
+      fetch(`/api/drafts/${playlistSource}/${selectedPlaylist.id}/item`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item: updated }),
+      }).catch(console.error);
+    }
   };
 
   const handleSelectAlternative = (item: TransferTrackItem, candidate: AppleMusicTrack) => {
+    const updated: TransferTrackItem = {
+      ...item,
+      selectedCandidate: candidate,
+      excluded: false,
+      match: {
+        ...item.match,
+        status: "EXACT_MATCH",
+        totalScore: 1.0,
+        reason: "Manually selected alternative",
+      },
+    };
     setTrackItems((prev) =>
-      prev.map((t) => {
-        if (t === item) {
-          return {
-            ...t,
-            selectedCandidate: candidate,
-            excluded: false,
-            match: {
-              ...t.match,
-              status: "EXACT_MATCH",
-              totalScore: 1.0,
-              reason: "Manually selected alternative",
-            },
-          };
-        }
-        return t;
-      })
+      prev.map((t) => (t === item ? updated : t))
     );
+
+    if (!isElectron && selectedPlaylist) {
+      fetch(`/api/drafts/${playlistSource}/${selectedPlaylist.id}/item`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item: updated }),
+      }).catch(console.error);
+    }
   };
 
   const handleSearchCandidateCatalog = async (query: string): Promise<AppleMusicTrack[]> => {
@@ -266,14 +368,31 @@ export const App: React.FC = () => {
     return window.api.searchAppleCatalog(query);
   };
 
-  const handleStartTransfer = async () => {
+  const handleOpenExportModal = () => {
     if (!selectedPlaylist) return;
+    setIsExportModalOpen(true);
+  };
+
+  const handleExecuteTransfer = async (options: {
+    mode: "create" | "existing";
+    playlistTitle: string;
+    existingPlaylistId?: string;
+    existingPlaylistTitle?: string;
+  }) => {
+    if (!selectedPlaylist) return;
+    setIsExportModalOpen(false);
 
     const targetPlatform = playlistSource === "youtube" ? "apple" : "youtube";
 
     const job: TransferJob = {
       playlistId: selectedPlaylist.id,
-      playlistTitle: selectedPlaylist.title,
+      playlistTitle:
+        options.mode === "existing"
+          ? options.existingPlaylistTitle || options.playlistTitle
+          : options.playlistTitle,
+      targetPlatform,
+      mode: options.mode,
+      existingPlaylistTitle: options.existingPlaylistTitle,
       tracks: trackItems,
       status: "processing",
       progress: {
@@ -302,9 +421,13 @@ export const App: React.FC = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            playlistTitle: selectedPlaylist.title,
+            playlistTitle: options.playlistTitle,
             items: trackItems,
             targetPlatform,
+            mode: options.mode,
+            existingPlaylistId: options.existingPlaylistId,
+            sourcePlaylistId: selectedPlaylist.id,
+            sourcePlatform: playlistSource,
           }),
         });
         const data = await res.json();
@@ -313,7 +436,8 @@ export const App: React.FC = () => {
             ? {
                 ...prev,
                 status: res.ok ? "completed" : "failed",
-                appleMusicPlaylistId: data.createdPlaylistId,
+                appleMusicPlaylistId: data.destinationPlaylistId || data.createdPlaylistId,
+                youtubePlaylistId: data.destinationPlaylistId || data.createdPlaylistId,
               }
             : null
         );
@@ -331,7 +455,7 @@ export const App: React.FC = () => {
     });
 
     try {
-      const res = await window.api.executeTransfer(selectedPlaylist.title, trackItems);
+      const res = await window.api.executeTransfer(options.playlistTitle, trackItems);
       setTransferJob((prev) =>
         prev
           ? {
@@ -380,16 +504,27 @@ export const App: React.FC = () => {
           selectedPlaylist={selectedPlaylist}
           items={trackItems}
           isMatching={isMatching}
+          totalTracksToMatch={totalTracksToMatch}
           isTransferring={transferJob?.status === "processing"}
           onToggleExclude={handleToggleExclude}
           onOpenAlternativePicker={setEditingItem}
-          onStartTransfer={handleStartTransfer}
-          onReMatch={() => selectedPlaylist && handleSelectPlaylist(selectedPlaylist)}
+          onStartTransfer={handleOpenExportModal}
+          onReMatch={() => selectedPlaylist && handleSelectPlaylist(selectedPlaylist, true)}
           onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
           sourcePlatform={playlistSource}
           targetPlatform={playlistSource === "youtube" ? "apple" : "youtube"}
         />
       </div>
+
+      {/* Export Options Modal (Create New vs Append into Existing) */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onConfirm={handleExecuteTransfer}
+        defaultTitle={selectedPlaylist?.title || "Playlist"}
+        targetPlatform={playlistSource === "youtube" ? "apple" : "youtube"}
+        trackCount={trackItems.filter((t) => !t.excluded && t.selectedCandidate).length}
+      />
 
       {/* Alternative Song Picker Modal */}
       <AlternativePickerModal

@@ -493,6 +493,7 @@ export class YouTubeMusicClient {
     let added = 0;
     let failed = 0;
     const chunkSize = 25;
+    const rawPlaylistId = playlistId.startsWith("VL") ? playlistId.slice(2) : playlistId;
 
     for (let i = 0; i < videoIds.length; i += chunkSize) {
       const chunk = videoIds.slice(i, i + chunkSize);
@@ -505,7 +506,7 @@ export class YouTubeMusicClient {
             gl: "US",
           },
         },
-        playlistId,
+        playlistId: rawPlaylistId,
         actions: chunk.map((videoId) => ({
           action: "ACTION_ADD_VIDEO",
           addedVideoId: videoId,

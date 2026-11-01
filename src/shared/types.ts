@@ -56,8 +56,12 @@ export interface TransferTrackItem {
 export interface TransferJob {
   playlistId: string;
   playlistTitle: string;
+  targetPlatform?: "apple" | "youtube";
+  mode?: "create" | "existing";
+  existingPlaylistTitle?: string;
   tracks: TransferTrackItem[];
   appleMusicPlaylistId?: string;
+  youtubePlaylistId?: string;
   status: "pending" | "processing" | "completed" | "failed";
   progress: {
     current: number;
@@ -65,6 +69,25 @@ export interface TransferJob {
     success: number;
     failed: number;
   };
+}
+
+export interface PlaylistDraft {
+  playlistId: string;
+  playlistTitle: string;
+  sourcePlatform: "youtube" | "apple";
+  targetPlatform: "apple" | "youtube";
+  items: TransferTrackItem[];
+  status: "idle" | "matching" | "ready" | "transferring" | "transferred";
+  totalTracks: number;
+  matchedCount: number;
+  lastUpdated: number;
+}
+
+export interface ExportOptions {
+  mode: "create" | "existing";
+  playlistTitle: string;
+  existingPlaylistId?: string;
+  targetPlatform: "apple" | "youtube";
 }
 
 export interface ServiceAuthStatus {

@@ -10,6 +10,7 @@ import {
   RotateCcw,
   CheckSquare,
   Square,
+  Loader2,
 } from "lucide-react";
 import { TransferTrackItem, PlaylistSummary } from "../../shared/types";
 import {
@@ -24,6 +25,7 @@ interface ReviewStudioProps {
   selectedPlaylist: PlaylistSummary | null;
   items: TransferTrackItem[];
   isMatching: boolean;
+  totalTracksToMatch?: number;
   isTransferring: boolean;
   onToggleExclude: (item: TransferTrackItem) => void;
   onOpenAlternativePicker: (item: TransferTrackItem) => void;
@@ -38,6 +40,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
   selectedPlaylist,
   items,
   isMatching,
+  totalTracksToMatch = 0,
   isTransferring,
   onToggleExclude,
   onOpenAlternativePicker,
@@ -176,6 +179,21 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Background Matching Progress Banner */}
+        {isMatching && (
+          <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-between text-xs animate-pulse">
+            <div className="flex items-center space-x-2">
+              <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+              <span className="text-slate-200">
+                Mencocokkan lagu di latar belakang ({items.length}{totalTracksToMatch > 0 ? ` / ${totalTracksToMatch}` : ""} lagu)...
+              </span>
+            </div>
+            <span className="text-[11px] font-mono text-primary font-semibold hidden sm:inline">
+              Tersimpan otomatis ke draft
+            </span>
+          </div>
+        )}
 
         {/* 4 Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
@@ -321,7 +339,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
 
       {/* 4. Scrollable Tracks List */}
       <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2.5 pb-20 md:pb-4">
-        {isMatching ? (
+        {isMatching && items.length === 0 ? (
           <div className="py-20 text-center text-xs text-slate-400 flex flex-col items-center gap-4">
             <VinylIllustration className="w-24 h-24" spinning={true} />
             <div className="space-y-1">
@@ -329,13 +347,13 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                 Mencocokkan lagu dengan prioritas judul original...
               </p>
               <p className="text-[11px] text-slate-400 max-w-sm">
-                Karakter Kanji / non-Latin diprioritaskan terlebih dahulu agar katalog Apple Music terindeks akurat.
+                Karakter Kanji / non-Latin diprioritaskan terlebih dahulu agar katalog terindeks akurat. Lagu akan muncul dan tersimpan ke draft secara otomatis.
               </p>
             </div>
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="py-20 text-center text-xs text-slate-500">
-            Tidak ada lagu yang cocok dengan filter yang dipilih.
+            {isMatching ? "Sedang memproses lagu pertama..." : "Tidak ada lagu yang cocok dengan filter yang dipilih."}
           </div>
         ) : (
           filteredItems.map((item, idx) => (
