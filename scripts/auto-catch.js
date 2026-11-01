@@ -70,14 +70,23 @@ async function main() {
     executablePath,
     headless: false,
     defaultViewport: null,
+    userDataDir: path.resolve(DATA_DIR, "chrome-profile"),
+    ignoreDefaultArgs: ["--enable-automation"],
     args: [
+      "--disable-blink-features=AutomationControlled",
       "--no-sandbox",
       "--disable-setuid-sandbox",
-      "--window-size=1024,768",
+      "--window-size=1200,800",
+      "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
     ],
   });
 
   const page = (await browser.pages())[0] || (await browser.newPage());
+
+  // Mask automation properties to bypass Google security check
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, "webdriver", { get: () => false });
+  });
 
   if (service === "youtube") {
     await page.goto("https://music.youtube.com", { waitUntil: "domcontentloaded" });
