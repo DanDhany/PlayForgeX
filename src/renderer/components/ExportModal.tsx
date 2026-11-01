@@ -103,17 +103,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-      <div className="bg-card border border-white/[0.12] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]">
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-sm">
+      <div className="fixed inset-0 -z-10" onClick={onClose} />
+
+      <div className="bg-surface border-t md:border border-white/[0.1] rounded-t-3xl md:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] md:max-h-[82dvh] animate-sheet-up md:animate-dialog-in pb-safe">
+        {/* iOS Drag Handle */}
+        <div className="md:hidden w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-1" />
+
         {/* Header */}
-        <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between bg-surface/90">
+        <div className="px-4 py-3 md:px-5 md:py-3.5 border-b border-white/[0.08] flex items-center justify-between bg-surface-elevated">
           <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <ListPlus className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-card border border-white/[0.08] flex items-center justify-center text-primary">
+              <ListPlus className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm md:text-base font-bold text-white tracking-tight">
-                Pilihan Ekspor ke {targetName}
+              <h3 className="text-xs md:text-sm font-semibold text-white">
+                Ekspor ke {targetName}
               </h3>
               <p className="text-[11px] text-slate-400">
                 {trackCount} lagu siap ditransfer
@@ -122,76 +127,76 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] btn-press transition"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-5 overflow-y-auto space-y-4 flex-1">
+        <div className="p-4 md:p-5 overflow-y-auto space-y-3.5 flex-1">
           {/* Note if matching is still running */}
           {isMatching && (
-            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-200 flex items-center gap-2">
+            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200 flex items-center gap-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0 text-amber-400" />
               <span>
-                Pencocokan masih berjalan di background. Anda akan mentransfer {trackCount} lagu yang sudah siap saat ini.
+                Pencocokan masih berjalan di latar belakang. Anda akan mentransfer {trackCount} lagu yang sudah siap saat ini.
               </span>
             </div>
           )}
 
           {/* Mode Selector Tabs */}
-          <div className="grid grid-cols-2 gap-2.5 p-1 bg-surface rounded-xl border border-white/[0.06]">
+          <div className="grid grid-cols-2 p-0.5 bg-card rounded-lg border border-white/[0.08] text-xs">
             <button
               onClick={() => setMode("create")}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition ${
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md font-medium transition btn-press ${
                 mode === "create"
-                  ? "bg-primary text-white shadow-md shadow-primary/25"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <PlusCircle className="w-4 h-4" />
+              <PlusCircle className="w-3.5 h-3.5" />
               <span>Buat Baru</span>
             </button>
             <button
               onClick={() => setMode("existing")}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition ${
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md font-medium transition btn-press ${
                 mode === "existing"
-                  ? "bg-primary text-white shadow-md shadow-primary/25"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <FolderInput className="w-4 h-4" />
-              <span>Tambah ke Existing</span>
+              <FolderInput className="w-3.5 h-3.5" />
+              <span>Playlist yang Ada</span>
             </button>
           </div>
 
           {/* Create New Mode */}
           {mode === "create" && (
-            <div className="space-y-3 animate-fade-in">
+            <div className="space-y-2.5 animate-fade-in pt-1">
               <label className="block text-xs font-medium text-slate-300">
-                Nama Playlist Baru di {targetName}
+                Nama Playlist Baru
               </label>
               <input
                 type="text"
                 value={playlistTitle}
                 onChange={(e) => setPlaylistTitle(e.target.value)}
-                placeholder="Contoh: My Favorite Hits"
-                className="w-full bg-surface border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-primary transition"
+                placeholder="Nama playlist..."
+                className="w-full bg-card border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-white/20 transition"
                 autoFocus
               />
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                MirrorSong akan membuat playlist baru di akun {targetName} Anda dan memasukkan seluruh lagu yang cocok ke dalamnya.
+                MirrorSong akan membuat playlist berstatus privat di {targetName} Anda dan memasukkan seluruh lagu yang cocok ke dalamnya.
               </p>
             </div>
           )}
 
           {/* Add to Existing Mode */}
           {mode === "existing" && (
-            <div className="space-y-3 animate-fade-in flex flex-col">
+            <div className="space-y-2.5 animate-fade-in pt-1">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-slate-300">
-                  Pilih Playlist Tujuan di {targetName}
+                  Pilih Playlist Tujuan
                 </label>
                 <button
                   onClick={loadDestinationPlaylists}
@@ -201,96 +206,89 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 </button>
               </div>
 
-              {/* Search Filter */}
+              {/* Search destination playlist */}
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari playlist tujuan..."
-                  className="w-full bg-surface border border-white/[0.08] rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-primary transition"
+                  placeholder="Filter playlist tujuan..."
+                  className="w-full bg-card border border-white/[0.08] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-white/20 transition"
                 />
               </div>
 
-              {/* Playlist List */}
-              <div className="max-h-56 overflow-y-auto space-y-1.5 border border-white/[0.06] rounded-xl p-1.5 bg-surface/40">
+              {/* List of existing playlists */}
+              <div className="border border-white/[0.08] rounded-xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-white/[0.04]">
                 {isLoadingPlaylists ? (
-                  <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
+                  <div className="p-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
                     <span>Memuat playlist {targetName}...</span>
                   </div>
                 ) : filteredPlaylists.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-slate-500">
-                    Tidak ada playlist yang ditemukan di {targetName}.
+                  <div className="p-6 text-center text-xs text-slate-500">
+                    Tidak ditemukan playlist yang cocok.
                   </div>
                 ) : (
                   filteredPlaylists.map((pl) => {
-                    const isSelected = selectedPlaylistId === pl.id;
+                    const isSelected = pl.id === selectedPlaylistId;
                     return (
-                      <div
+                      <button
                         key={pl.id}
+                        type="button"
                         onClick={() => setSelectedPlaylistId(pl.id)}
-                        className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${
+                        className={`w-full text-left p-2.5 flex items-center justify-between space-x-3 transition btn-press ${
                           isSelected
-                            ? "bg-primary/15 border-primary/40 text-white"
-                            : "bg-card/60 hover:bg-card border-white/[0.04] text-slate-300"
+                            ? "bg-primary/10 text-white"
+                            : "hover:bg-card-hover text-slate-300"
                         }`}
                       >
                         <div className="flex items-center space-x-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-surface border border-white/[0.08] overflow-hidden flex-shrink-0 flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-md bg-card border border-white/[0.08] overflow-hidden flex-shrink-0 flex items-center justify-center">
                             {pl.thumbnailUrl ? (
-                              <img src={pl.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                              <img
+                                src={pl.thumbnailUrl}
+                                alt={pl.title}
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
                               <Disc3 className="w-4 h-4 text-slate-500" />
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold truncate text-white">
-                              {pl.title}
-                            </p>
-                            <p className="text-[10px] text-slate-400">
-                              {pl.trackCount !== undefined ? `${pl.trackCount} lagu` : "Playlist"}
+                            <h5 className="text-xs font-medium truncate">{pl.title}</h5>
+                            <p className="text-[10px] text-slate-400 font-mono tabular-nums">
+                              {pl.trackCount} lagu
                             </p>
                           </div>
                         </div>
 
                         {isSelected && (
-                          <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0 ml-2" />
+                          <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
                         )}
-                      </div>
+                      </button>
                     );
                   })
                 )}
               </div>
-
-              {selectedPlaylist && (
-                <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-[11px] text-slate-300 flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                  <span>
-                    Lagu akan ditambahkan ke playlist <strong>"{selectedPlaylist.title}"</strong> tanpa menghapus lagu yang sudah ada sebelumnya.
-                  </span>
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="px-5 py-3.5 border-t border-white/[0.08] bg-surface/90 flex items-center justify-between">
+        {/* Footer CTA */}
+        <div className="px-4 py-3 md:px-5 md:py-3.5 border-t border-white/[0.08] bg-surface-elevated flex items-center justify-end space-x-2.5">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white transition"
+            className="px-3.5 py-1.5 rounded-lg border border-white/[0.08] text-xs font-medium text-slate-300 hover:text-white btn-press transition"
           >
             Batal
           </button>
-
           <button
             onClick={handleStart}
-            disabled={mode === "existing" && !selectedPlaylistId}
-            className="px-4 py-2 bg-primary hover:bg-primary-hover disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-primary/25 flex items-center gap-2 btn-press transition"
+            disabled={trackCount === 0 || (mode === "existing" && !selectedPlaylistId)}
+            className="px-4 py-1.5 bg-primary hover:bg-primary-hover disabled:bg-card disabled:text-slate-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 btn-press transition shadow-sm"
           >
-            <span>Mulai Transfer</span>
+            <span>Mulai Transfer ({trackCount})</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>

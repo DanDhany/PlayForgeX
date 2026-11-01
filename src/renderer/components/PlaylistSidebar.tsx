@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ListMusic, Search, Music, RefreshCw, X, ChevronRight } from "lucide-react";
+import { Search, RefreshCw, X, ChevronRight, Disc3 } from "lucide-react";
 import { PlaylistSummary } from "../../shared/types";
 
 interface PlaylistSidebarProps {
@@ -14,6 +14,7 @@ interface PlaylistSidebarProps {
   onChangeSource?: (source: "youtube" | "apple") => void;
   youtubeCount?: number;
   appleCount?: number;
+  isMobileInline?: boolean; // When true, renders as full view on mobile
 }
 
 export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
@@ -28,6 +29,7 @@ export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
   onChangeSource,
   youtubeCount,
   appleCount,
+  isMobileInline = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -36,167 +38,169 @@ export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
   );
 
   return (
-    <>
-      {/* Mobile Backdrop Overlay */}
-      {isOpenMobile && (
-        <div
-          onClick={onCloseMobile}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-fade-in"
-        />
-      )}
+    <aside
+      className={`
+        ${isMobileInline ? "flex w-full md:w-80 lg:w-84" : isOpenMobile ? "fixed inset-0 z-50 flex" : "hidden md:flex md:w-80 lg:w-84"}
+        border-r border-white/[0.08] bg-surface flex-col h-[calc(100dvh-3.5rem)] select-none flex-shrink-0 transition-colors
+      `}
+    >
+      {/* Sidebar Header & Controls */}
+      <div className="p-3.5 md:p-4 border-b border-white/[0.08] space-y-3 bg-surface/60">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Koleksi Playlist
+            </span>
+            <span className="text-[11px] font-mono tabular-nums px-1.5 py-0.2 bg-white/[0.06] text-slate-300 rounded border border-white/[0.08]">
+              {playlists.length}
+            </span>
+          </div>
 
-      {/* Sidebar Container: Fixed slide-over on mobile, static on desktop */}
-      <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 md:z-0 w-80 md:w-84 border-r border-white/[0.08] bg-surface flex flex-col h-[100dvh] md:h-[calc(100dvh-4.5rem)] transition-transform duration-300 ease-out ${
-          isOpenMobile ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"
-        }`}
-      >
-        {/* Sidebar Header */}
-        <div className="p-4 border-b border-white/[0.08] space-y-3 bg-surface/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2.5">
-              <div className="p-1.5 rounded-lg bg-card border border-white/[0.08] text-slate-400">
-                <ListMusic className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-                Playlists ({playlists.length})
-              </h2>
-            </div>
-            <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={onRefreshPlaylists}
+              disabled={isLoading}
+              title="Refresh playlist list"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition btn-press"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+            </button>
+            {onCloseMobile && !isMobileInline && (
               <button
-                onClick={onRefreshPlaylists}
-                disabled={isLoading}
-                className="text-slate-400 hover:text-white transition p-1.5 rounded-lg hover:bg-white/[0.05] btn-press"
-                title="Reload Playlists"
+                onClick={onCloseMobile}
+                className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] btn-press"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                <X className="w-4 h-4" />
               </button>
-              {onCloseMobile && (
-                <button
-                  onClick={onCloseMobile}
-                  className="md:hidden text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.05] btn-press"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+            )}
+          </div>
+        </div>
+
+        {/* Source Switcher (YouTube Music ⇄ Apple Music) */}
+        {onChangeSource && (
+          <div className="grid grid-cols-2 p-0.5 bg-card rounded-lg border border-white/[0.08] text-xs">
+            <button
+              onClick={() => onChangeSource("youtube")}
+              className={`py-1.5 px-2 rounded-md font-medium transition flex items-center justify-center gap-1.5 btn-press ${
+                activeSource === "youtube"
+                  ? "bg-red-500/15 text-red-300 border border-red-500/30 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <span>YouTube</span>
+              {youtubeCount !== undefined && (
+                <span className="text-[10px] font-mono tabular-nums opacity-75">
+                  ({youtubeCount})
+                </span>
               )}
-            </div>
+            </button>
+            <button
+              onClick={() => onChangeSource("apple")}
+              className={`py-1.5 px-2 rounded-md font-medium transition flex items-center justify-center gap-1.5 btn-press ${
+                activeSource === "apple"
+                  ? "bg-primary/15 text-rose-300 border border-primary/30 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <span>Apple</span>
+              {appleCount !== undefined && (
+                <span className="text-[10px] font-mono tabular-nums opacity-75">
+                  ({appleCount})
+                </span>
+              )}
+            </button>
           </div>
+        )}
 
-          {/* Service Switcher Tabs: YouTube Music vs Apple Music */}
-          {onChangeSource && (
-            <div className="grid grid-cols-2 p-1 bg-card/90 border border-white/[0.08] rounded-xl text-xs">
-              <button
-                onClick={() => onChangeSource("youtube")}
-                className={`py-1.5 px-2 rounded-lg font-medium transition flex items-center justify-center gap-1.5 ${
-                  activeSource === "youtube"
-                    ? "bg-red-500/20 text-red-300 border border-red-500/30 shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <span>YouTube</span>
-                {youtubeCount !== undefined && (
-                  <span className="text-[10px] opacity-75 font-mono">({youtubeCount})</span>
-                )}
-              </button>
-              <button
-                onClick={() => onChangeSource("apple")}
-                className={`py-1.5 px-2 rounded-lg font-medium transition flex items-center justify-center gap-1.5 ${
-                  activeSource === "apple"
-                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <span>Apple</span>
-                {appleCount !== undefined && (
-                  <span className="text-[10px] opacity-75 font-mono">({appleCount})</span>
-                )}
-              </button>
-            </div>
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Cari nama playlist..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-card border border-white/[0.08] rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-white/20 transition"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           )}
-
-          {/* Search Playlists */}
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search playlists..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-card/80 border border-white/[0.08] rounded-xl pl-9 pr-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-primary/60 transition shadow-inner"
-            />
-          </div>
         </div>
+      </div>
 
-        {/* Playlists List */}
-        <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
-          {isLoading ? (
-            <div className="p-10 text-center text-slate-400 text-xs flex flex-col items-center gap-3">
-              <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-              <span className="font-medium text-slate-300">Fetching your YouTube Music library...</span>
-            </div>
-          ) : filteredPlaylists.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 text-xs leading-relaxed">
-              {playlists.length === 0
-                ? "No playlists loaded. Click 'Connect' in the top bar to sign in to YouTube Music."
-                : "No playlists match your search."}
-            </div>
-          ) : (
-            filteredPlaylists.map((pl) => {
-              const isSelected = selectedPlaylistId === pl.id;
-              return (
-                <button
-                  key={pl.id}
-                  onClick={() => {
-                    onSelectPlaylist(pl);
-                    if (onCloseMobile) onCloseMobile();
-                  }}
-                  className={`w-full text-left p-2.5 rounded-xl flex items-center space-x-3 transition group btn-press ${
-                    isSelected
-                      ? "bg-card-hover border border-primary/50 shadow-md shadow-primary/5"
-                      : "hover:bg-card/70 border border-transparent"
-                  }`}
-                >
-                  {/* Playlist Art */}
-                  <div className="relative w-12 h-12 rounded-xl bg-card border border-white/[0.08] overflow-hidden flex-shrink-0 flex items-center justify-center shadow-sm">
-                    {pl.thumbnailUrl ? (
-                      <img
-                        src={pl.thumbnailUrl}
-                        alt={pl.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <Music className="w-5 h-5 text-slate-600" />
-                    )}
-                  </div>
+      {/* Playlist List */}
+      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        {isLoading ? (
+          <div className="py-16 text-center text-slate-400 text-xs flex flex-col items-center gap-2.5">
+            <RefreshCw className="w-5 h-5 text-primary animate-spin" />
+            <span className="text-slate-300">Memuat playlist...</span>
+          </div>
+        ) : filteredPlaylists.length === 0 ? (
+          <div className="py-16 px-4 text-center text-slate-500 text-xs leading-relaxed">
+            {playlists.length === 0
+              ? `Belum ada playlist dari ${activeSource === "youtube" ? "YouTube Music" : "Apple Music"}. Pastikan akun sudah terhubung.`
+              : "Tidak ada playlist yang cocok dengan pencarian."}
+          </div>
+        ) : (
+          filteredPlaylists.map((pl) => {
+            const isSelected = selectedPlaylistId === pl.id;
+            return (
+              <button
+                key={pl.id}
+                onClick={() => {
+                  onSelectPlaylist(pl);
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                className={`w-full text-left p-2 rounded-xl flex items-center space-x-3 transition btn-press group ${
+                  isSelected
+                    ? "bg-card-active border border-primary/40 shadow-sm"
+                    : "hover:bg-card border border-transparent"
+                }`}
+              >
+                {/* Artwork */}
+                <div className="w-11 h-11 rounded-lg bg-card-hover border border-white/[0.08] overflow-hidden flex-shrink-0 flex items-center justify-center">
+                  {pl.thumbnailUrl ? (
+                    <img
+                      src={pl.thumbnailUrl}
+                      alt={pl.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Disc3 className="w-5 h-5 text-slate-500" />
+                  )}
+                </div>
 
-                  {/* Playlist Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3
-                      className={`text-xs font-semibold truncate ${
-                        isSelected ? "text-white" : "text-slate-300 group-hover:text-white"
-                      }`}
-                    >
-                      {pl.title}
-                    </h3>
-                    <div className="flex items-center space-x-1.5 mt-1">
-                      <span className="px-1.5 py-0.2 text-[10px] font-mono bg-white/[0.05] text-slate-400 rounded">
-                        {pl.trackCount > 0 ? `${pl.trackCount} tracks` : "Playlist"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <ChevronRight
-                    className={`w-4 h-4 flex-shrink-0 transition-transform ${
-                      isSelected ? "text-primary translate-x-0.5" : "text-slate-600 group-hover:text-slate-400"
+                {/* Meta */}
+                <div className="min-w-0 flex-1">
+                  <h4
+                    className={`text-xs font-medium truncate ${
+                      isSelected ? "text-white font-semibold" : "text-slate-200 group-hover:text-white"
                     }`}
-                  />
-                </button>
-              );
-            })
-          )}
-        </div>
-      </aside>
-    </>
+                  >
+                    {pl.title}
+                  </h4>
+                  <div className="flex items-center space-x-2 text-[11px] text-slate-400 mt-0.5">
+                    <span className="font-mono tabular-nums">
+                      {pl.trackCount > 0 ? `${pl.trackCount} lagu` : "Playlist"}
+                    </span>
+                  </div>
+                </div>
+
+                <ChevronRight
+                  className={`w-3.5 h-3.5 text-slate-500 transition-transform ${
+                    isSelected ? "text-primary translate-x-0.5" : "opacity-0 group-hover:opacity-100"
+                  }`}
+                />
+              </button>
+            );
+          })
+        )}
+      </div>
+    </aside>
   );
 };

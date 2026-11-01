@@ -37,6 +37,7 @@ export const App: React.FC = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [webAuthService, setWebAuthService] = useState<"youtube" | "apple" | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [activeMobileTab, setActiveMobileTab] = useState<"playlists" | "review">("playlists");
 
   const matchingPollerRef = useRef<any>(null);
 
@@ -203,6 +204,7 @@ export const App: React.FC = () => {
     stopMatchingPoller();
     setSelectedPlaylist(playlist);
     setTotalTracksToMatch(playlist.trackCount || 0);
+    setActiveMobileTab("review");
 
     const targetPlatform = playlistSource === "youtube" ? "apple" : "youtube";
 
@@ -490,7 +492,10 @@ export const App: React.FC = () => {
         onLoginApple={handleLoginApple}
         onLogout={handleLogout}
         onRefresh={refreshStatus}
-        onToggleMobileDrawer={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        activeMobileTab={activeMobileTab}
+        onChangeMobileTab={setActiveMobileTab}
+        selectedPlaylistTitle={selectedPlaylist?.title}
+        matchedCount={trackItems.filter((t) => !t.excluded && t.selectedCandidate).length}
       />
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -506,22 +511,25 @@ export const App: React.FC = () => {
           onChangeSource={handleChangePlaylistSource}
           youtubeCount={authStatus.youtube.playlistCount}
           appleCount={authStatus.apple.playlistCount}
+          isMobileInline={activeMobileTab === "playlists"}
         />
 
-        <ReviewStudio
-          selectedPlaylist={selectedPlaylist}
-          items={trackItems}
-          isMatching={isMatching}
-          totalTracksToMatch={totalTracksToMatch}
-          isTransferring={transferJob?.status === "processing"}
-          onToggleExclude={handleToggleExclude}
-          onOpenAlternativePicker={setEditingItem}
-          onStartTransfer={handleOpenExportModal}
-          onReMatch={() => selectedPlaylist && handleSelectPlaylist(selectedPlaylist, true)}
-          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
-          sourcePlatform={playlistSource}
-          targetPlatform={playlistSource === "youtube" ? "apple" : "youtube"}
-        />
+        <div className={`flex-1 flex flex-col min-w-0 ${activeMobileTab === "review" ? "flex" : "hidden md:flex"}`}>
+          <ReviewStudio
+            selectedPlaylist={selectedPlaylist}
+            items={trackItems}
+            isMatching={isMatching}
+            totalTracksToMatch={totalTracksToMatch}
+            isTransferring={transferJob?.status === "processing"}
+            onToggleExclude={handleToggleExclude}
+            onOpenAlternativePicker={setEditingItem}
+            onStartTransfer={handleOpenExportModal}
+            onReMatch={() => selectedPlaylist && handleSelectPlaylist(selectedPlaylist, true)}
+            onOpenMobileSidebar={() => setActiveMobileTab("playlists")}
+            sourcePlatform={playlistSource}
+            targetPlatform={playlistSource === "youtube" ? "apple" : "youtube"}
+          />
+        </div>
       </div>
 
       {/* Export Options Modal (Create New vs Append into Existing) */}
