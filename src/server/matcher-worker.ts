@@ -122,8 +122,14 @@ export async function startBackgroundMatching(
     }
   }
 
-  // If already completed and not force, return immediately
-  if (!force && draft.status === "ready" && draft.items.length >= draft.totalTracks && draft.totalTracks > 0) {
+  // If already completed and not force, check if it was previously truncated by old pagination limit
+  const isTruncated =
+    Boolean(playlist.trackCount &&
+    playlist.trackCount > 100 &&
+    draft.totalTracks > 0 &&
+    draft.totalTracks <= 100);
+
+  if (!force && !isTruncated && draft.status === "ready" && draft.items.length >= draft.totalTracks && draft.totalTracks > 0) {
     return draft;
   }
 

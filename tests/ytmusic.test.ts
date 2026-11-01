@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { generateSapisidHash, parseYouTubeMusicPlaylists, parseYouTubeMusicTracks } from "../src/core/ytmusic";
+import {
+  generateSapisidHash,
+  parseYouTubeMusicPlaylists,
+  parseYouTubeMusicTracks,
+  extractContinuationToken,
+  parseRawYTMTrackItems,
+} from "../src/core/ytmusic";
 
 describe("YouTube Music Client Helpers", () => {
   it("computes valid SAPISIDHASH format (timestamp_sha1)", () => {
@@ -165,5 +171,93 @@ describe("YouTube Music Client Helpers", () => {
     expect(playlists[0].id).toBe("VLPL999");
     expect(playlists[0].title).toBe("VTuber Favorites");
     expect(playlists[0].trackCount).toBe(12);
+  });
+
+  it("extracts continuation tokens from initial shelf and continuation responses", () => {
+    // 1. Initial shelf continuation
+    const initialShelfResponse = {
+      contents: {
+        singleColumnBrowseResultsRenderer: {
+          tabs: [
+            {
+              tabRenderer: {
+                content: {
+                  sectionListRenderer: {
+                    contents: [
+                      {
+                        musicPlaylistShelfRenderer: {
+                          contents: [],
+                          continuations: [
+                            {
+                              nextContinuationData: {
+                                continuation: "token_page_2_abc123",
+                                clickTrackingParams: "track1",
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+    expect(extractContinuationToken(initialShelfResponse)).toBe("token_page_2_abc123");
+
+    // 2. Continuation contents response
+    const continuationResponse = {
+      continuationContents: {
+        musicPlaylistShelfContinuation: {
+          contents: [],
+          continuations: [
+            {
+              nextContinuationData: {
+                continuation: "token_page_3_xyz987",
+              },
+            },
+          ],
+        },
+      },
+    };
+    expect(extractContinuationToken(continuationResponse)).toBe("token_page_3_xyz987");
+  });
+
+  it("parses raw YTM track items accurately", () => {
+    const rawItems = [
+      {
+        musicResponsiveListItemRenderer: {
+          playlistItemData: { videoId: "xyz" },
+          flexColumns: [
+            {
+              musicResponsiveListItemFlexColumnRenderer: {
+                text: { runs: [{ text: "Song B" }] },
+              },
+            },
+            {
+              musicResponsiveListItemFlexColumnRenderer: {
+                text: {
+                  runs: [
+                    { text: "Artist B" },
+                    { text: " • " },
+                    { text: "Album B" },
+                    { text: " • " },
+                    { text: "3:30" },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+    ];
+    const tracks = parseRawYTMTrackItems(rawItems);
+    expect(tracks).toHaveLength(1);
+    expect(tracks[0].title).toBe("Song B");
+    expect(tracks[0].artist).toBe("Artist B");
+    expect(tracks[0].durationSeconds).toBe(210);
   });
 });

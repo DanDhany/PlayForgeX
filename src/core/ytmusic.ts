@@ -109,9 +109,134 @@ export function parseYouTubeMusicPlaylists(response: any): PlaylistSummary[] {
   return playlists;
 }
 
-export function parseYouTubeMusicTracks(response: any): TrackMetadata[] {
+export function parseRawYTMTrackItems(rawItems: any[]): TrackMetadata[] {
   const tracks: TrackMetadata[] = [];
-  if (!response) return tracks;
+  if (!Array.isArray(rawItems)) return tracks;
+
+  for (const item of rawItems) {
+    const renderer = item?.musicResponsiveListItemRenderer;
+    if (!renderer) continue;
+
+    const videoId =
+      renderer?.playlistItemData?.videoId ||
+      renderer?.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.navigationEndpoint?.watchEndpoint?.videoId;
+
+    const flexColumns = renderer?.flexColumns || [];
+    const titleRuns = flexColumns[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
+    const title = titleRuns.map((r: any) => r.text).join("").trim();
+
+    const subtitleRuns = flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
+    const subtitleParts = subtitleRuns.map((r: any) => r.text);
+
+    let artist = "";
+    let album = "";
+    let durationStr = "";
+
+    // Format is usually [Artist, " • ", Album, " • ", Duration]
+    const bulletSeparated = subtitleParts.join("").split(" • ");
+    if (bulletSeparated.length >= 1) {
+      artist = bulletSeparated[0].trim();
+    }
+    if (bulletSeparated.length >= 2) {
+      // If the second part has digits and colon, it's duration; otherwise album
+      if (/^\d+:\d+$/.test(bulletSeparated[1].trim())) {
+        durationStr = bulletSeparated[1].trim();
+      } else {
+        album = bulletSeparated[1].trim();
+      }
+    }
+    if (bulletSeparated.length >= 3) {
+      durationStr = bulletSeparated[bulletSeparated.length - 1].trim();
+    }
+
+    const thumbnails = renderer?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+    const thumbnailUrl = thumbnails[thumbnails.length - 1]?.url;
+
+    if (title) {
+      tracks.push({
+        videoId,
+        title,
+        artist,
+        album: album || undefined,
+        durationSeconds: parseDuration(durationStr),
+        thumbnailUrl,
+      });
+    }
+  }
+
+  return tracks;
+}
+
+export function extractContinuationToken(response: any): string | null {
+  if (!response || typeof response !== "object") return null;
+
+  // 1. Check continuationContents (from continuation responses)
+  const contShelf =
+    response?.continuationContents?.musicPlaylistShelfContinuation ||
+    response?.continuationContents?.musicShelfContinuation;
+  if (Array.isArray(contShelf?.continuations) && contShelf.continuations.length > 0) {
+    const c = contShelf.continuations[0];
+    const tok =
+      c?.nextContinuationData?.continuation ||
+      c?.continuationEndpoint?.continuationCommand?.token ||
+      c?.reloadContinuationData?.continuation;
+    if (tok) return tok;
+  }
+
+  // 2. Check initial browse responses (singleColumnBrowseResultsRenderer or twoColumnBrowseResultsRenderer)
+  const tabs = response?.contents?.singleColumnBrowseResultsRenderer?.tabs || [];
+  const sections = tabs[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+  for (const s of sections) {
+    const shelf = s?.musicPlaylistShelfRenderer || s?.musicShelfRenderer;
+    if (Array.isArray(shelf?.continuations) && shelf.continuations.length > 0) {
+      const c = shelf.continuations[0];
+      const tok =
+        c?.nextContinuationData?.continuation ||
+        c?.continuationEndpoint?.continuationCommand?.token ||
+        c?.reloadContinuationData?.continuation;
+      if (tok) return tok;
+    }
+  }
+
+  const secondary = response?.contents?.twoColumnBrowseResultsRenderer?.secondaryContents;
+  const secondarySections = secondary?.sectionListRenderer?.contents || [];
+  for (const s of secondarySections) {
+    const shelf = s?.musicPlaylistShelfRenderer || s?.musicShelfRenderer;
+    if (Array.isArray(shelf?.continuations) && shelf.continuations.length > 0) {
+      const c = shelf.continuations[0];
+      const tok =
+        c?.nextContinuationData?.continuation ||
+        c?.continuationEndpoint?.continuationCommand?.token ||
+        c?.reloadContinuationData?.continuation;
+      if (tok) return tok;
+    }
+  }
+
+  // 3. Fallback shallow search
+  function findToken(target: any, depth = 0): string | null {
+    if (!target || typeof target !== "object" || depth > 6) return null;
+    if (target.nextContinuationData?.continuation) {
+      return target.nextContinuationData.continuation;
+    }
+    if (target.continuationEndpoint?.continuationCommand?.token) {
+      return target.continuationEndpoint.continuationCommand.token;
+    }
+    if (typeof target.continuation === "string" && target.continuation.length > 15) {
+      return target.continuation;
+    }
+    for (const key of Object.keys(target)) {
+      if (key === "trackingParams" || key === "clickTrackingParams") continue;
+      const res = findToken(target[key], depth + 1);
+      if (res) return res;
+    }
+    return null;
+  }
+
+  return findToken(response);
+}
+
+export function parseYouTubeMusicTracks(response: any): TrackMetadata[] {
+  if (!response) return [];
 
   try {
     // Traverse standard YouTubei playlist shelf response
@@ -132,61 +257,11 @@ export function parseYouTubeMusicTracks(response: any): TrackMetadata[] {
       rawItems = secondary?.sectionListRenderer?.contents?.[0]?.musicPlaylistShelfRenderer?.contents || [];
     }
 
-    for (const item of rawItems) {
-      const renderer = item?.musicResponsiveListItemRenderer;
-      if (!renderer) continue;
-
-      const videoId =
-        renderer?.playlistItemData?.videoId ||
-        renderer?.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.navigationEndpoint?.watchEndpoint?.videoId;
-
-      const flexColumns = renderer?.flexColumns || [];
-      const titleRuns = flexColumns[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
-      const title = titleRuns.map((r: any) => r.text).join("").trim();
-
-      const subtitleRuns = flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
-      const subtitleParts = subtitleRuns.map((r: any) => r.text);
-
-      let artist = "";
-      let album = "";
-      let durationStr = "";
-
-      // Format is usually [Artist, " • ", Album, " • ", Duration]
-      const bulletSeparated = subtitleParts.join("").split(" • ");
-      if (bulletSeparated.length >= 1) {
-        artist = bulletSeparated[0].trim();
-      }
-      if (bulletSeparated.length >= 2) {
-        // If the second part has digits and colon, it's duration; otherwise album
-        if (/^\d+:\d+$/.test(bulletSeparated[1].trim())) {
-          durationStr = bulletSeparated[1].trim();
-        } else {
-          album = bulletSeparated[1].trim();
-        }
-      }
-      if (bulletSeparated.length >= 3) {
-        durationStr = bulletSeparated[bulletSeparated.length - 1].trim();
-      }
-
-      const thumbnails = renderer?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
-      const thumbnailUrl = thumbnails[thumbnails.length - 1]?.url;
-
-      if (title) {
-        tracks.push({
-          videoId,
-          title,
-          artist,
-          album: album || undefined,
-          durationSeconds: parseDuration(durationStr),
-          thumbnailUrl,
-        });
-      }
-    }
+    return parseRawYTMTrackItems(rawItems);
   } catch (err) {
     console.error("Error parsing YTM tracks:", err);
+    return [];
   }
-
-  return tracks;
 }
 
 export class YouTubeMusicClient {
@@ -307,7 +382,70 @@ export class YouTubeMusicClient {
     }
 
     const json = await res.json();
-    return parseYouTubeMusicTracks(json);
+    const tracks: TrackMetadata[] = [];
+    tracks.push(...parseYouTubeMusicTracks(json));
+
+    // Pagination via continuation tokens
+    let continuationToken = extractContinuationToken(json);
+    const seenTokens = new Set<string>();
+    let page = 1;
+    const maxPages = 50; // Safety guard: up to 5,000 tracks
+
+    while (continuationToken && page < maxPages && !seenTokens.has(continuationToken)) {
+      seenTokens.add(continuationToken);
+      page++;
+
+      await circuitBreaker.waitIfCoolingDown("youtube");
+      await humanDelay(300, 600);
+
+      const contPayload = {
+        context: {
+          client: {
+            clientName: "WEB_REMIX",
+            clientVersion: "1.20241028.01.00",
+            hl: "en",
+            gl: "US",
+          },
+        },
+        continuation: continuationToken,
+      };
+
+      try {
+        const contRes = await fetch(
+          `https://music.youtube.com/youtubei/v1/browse?continuation=${encodeURIComponent(continuationToken)}`,
+          {
+            method: "POST",
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify(contPayload),
+          }
+        );
+
+        if (!contRes.ok) {
+          if (contRes.status === 429) {
+            circuitBreaker.triggerCooldown("youtube", 20000);
+          }
+          break;
+        }
+
+        const contJson = await contRes.json();
+        const contShelf =
+          contJson?.continuationContents?.musicPlaylistShelfContinuation ||
+          contJson?.continuationContents?.musicShelfContinuation;
+
+        const contRawItems = contShelf?.contents || [];
+        if (contRawItems.length === 0) break;
+
+        const newTracks = parseRawYTMTrackItems(contRawItems);
+        tracks.push(...newTracks);
+
+        continuationToken = extractContinuationToken(contJson);
+      } catch (err) {
+        console.warn("Error fetching YouTube Music continuation tracks:", err);
+        break;
+      }
+    }
+
+    return tracks;
   }
 
   public async searchCatalog(query: string): Promise<AppleMusicTrack[]> {

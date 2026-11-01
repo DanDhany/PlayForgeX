@@ -231,10 +231,18 @@ export const App: React.FC = () => {
           }
         }
 
+        const isTruncated =
+          Boolean(playlist.trackCount &&
+          playlist.trackCount > 100 &&
+          draft &&
+          draft.totalTracks &&
+          draft.totalTracks <= 100);
+
         const isComplete =
           draft &&
           draft.targetPlatform === targetPlatform &&
           draft.status === "ready" &&
+          !isTruncated &&
           draft.items.length >= (draft.totalTracks || playlist.trackCount || 1);
 
         if (!force && isComplete && !isRunning) {

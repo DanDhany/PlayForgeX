@@ -115,69 +115,130 @@ export class AppleMusicClient {
   }
 
   public async getUserPlaylists(): Promise<any[]> {
-    const url = "https://amp-api.music.apple.com/v1/me/library/playlists";
-    const res = await fetch(url, {
-      headers: this.getHeaders(),
-    });
+    const allPlaylists: any[] = [];
+    let nextUrl: string | null = "https://amp-api.music.apple.com/v1/me/library/playlists?limit=100";
+    const seenUrls = new Set<string>();
+    let pages = 0;
+    const maxPages = 20;
 
-    if (!res.ok) {
-      throw new Error(`Failed to fetch Apple Music playlists (${res.status})`);
-    }
+    while (nextUrl && pages < maxPages && !seenUrls.has(nextUrl)) {
+      seenUrls.add(nextUrl);
+      pages++;
 
-    const json = await res.json();
-    const data = json?.data || [];
+      await circuitBreaker.waitIfCoolingDown("apple");
 
-    return data.map((item: any) => {
-      const attrs = item?.attributes || {};
-      let thumbnailUrl: string | undefined;
-      if (attrs?.artwork?.url) {
-        thumbnailUrl = attrs.artwork.url
-          .replace("{w}", "120")
-          .replace("{h}", "120")
-          .replace("{f}", "jpg");
+      const res: Response = await fetch(nextUrl, {
+        headers: this.getHeaders(),
+      });
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          circuitBreaker.triggerCooldown("apple", 20000);
+          await humanDelay(3000, 5000);
+          seenUrls.delete(nextUrl);
+          pages--;
+          continue;
+        }
+        throw new Error(`Failed to fetch Apple Music playlists (${res.status})`);
       }
 
-      return {
-        id: item.id,
-        title: attrs.name || "Untitled Playlist",
-        trackCount: attrs?.trackTypes?.length || 0,
-        thumbnailUrl,
-      };
-    });
+      const json: any = await res.json();
+      const data = json?.data || [];
+
+      for (const item of data) {
+        const attrs = item?.attributes || {};
+        let thumbnailUrl: string | undefined;
+        if (attrs?.artwork?.url) {
+          thumbnailUrl = attrs.artwork.url
+            .replace("{w}", "120")
+            .replace("{h}", "120")
+            .replace("{f}", "jpg");
+        }
+
+        allPlaylists.push({
+          id: item.id,
+          title: attrs.name || "Untitled Playlist",
+          trackCount: attrs?.trackTypes?.length || 0,
+          thumbnailUrl,
+        });
+      }
+
+      if (json.next) {
+        nextUrl = json.next.startsWith("http")
+          ? json.next
+          : `https://amp-api.music.apple.com${json.next}`;
+        await humanDelay(250, 500);
+      } else {
+        nextUrl = null;
+      }
+    }
+
+    return allPlaylists;
   }
 
   public async getPlaylistTracks(playlistId: string): Promise<TrackMetadata[]> {
-    const url = `https://amp-api.music.apple.com/v1/me/library/playlists/${playlistId}/tracks`;
-    const res = await fetch(url, {
-      headers: this.getHeaders(),
-    });
+    const allTracks: TrackMetadata[] = [];
+    let nextUrl: string | null = `https://amp-api.music.apple.com/v1/me/library/playlists/${playlistId}/tracks?limit=100`;
+    const seenUrls = new Set<string>();
+    let pages = 0;
+    const maxPages = 50; // Safety limit: up to 5,000 tracks
 
-    if (!res.ok) {
-      throw new Error(`Failed to fetch Apple Music tracks (${res.status})`);
-    }
+    while (nextUrl && pages < maxPages && !seenUrls.has(nextUrl)) {
+      seenUrls.add(nextUrl);
+      pages++;
 
-    const json = await res.json();
-    const data = json?.data || [];
+      await circuitBreaker.waitIfCoolingDown("apple");
 
-    return data.map((item: any) => {
-      const attrs = item?.attributes || {};
-      let thumbnailUrl: string | undefined;
-      if (attrs?.artwork?.url) {
-        thumbnailUrl = attrs.artwork.url
-          .replace("{w}", "120")
-          .replace("{h}", "120")
-          .replace("{f}", "jpg");
+      const res: Response = await fetch(nextUrl, {
+        headers: this.getHeaders(),
+      });
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          circuitBreaker.triggerCooldown("apple", 20000);
+          console.warn("Apple Music 429 during playlist tracks fetch, backing off...");
+          await humanDelay(3000, 5000);
+          seenUrls.delete(nextUrl);
+          pages--;
+          continue;
+        }
+        throw new Error(`Failed to fetch Apple Music tracks (${res.status})`);
       }
 
-      return {
-        videoId: item.id,
-        title: attrs.name || "",
-        artist: attrs.artistName || "",
-        album: attrs.albumName,
-        durationSeconds: attrs.durationInMillis ? Math.round(attrs.durationInMillis / 1000) : undefined,
-        thumbnailUrl,
-      };
-    });
+      const json: any = await res.json();
+      const data = json?.data || [];
+
+      for (const item of data) {
+        const attrs = item?.attributes || {};
+        let thumbnailUrl: string | undefined;
+        if (attrs?.artwork?.url) {
+          thumbnailUrl = attrs.artwork.url
+            .replace("{w}", "120")
+            .replace("{h}", "120")
+            .replace("{f}", "jpg");
+        }
+
+        allTracks.push({
+          videoId: item.id,
+          title: attrs.name || "",
+          artist: attrs.artistName || "",
+          album: attrs.albumName,
+          durationSeconds: attrs.durationInMillis ? Math.round(attrs.durationInMillis / 1000) : undefined,
+          thumbnailUrl,
+        });
+      }
+
+      if (json.next) {
+        nextUrl = json.next.startsWith("http")
+          ? json.next
+          : `https://amp-api.music.apple.com${json.next}`;
+        await humanDelay(250, 500);
+      } else {
+        nextUrl = null;
+      }
+    }
+
+    return allTracks;
   }
 
   public async searchCatalog(query: string, storefront?: string, retryCount = 0): Promise<AppleMusicTrack[]> {
