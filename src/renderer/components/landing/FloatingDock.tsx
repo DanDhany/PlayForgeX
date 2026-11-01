@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ArrowRight, Disc3 } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
 interface FloatingDockProps {
   onOpenStudio: () => void;
@@ -7,6 +8,8 @@ interface FloatingDockProps {
 }
 
 export const FloatingDock: React.FC<FloatingDockProps> = ({ onOpenStudio, show }) => {
+  const { lang, t } = useLanguage();
+  const isEn = lang === "en";
   const [internalVisible, setInternalVisible] = useState(false);
 
   useEffect(() => {
@@ -24,7 +27,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({ onOpenStudio, show }
 
   return (
     <aside
-      aria-label="Navigasi cepat melayang"
+      aria-label={isEn ? "Quick floating navigation" : "Navigasi cepat melayang"}
       className="fixed bottom-6 inset-x-0 z-50 flex justify-center px-4 pointer-events-none animate-dialog-in"
     >
       <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-3 p-1.5 sm:p-2 rounded-2xl bg-[#12141A]/90 backdrop-blur-2xl border border-white/[0.12] shadow-2xl shadow-black/80 ring-1 ring-white/[0.05]">
@@ -45,19 +48,19 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({ onOpenStudio, show }
             href="#how-it-works"
             className="px-2.5 py-1.5 rounded-lg hover:text-text-primary hover:bg-white/[0.06] transition-colors font-medium"
           >
-            Cara Kerja
+            {isEn ? "How It Works" : "Cara Kerja"}
           </a>
           <a
             href="#features-section"
             className="px-2.5 py-1.5 rounded-lg hover:text-text-primary hover:bg-white/[0.06] transition-colors font-medium"
           >
-            Fitur
+            {isEn ? "Features" : "Fitur"}
           </a>
           <a
             href="#comparison-section"
             className="px-2.5 py-1.5 rounded-lg hover:text-text-primary hover:bg-white/[0.06] transition-colors font-medium"
           >
-            Perbandingan
+            {isEn ? "Comparison" : "Perbandingan"}
           </a>
           <a
             href="#platform-matrix-section"
@@ -81,7 +84,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({ onOpenStudio, show }
           onClick={onOpenStudio}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-background font-bold text-xs transition-all hover:bg-accent-hover hover:shadow-lg hover:shadow-accent/25 hover:scale-[1.02] active:scale-[0.98] btn-press"
         >
-          <span>Buka Studio</span>
+          <span>{t("app.openStudio")}</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>

@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Filter,
 } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
 interface SampleTrack {
   id: string;
@@ -17,20 +18,22 @@ interface SampleTrack {
   artist: string;
   duration: string;
   playlistId: "work" | "personal" | "friend";
-  playlistName: string;
+  playlistNameEn: string;
+  playlistNameId: string;
   album: string;
   color: string;
 }
 
 const SAMPLE_TRACKS: SampleTrack[] = [
-  // Akun Kantor
+  // Work Account
   {
     id: "w1",
     title: "Midnight City",
     artist: "M83",
     duration: "4:03",
     playlistId: "work",
-    playlistName: "Akun Kantor",
+    playlistNameEn: "Work Account",
+    playlistNameId: "Akun Kantor",
     album: "Hurry Up, We're Dreaming",
     color: "#6366F1",
   },
@@ -40,7 +43,8 @@ const SAMPLE_TRACKS: SampleTrack[] = [
     artist: "Marconi Union",
     duration: "8:00",
     playlistId: "work",
-    playlistName: "Akun Kantor",
+    playlistNameEn: "Work Account",
+    playlistNameId: "Akun Kantor",
     album: "Weightless (Ambient)",
     color: "#6366F1",
   },
@@ -50,7 +54,8 @@ const SAMPLE_TRACKS: SampleTrack[] = [
     artist: "HOME",
     duration: "3:32",
     playlistId: "work",
-    playlistName: "Akun Kantor",
+    playlistNameEn: "Work Account",
+    playlistNameId: "Akun Kantor",
     album: "Odyssey",
     color: "#6366F1",
   },
@@ -60,7 +65,8 @@ const SAMPLE_TRACKS: SampleTrack[] = [
     artist: "David Kushner",
     duration: "3:32",
     playlistId: "work",
-    playlistName: "Akun Kantor",
+    playlistNameEn: "Work Account",
+    playlistNameId: "Akun Kantor",
     album: "Daylight - Single",
     color: "#6366F1",
   },
@@ -70,19 +76,21 @@ const SAMPLE_TRACKS: SampleTrack[] = [
     artist: "The xx",
     duration: "2:08",
     playlistId: "work",
-    playlistName: "Akun Kantor",
+    playlistNameEn: "Work Account",
+    playlistNameId: "Akun Kantor",
     album: "xx",
     color: "#6366F1",
   },
 
-  // Akun Pribadi
+  // Personal Account
   {
     id: "p1",
     title: "Dan...",
     artist: "Sheila On 7",
     duration: "4:47",
     playlistId: "personal",
-    playlistName: "Akun Pribadi",
+    playlistNameEn: "Personal Account",
+    playlistNameId: "Akun Pribadi",
     album: "Sheila on 7",
     color: "#FA2D48",
   },
@@ -92,7 +100,8 @@ const SAMPLE_TRACKS: SampleTrack[] = [
     artist: "Nidji",
     duration: "4:18",
     playlistId: "personal",
-    playlistName: "Akun Pribadi",
+    playlistNameEn: "Personal Account",
+    playlistNameId: "Akun Pribadi",
     album: "Breakthru'",
     color: "#FA2D48",
   },
@@ -102,7 +111,8 @@ const SAMPLE_TRACKS: SampleTrack[] = [
     artist: "Coldplay",
     duration: "5:07",
     playlistId: "personal",
-    playlistName: "Akun Pribadi",
+    playlistNameEn: "Personal Account",
+    playlistNameId: "Akun Pribadi",
     album: "A Rush of Blood to the Head",
     color: "#FA2D48",
   },
@@ -112,29 +122,32 @@ const SAMPLE_TRACKS: SampleTrack[] = [
     artist: "David Kushner",
     duration: "3:32",
     playlistId: "personal",
-    playlistName: "Akun Pribadi",
+    playlistNameEn: "Personal Account",
+    playlistNameId: "Akun Pribadi",
     album: "Daylight - Single",
     color: "#FA2D48",
   },
   {
     id: "p5",
-    title: "Kisah Klasik",
+    title: "Sephia",
     artist: "Sheila On 7",
     duration: "4:15",
     playlistId: "personal",
-    playlistName: "Akun Pribadi",
+    playlistNameEn: "Personal Account",
+    playlistNameId: "Akun Pribadi",
     album: "Kisah Klasik Untuk Masa Depan",
     color: "#FA2D48",
   },
 
-  // Playlist Teman
+  // Friend's Playlist
   {
     id: "f1",
     title: "Midnight City",
     artist: "M83",
     duration: "4:03",
     playlistId: "friend",
-    playlistName: "Playlist Teman",
+    playlistNameEn: "Friend's Mix",
+    playlistNameId: "Playlist Teman",
     album: "Hurry Up, We're Dreaming",
     color: "#10B981",
   },
@@ -144,46 +157,52 @@ const SAMPLE_TRACKS: SampleTrack[] = [
     artist: "Coldplay",
     duration: "5:07",
     playlistId: "friend",
-    playlistName: "Playlist Teman",
+    playlistNameEn: "Friend's Mix",
+    playlistNameId: "Playlist Teman",
     album: "A Rush of Blood to the Head",
     color: "#10B981",
   },
   {
     id: "f3",
-    title: "A Sky Full of Stars",
-    artist: "Coldplay",
-    duration: "4:28",
+    title: "Weightless",
+    artist: "Marconi Union",
+    duration: "8:00",
     playlistId: "friend",
-    playlistName: "Playlist Teman",
-    album: "Ghost Stories",
+    playlistNameEn: "Friend's Mix",
+    playlistNameId: "Playlist Teman",
+    album: "Weightless (Ambient)",
     color: "#10B981",
   },
   {
     id: "f4",
-    title: "Sempurna",
-    artist: "Andra and The BackBone",
-    duration: "4:27",
+    title: "As It Was",
+    artist: "Harry Styles",
+    duration: "2:47",
     playlistId: "friend",
-    playlistName: "Playlist Teman",
-    album: "Andra and The BackBone",
+    playlistNameEn: "Friend's Mix",
+    playlistNameId: "Playlist Teman",
+    album: "Harry's House",
     color: "#10B981",
   },
   {
     id: "f5",
-    title: "Viva La Vida",
+    title: "Yellow",
     artist: "Coldplay",
-    duration: "4:02",
+    duration: "4:29",
     playlistId: "friend",
-    playlistName: "Playlist Teman",
-    album: "Viva la Vida or Death and All His Friends",
+    playlistNameEn: "Friend's Mix",
+    playlistNameId: "Playlist Teman",
+    album: "Parachutes",
     color: "#10B981",
   },
 ];
 
 interface PlaylistsConfig {
   id: "work" | "personal" | "friend";
-  name: string;
-  sourceLabel: string;
+  nameEn: string;
+  nameId: string;
+  sourceLabelEn: string;
+  sourceLabelId: string;
   count: number;
   badgeColor: string;
 }
@@ -191,22 +210,28 @@ interface PlaylistsConfig {
 const PLAYLISTS: PlaylistsConfig[] = [
   {
     id: "work",
-    name: "Akun Kantor — Focus Beats",
-    sourceLabel: "YouTube Music",
+    nameEn: "Work Account — Focus Beats",
+    nameId: "Akun Kantor — Focus Beats",
+    sourceLabelEn: "YouTube Music",
+    sourceLabelId: "YouTube Music",
     count: 5,
     badgeColor: "border-indigo-500/30 text-indigo-400 bg-indigo-500/10",
   },
   {
     id: "personal",
-    name: "Akun Pribadi — Top 2000s Pop",
-    sourceLabel: "YouTube Music",
+    nameEn: "Personal Account — Top 2000s Pop",
+    nameId: "Akun Pribadi — Top 2000s Pop",
+    sourceLabelEn: "YouTube Music",
+    sourceLabelId: "YouTube Music",
     count: 5,
     badgeColor: "border-rose-500/30 text-rose-400 bg-rose-500/10",
   },
   {
     id: "friend",
-    name: "Playlist Teman — Roadtrip Mix",
-    sourceLabel: "YouTube Music (Tautan)",
+    nameEn: "Friend's Shared Link — Roadtrip Mix",
+    nameId: "Playlist Teman — Roadtrip Mix",
+    sourceLabelEn: "YouTube Music (Link)",
+    sourceLabelId: "YouTube Music (Tautan)",
     count: 5,
     badgeColor: "border-emerald-500/30 text-emerald-400 bg-emerald-500/10",
   },
@@ -229,6 +254,9 @@ interface InteractiveMigrationPreviewProps {
 export const InteractiveMigrationPreview: React.FC<InteractiveMigrationPreviewProps> = ({
   onOpenStudio,
 }) => {
+  const { lang } = useLanguage();
+  const isEn = lang === "en";
+
   const [selectedPlaylists, setSelectedPlaylists] = useState<Set<"work" | "personal" | "friend">>(
     new Set(["work", "personal", "friend"])
   );
@@ -258,16 +286,8 @@ export const InteractiveMigrationPreview: React.FC<InteractiveMigrationPreviewPr
 
     for (const track of rawList) {
       const key = `${track.title.toLowerCase()}:::${track.artist.toLowerCase()}`;
-      const existing = map.get(key);
-
-      if (existing) {
-        existing.occurrences += 1;
-        existing.sources.push({
-          id: track.playlistId,
-          name: track.playlistName,
-          color: track.color,
-        });
-      } else {
+      const playlistName = isEn ? track.playlistNameEn : track.playlistNameId;
+      if (!map.has(key)) {
         map.set(key, {
           key,
           title: track.title,
@@ -275,26 +295,26 @@ export const InteractiveMigrationPreview: React.FC<InteractiveMigrationPreviewPr
           album: track.album,
           duration: track.duration,
           occurrences: 1,
-          sources: [
-            {
-              id: track.playlistId,
-              name: track.playlistName,
-              color: track.color,
-            },
-          ],
+          sources: [{ id: track.playlistId, name: playlistName, color: track.color }],
         });
+      } else {
+        const existing = map.get(key)!;
+        existing.occurrences += 1;
+        if (!existing.sources.some((s) => s.id === track.playlistId)) {
+          existing.sources.push({ id: track.playlistId, name: playlistName, color: track.color });
+        }
       }
     }
 
     const merged = Array.from(map.values());
-    const dupCount = totalRaw - merged.length;
+    const dupes = totalRaw - merged.length;
 
     return {
       totalRawTracks: totalRaw,
       mergedList: merged,
-      duplicateCount: dupCount,
+      duplicateCount: Math.max(0, dupes),
     };
-  }, [selectedPlaylists]);
+  }, [selectedPlaylists, isEn]);
 
   const handleTogglePlay = (key: string) => {
     setPlayingTrackKey((prev) => (prev === key ? null : key));
@@ -312,15 +332,21 @@ export const InteractiveMigrationPreview: React.FC<InteractiveMigrationPreviewPr
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/15 border border-accent/25 text-accent text-[11px] font-semibold tracking-wide">
               <Sparkles className="w-3 h-3" />
-              Demo Interaktif
+              {isEn ? "Interactive Simulation" : "Demo Interaktif"}
             </span>
-            <span className="text-text-muted text-xs">• Uji Coba Multi-Playlist</span>
+            <span className="text-text-muted text-xs">
+              • {isEn ? "Multi-Playlist Merge Engine" : "Uji Coba Multi-Playlist"}
+            </span>
           </div>
           <h3 className="text-base sm:text-lg font-semibold text-text-primary tracking-tight">
-            Pilih Playlist Sumber & Saksikan Peleburan Duplikat
+            {isEn
+              ? "Select Source Playlists & Watch Duplicates Consolidate"
+              : "Pilih Playlist Sumber & Saksikan Peleburan Duplikat"}
           </h3>
           <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
-            Klik playlist untuk menambah atau mengurangi sumber lagu secara langsung.
+            {isEn
+              ? "Click any playlist above to add or remove song sources in real-time."
+              : "Klik playlist untuk menambah atau mengurangi sumber lagu secara langsung."}
           </p>
         </div>
 
@@ -354,11 +380,13 @@ export const InteractiveMigrationPreview: React.FC<InteractiveMigrationPreviewPr
       {/* Playlist Source Selection Badges */}
       <div className="pt-4 pb-5 relative z-10">
         <label className="text-xs font-medium text-text-muted uppercase tracking-wider block mb-2.5">
-          Playlist Sumber (Pilih Minimal 1):
+          {isEn ? "Source Playlists (Select at least 1):" : "Playlist Sumber (Pilih Minimal 1):"}
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {PLAYLISTS.map((pl) => {
             const isSelected = selectedPlaylists.has(pl.id);
+            const playlistTitle = isEn ? pl.nameEn : pl.nameId;
+            const sourceLabel = isEn ? pl.sourceLabelEn : pl.sourceLabelId;
             return (
               <button
                 key={pl.id}
@@ -377,11 +405,11 @@ export const InteractiveMigrationPreview: React.FC<InteractiveMigrationPreviewPr
                       }`}
                     />
                     <span className="text-[11px] font-mono text-text-muted">
-                      {pl.sourceLabel}
+                      {sourceLabel}
                     </span>
                   </div>
                   <p className="text-xs sm:text-[13px] font-medium text-text-primary truncate">
-                    {pl.name}
+                    {playlistTitle}
                   </p>
                 </div>
                 <div
@@ -402,23 +430,29 @@ export const InteractiveMigrationPreview: React.FC<InteractiveMigrationPreviewPr
       {/* Live Computation Badge Banner */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 sm:p-4 rounded-xl bg-[#0B0C0F]/80 border border-white/[0.06] mb-4 relative z-10">
         <div>
-          <span className="text-[11px] text-text-muted block">Total Lagu Dipilih</span>
+          <span className="text-[11px] text-text-muted block">
+            {isEn ? "Total Tracks Selected" : "Total Lagu Dipilih"}
+          </span>
           <span className="text-lg sm:text-xl font-bold font-mono text-text-primary tabular-nums">
             {totalRawTracks}{" "}
-            <span className="text-xs font-normal text-text-muted">trek</span>
+            <span className="text-xs font-normal text-text-muted">{isEn ? "tracks" : "lagu"}</span>
           </span>
         </div>
 
         <div>
-          <span className="text-[11px] text-text-muted block">Hasil Lagu Unik</span>
+          <span className="text-[11px] text-text-muted block">
+            {isEn ? "Unique Tracks Output" : "Hasil Lagu Unik"}
+          </span>
           <span className="text-lg sm:text-xl font-bold font-mono text-status-success tabular-nums">
             {mergedList.length}{" "}
-            <span className="text-xs font-normal text-status-success/80">unik</span>
+            <span className="text-xs font-normal text-status-success/80">{isEn ? "unique" : "unik"}</span>
           </span>
         </div>
 
         <div>
-          <span className="text-[11px] text-text-muted block">Duplikat Dilebur</span>
+          <span className="text-[11px] text-text-muted block">
+            {isEn ? "Duplicates Merged" : "Duplikat Dilebur"}
+          </span>
           <div className="flex items-center gap-1.5">
             <span
               className={`text-lg sm:text-xl font-bold font-mono tabular-nums ${
@@ -429,17 +463,19 @@ export const InteractiveMigrationPreview: React.FC<InteractiveMigrationPreviewPr
             </span>
             {duplicateCount > 0 && (
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-medium border border-amber-500/30 hidden sm:inline-block">
-                Otomatis
+                {isEn ? "Automated" : "Otomatis"}
               </span>
             )}
           </div>
         </div>
 
         <div>
-          <span className="text-[11px] text-text-muted block">Status Kecocokan</span>
+          <span className="text-[11px] text-text-muted block">
+            {isEn ? "Match Precision" : "Status Kecocokan"}
+          </span>
           <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 mt-1">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>100% Siap</span>
+            <span>{isEn ? "100% Verified" : "100% Siap"}</span>
           </div>
         </div>
       </div>
@@ -470,7 +506,7 @@ export const InteractiveMigrationPreview: React.FC<InteractiveMigrationPreviewPr
                       ? "bg-accent text-background scale-105"
                       : "bg-[#222630] text-text-secondary hover:text-text-primary hover:bg-[#2A2F3C]"
                   }`}
-                  title={isPlaying ? "Jeda Pratinjau" : "Dengarkan Pratinjau Audio"}
+                  title={isPlaying ? (isEn ? "Pause Preview" : "Jeda Pratinjau") : (isEn ? "Play Audio Preview" : "Dengarkan Pratinjau Audio")}
                 >
                   {isPlaying ? (
                     <Pause className="w-3.5 h-3.5 fill-current" />
@@ -503,19 +539,19 @@ export const InteractiveMigrationPreview: React.FC<InteractiveMigrationPreviewPr
                 {isMerged ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] sm:text-[11px] font-medium">
                     <Layers className="w-3 h-3" />
-                    <span className="hidden sm:inline">Duplikat Digabung</span>
-                    <span className="sm:hidden">Digabung</span>
+                    <span className="hidden sm:inline">{isEn ? "Duplicates Merged" : "Duplikat Digabung"}</span>
+                    <span className="sm:hidden">{isEn ? "Merged" : "Digabung"}</span>
                   </span>
                 ) : (
                   <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-text-muted text-[11px]">
-                    Tunggal
+                    {isEn ? "Single" : "Tunggal"}
                   </span>
                 )}
 
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] sm:text-[11px] font-medium">
                   <CheckCircle2 className="w-3 h-3" />
-                  <span className="hidden md:inline">Cocok di Apple Music</span>
-                  <span className="md:hidden">Cocok</span>
+                  <span className="hidden md:inline">{isEn ? "Matched in Apple Music" : "Cocok di Apple Music"}</span>
+                  <span className="md:hidden">{isEn ? "Matched" : "Cocok"}</span>
                 </span>
 
                 <span className="text-[11px] font-mono text-text-muted hidden sm:inline-block w-10 text-right">
@@ -533,7 +569,11 @@ export const InteractiveMigrationPreview: React.FC<InteractiveMigrationPreviewPr
           <Filter className="w-3.5 h-3.5 text-accent" />
           <span>
             {duplicateCount > 0
-              ? `${duplicateCount} lagu terduplikasi otomatis dilebur menjadi 1 trek bersih di Apple Music.`
+              ? isEn
+                ? `${duplicateCount} duplicate tracks automatically consolidated into 1 clean catalog recording.`
+                : `${duplicateCount} lagu terduplikasi otomatis dilebur menjadi 1 trek bersih di Apple Music.`
+              : isEn
+              ? "All tracks from selected playlists are ready for seamless transfer."
               : "Semua lagu dari playlist terpilih siap ditransfer utuh."}
           </span>
         </div>
@@ -543,7 +583,7 @@ export const InteractiveMigrationPreview: React.FC<InteractiveMigrationPreviewPr
             onClick={onOpenStudio}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-accent text-background font-semibold text-xs transition-all hover:bg-accent-hover btn-press shadow-lg shadow-accent/20"
           >
-            <span>Buka Studio & Transfer Sekarang</span>
+            <span>{isEn ? "Open Studio & Migrate Now" : "Buka Studio & Transfer Sekarang"}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         )}

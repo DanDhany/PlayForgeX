@@ -105,7 +105,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
         ...prev,
         {
           accountId: pl.accountId!,
-          accountAlias: pl.accountAlias || "Akun",
+          accountAlias: pl.accountAlias || (isEn ? "Account" : "Akun"),
           platform: pl.platform || "youtube",
           playlistId: pl.id,
           playlistTitle: pl.title,
@@ -140,7 +140,9 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
       // Synthesize a virtual playlist for Review Studio
       const virtualPlaylist: PlaylistSummary = {
         id: `virtual_merge_${Date.now()}`,
-        title: `Merge Koleksi (${selectedPlaylistSelections.length} Playlist)`,
+        title: isEn
+          ? `Merged Collection (${selectedPlaylistSelections.length} Playlists)`
+          : `Merge Koleksi (${selectedPlaylistSelections.length} Playlist)`,
         trackCount: data.uniqueCount,
       };
 
@@ -148,7 +150,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
       onSelectPlaylist(virtualPlaylist, true);
     } catch (err) {
       console.error("Merge preview error:", err);
-      alert("Gagal memproses penggabungan playlist");
+      alert(isEn ? "Failed to generate playlist merge preview" : "Gagal memproses penggabungan playlist");
     } finally {
       setIsGeneratingMerge(false);
     }
@@ -162,17 +164,19 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
             <ArrowRightLeft className="w-8 h-8" />
           </div>
           <h2 className="text-lg font-semibold text-text-primary">
-            Belum Ada Akun Terhubung
+            {isEn ? "No Accounts Connected Yet" : "Belum Ada Akun Terhubung"}
           </h2>
           <p className="text-xs text-text-secondary leading-relaxed">
-            Untuk memulai transfer atau penggabungan playlist musik, hubungkan setidaknya satu akun sumber dan satu akun tujuan di menu Akun.
+            {isEn
+              ? "To begin transferring or merging music playlists, connect at least one source and one destination account in the Accounts view."
+              : "Untuk memulai transfer atau penggabungan playlist musik, hubungkan setidaknya satu akun sumber dan satu akun tujuan di menu Akun."}
           </p>
           <button
             onClick={onNavigateAccounts}
             className="px-4 py-2 rounded-lg bg-accent text-background font-medium text-xs hover:bg-accent/90 btn-press inline-flex items-center gap-1.5 shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            <span>Hubungkan Akun Sekarang</span>
+            <span>{isEn ? "Connect Account Now" : "Hubungkan Akun Sekarang"}</span>
           </button>
         </div>
       </div>
@@ -374,7 +378,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                     <div className="min-w-0">
                       <div className="truncate text-text-primary">{pl.title}</div>
                       <div className="text-[11px] text-text-secondary truncate mt-0.5">
-                        {pl.accountAlias} ({pl.trackCount || 0} lagu)
+                        {pl.accountAlias} ({pl.trackCount || 0} {isEn ? "tracks" : "lagu"})
                       </div>
                     </div>
                   </div>
@@ -389,7 +393,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
               <span className="w-5 h-5 rounded-full bg-accent text-background text-xs font-bold flex items-center justify-center">
                 2
               </span>
-              <span>Pilih Akun Musik Tujuan</span>
+              <span>{isEn ? "Select Destination Music Account" : "Pilih Akun Musik Tujuan"}</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -433,7 +437,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
               <span className="w-5 h-5 rounded-full bg-accent text-background text-xs font-bold flex items-center justify-center">
                 3
               </span>
-              <span>Kebijakan Eliminasi Duplikasi</span>
+              <span>{isEn ? "Deduplication Policy" : "Kebijakan Eliminasi Duplikasi"}</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -446,11 +450,13 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                 }`}
               >
                 <div className="font-semibold text-text-primary flex items-center justify-between">
-                  <span>Hapus Duplikat Persis (Direkomendasikan)</span>
+                  <span>{isEn ? "Eliminate Exact Duplicates (Recommended)" : "Hapus Duplikat Persis (Direkomendasikan)"}</span>
                   {dedupPolicy === "remove_exact" && <Check className="w-4 h-4 text-accent" />}
                 </div>
                 <p className="text-[11px] text-text-secondary leading-relaxed">
-                  Lagu dengan judul dan artis yang sama hanya dimasukkan satu kali. Versi Live, Remix, atau Akustik tetap dipertahankan.
+                  {isEn
+                    ? "Songs with matching titles and artists are included once. Live, remix, or acoustic editions are safely preserved."
+                    : "Lagu dengan judul dan artis yang sama hanya dimasukkan satu kali. Versi Live, Remix, atau Akustik tetap dipertahankan."}
                 </p>
               </div>
 
@@ -463,11 +469,13 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                 }`}
               >
                 <div className="font-semibold text-text-primary flex items-center justify-between">
-                  <span>Pertahankan Semua Lagu</span>
+                  <span>{isEn ? "Keep All Tracks" : "Pertahankan Semua Lagu"}</span>
                   {dedupPolicy === "keep_all" && <Check className="w-4 h-4 text-accent" />}
                 </div>
                 <p className="text-[11px] text-text-secondary leading-relaxed">
-                  Semua lagu dari setiap playlist dimasukkan tanpa pengecekan duplikasi ganda.
+                  {isEn
+                    ? "All songs from each playlist are appended without deduplication checks."
+                    : "Semua lagu dari setiap playlist dimasukkan tanpa pengecekan duplikasi ganda."}
                 </p>
               </div>
             </div>
@@ -477,15 +485,15 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
           {mergeStats && (
             <div className="p-4 rounded-xl bg-surface-elevated border border-accent/30 flex items-center justify-around text-xs">
               <div className="text-center">
-                <span className="text-text-secondary text-[11px]">Total Ditemukan</span>
+                <span className="text-text-secondary text-[11px]">{isEn ? "Total Found" : "Total Ditemukan"}</span>
                 <div className="text-base font-bold text-text-primary">{mergeStats.totalDiscovered}</div>
               </div>
               <div className="text-center">
-                <span className="text-text-secondary text-[11px]">Duplikat Dieliminasi</span>
+                <span className="text-text-secondary text-[11px]">{isEn ? "Duplicates Eliminated" : "Duplikat Dieliminasi"}</span>
                 <div className="text-base font-bold text-accent">{mergeStats.duplicatesCount}</div>
               </div>
               <div className="text-center">
-                <span className="text-text-secondary text-[11px]">Lagu Unik Siap Pindah</span>
+                <span className="text-text-secondary text-[11px]">{isEn ? "Unique Tracks Ready" : "Lagu Unik Siap Pindah"}</span>
                 <div className="text-base font-bold text-status-success">{mergeStats.uniqueCount}</div>
               </div>
             </div>
@@ -500,7 +508,9 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
             >
               <Sparkles className="w-4 h-4" />
               <span>
-                {isGeneratingMerge ? "Memproses Penggabungan..." : "Pratinjau & Buka Review Studio"}
+                {isGeneratingMerge
+                  ? (isEn ? "Processing Merge..." : "Memproses Penggabungan...")
+                  : (isEn ? "Preview & Open Review Studio" : "Pratinjau & Buka Review Studio")}
               </span>
             </button>
           </div>

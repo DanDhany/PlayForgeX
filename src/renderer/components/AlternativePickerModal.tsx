@@ -3,6 +3,7 @@ import { X, Search, Disc, Play, Pause, Check, RefreshCw } from "lucide-react";
 import { TransferTrackItem, AppleMusicTrack } from "../../shared/types";
 import { formatMillis } from "../utils/ui-helpers";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
+import { useLanguage } from "../context/LanguageContext";
 
 interface AlternativePickerModalProps {
   item: TransferTrackItem | null;
@@ -21,6 +22,8 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
 }) => {
   if (!item) return null;
 
+  const { t, lang } = useLanguage();
+  const isEn = lang === "en";
   const [query, setQuery] = useState(item.sanitizedTitle.originalTitle || item.source.title);
   const [results, setResults] = useState<AppleMusicTrack[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -72,10 +75,10 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
         <div className="px-4 py-3 md:px-5 md:py-3.5 border-b border-border flex items-center justify-between bg-surface-elevated">
           <div className="min-w-0 pr-3">
             <h3 className="text-xs md:text-sm font-semibold text-text-primary">
-              Cari Lagu di {platformTitle}
+              {t("modal.searchAlternative", { platform: platformTitle })}
             </h3>
             <p className="text-[11px] text-text-secondary truncate mt-0.5">
-              Sumber: <span className="text-text-primary">{item.sanitizedTitle.originalTitle}</span> · {item.source.artist}
+              {isEn ? "Source:" : "Sumber:"} <span className="text-text-primary">{item.sanitizedTitle.originalTitle}</span> · {item.source.artist}
             </p>
           </div>
           <button
@@ -101,7 +104,7 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ketik judul lagu atau artis..."
+                placeholder={isEn ? "Search song title or artist..." : "Ketik judul lagu atau artis..."}
                 className="w-full bg-surface border border-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent transition"
               />
             </div>
@@ -110,13 +113,13 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
               disabled={isSearching}
               className="px-3.5 py-1.5 bg-accent text-background font-semibold hover:bg-accent/90 disabled:opacity-50 text-xs rounded-lg flex items-center gap-1.5 btn-press transition-colors shadow-sm"
             >
-              {isSearching ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Cari"}
+              {isSearching ? <RefreshCw className="w-3 h-3 animate-spin" /> : (isEn ? "Search" : "Cari")}
             </button>
           </form>
 
           {/* Quick Search Chips */}
           <div className="flex items-center space-x-1.5 overflow-x-auto pb-0.5 scrollbar-none text-[11px]">
-            <span className="text-text-secondary/70 flex-shrink-0 text-[10px]">Cepat:</span>
+            <span className="text-text-secondary/70 flex-shrink-0 text-[10px]">{isEn ? "Quick:" : "Cepat:"}</span>
             <button
               type="button"
               onClick={() => {
@@ -125,7 +128,7 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
               }}
               className="px-2 py-0.5 rounded-md bg-surface-elevated hover:bg-surface-hover border border-border text-text-secondary hover:text-text-primary flex-shrink-0 btn-press transition-colors"
             >
-              Judul: {item.sanitizedTitle.originalTitle}
+              {isEn ? "Title:" : "Judul:"} {item.sanitizedTitle.originalTitle}
             </button>
             {item.source.artist && (
               <button
@@ -137,7 +140,7 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
                 }}
                 className="px-2 py-0.5 rounded-md bg-surface-elevated hover:bg-surface-hover border border-border text-text-secondary hover:text-text-primary flex-shrink-0 btn-press transition-colors"
               >
-                Judul + Artis
+                {isEn ? "Title + Artist" : "Judul + Artis"}
               </button>
             )}
             {item.sanitizedTitle.subtitle && (
@@ -161,11 +164,11 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
           {isSearching ? (
             <div className="py-14 text-center text-xs text-text-secondary flex flex-col items-center gap-2">
               <RefreshCw className="w-5 h-5 animate-spin text-accent" />
-              <span>Mencari di katalog {platformTitle}...</span>
+              <span>{isEn ? `Searching ${platformTitle} catalog...` : `Mencari di katalog ${platformTitle}...`}</span>
             </div>
           ) : results.length === 0 ? (
             <div className="py-14 text-center text-xs text-text-secondary/60">
-              Tidak ada lagu yang ditemukan untuk "{query}".
+              {isEn ? `No songs found for "${query}".` : `Tidak ada lagu yang ditemukan untuk "${query}".`}
             </div>
           ) : (
             results.map((candidate) => {
@@ -246,10 +249,10 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
                     {isSelected ? (
                       <>
                         <Check className="w-3 h-3 stroke-[3]" />
-                        <span>Terpilih</span>
+                        <span>{isEn ? "Selected" : "Terpilih"}</span>
                       </>
                     ) : (
-                      <span>Pilih</span>
+                      <span>{t("common.select")}</span>
                     )}
                   </button>
                 </div>

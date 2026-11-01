@@ -11,6 +11,7 @@ import {
   ListPlus,
 } from "lucide-react";
 import { PlaylistSummary } from "../../shared/types";
+import { useLanguage } from "../context/LanguageContext";
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -38,6 +39,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const { t, lang } = useLanguage();
+  const isEn = lang === "en";
   const [mode, setMode] = useState<"create" | "existing">("create");
   const [playlistTitle, setPlaylistTitle] = useState(defaultTitle);
   const [existingPlaylists, setExistingPlaylists] = useState<PlaylistSummary[]>([]);
@@ -90,7 +93,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       });
     } else {
       if (!selectedPlaylistId) {
-        alert("Pilih salah satu playlist tujuan!");
+        alert(t("modal.selectDestWarn"));
         return;
       }
       onConfirm({
@@ -118,10 +121,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
             <div>
               <h3 className="text-xs md:text-sm font-semibold text-text-primary">
-                Ekspor ke {targetName}
+                {t("modal.exportTitle", { platform: targetName })}
               </h3>
               <p className="text-[11px] text-text-secondary">
-                {trackCount} lagu siap ditransfer
+                {t("common.tracks", { count: trackCount })} {isEn ? "ready to transfer" : "siap ditransfer"}
               </p>
             </div>
           </div>
@@ -140,7 +143,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200 flex items-center gap-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0 text-amber-400" />
               <span>
-                Pencocokan masih berjalan di latar belakang. Anda akan mentransfer {trackCount} lagu yang sudah siap saat ini.
+                {isEn
+                  ? `Matching is still in progress in background. You will transfer the ${trackCount} songs currently ready.`
+                  : `Pencocokan masih berjalan di latar belakang. Anda akan mentransfer ${trackCount} lagu yang sudah siap saat ini.`}
               </span>
             </div>
           )}
@@ -156,7 +161,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               }`}
             >
               <PlusCircle className="w-3.5 h-3.5" />
-              <span>Buat Playlist Baru</span>
+              <span>{isEn ? "Create New Playlist" : "Buat Playlist Baru"}</span>
             </button>
             <button
               onClick={() => setMode("existing")}
@@ -167,7 +172,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               }`}
             >
               <FolderInput className="w-3.5 h-3.5" />
-              <span>Playlist yang Ada</span>
+              <span>{isEn ? "Existing Playlist" : "Playlist yang Ada"}</span>
             </button>
           </div>
 
@@ -175,18 +180,20 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           {mode === "create" && (
             <div className="space-y-2.5 animate-fade-in pt-1">
               <label className="block text-xs font-medium text-text-secondary">
-                Nama Playlist Baru
+                {isEn ? "New Playlist Name" : "Nama Playlist Baru"}
               </label>
               <input
                 type="text"
                 value={playlistTitle}
                 onChange={(e) => setPlaylistTitle(e.target.value)}
-                placeholder="Masukkan judul playlist..."
+                placeholder={isEn ? "Enter playlist title..." : "Masukkan judul playlist..."}
                 className="w-full px-3 py-2 bg-surface-elevated border border-border rounded-lg text-xs md:text-sm text-text-primary focus:outline-none focus:border-accent transition"
                 autoFocus
               />
               <p className="text-[11px] text-text-secondary">
-                Playlist baru akan dibuat otomatis di akun {targetName} Anda dan diisi {trackCount} lagu terpilih.
+                {isEn
+                  ? `A new playlist will be created automatically in your ${targetName} account containing ${trackCount} selected tracks.`
+                  : `Playlist baru akan dibuat otomatis di akun ${targetName} Anda dan diisi ${trackCount} lagu terpilih.`}
               </p>
             </div>
           )}
@@ -195,7 +202,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           {mode === "existing" && (
             <div className="space-y-2.5 animate-fade-in pt-1">
               <label className="block text-xs font-medium text-text-secondary">
-                Pilih Playlist di {targetName}
+                {t("modal.selectDest", { platform: targetName })}
               </label>
 
               {/* Search box for existing playlists */}
@@ -203,7 +210,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-text-secondary" />
                 <input
                   type="text"
-                  placeholder="Cari playlist..."
+                  placeholder={t("sidebar.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-3 py-1.5 bg-surface-elevated border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent"
@@ -215,11 +222,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 {isLoadingPlaylists ? (
                   <div className="p-6 text-center text-xs text-text-secondary flex items-center justify-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-accent" />
-                    <span>Memuat daftar playlist {targetName}...</span>
+                    <span>{isEn ? `Loading ${targetName} playlists...` : `Memuat daftar playlist ${targetName}...`}</span>
                   </div>
                 ) : filteredPlaylists.length === 0 ? (
                   <div className="p-6 text-center text-xs text-text-secondary">
-                    Tidak ada playlist yang cocok.
+                    {isEn ? "No playlists match your search." : "Tidak ada playlist yang cocok."}
                   </div>
                 ) : (
                   filteredPlaylists.map((p) => {
@@ -243,7 +250,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                           <div className="min-w-0">
                             <h4 className="text-xs font-medium text-text-primary truncate">{p.title}</h4>
                             <p className="text-[10px] text-text-secondary">
-                              {p.trackCount !== undefined ? `${p.trackCount} lagu` : "Playlist"}
+                              {p.trackCount !== undefined ? t("common.tracks", { count: p.trackCount }) : "Playlist"}
                             </p>
                           </div>
                         </div>
@@ -259,8 +266,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
               {selectedPlaylist && (
                 <div className="p-2.5 rounded-lg bg-surface border border-border text-[11px] text-text-secondary flex items-center gap-2">
-                  <span className="text-accent font-medium">{trackCount} lagu</span> akan ditambahkan ke playlist{" "}
-                  <strong className="text-text-primary truncate">"{selectedPlaylist.title}"</strong>.
+                  <span className="text-accent font-medium">{t("common.tracks", { count: trackCount })}</span> {isEn ? "will be added to playlist " : "akan ditambahkan ke playlist "}
+                  <strong className="text-text-primary truncate">&quot;{selectedPlaylist.title}&quot;</strong>.
                 </div>
               )}
             </div>
@@ -273,14 +280,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             onClick={onClose}
             className="px-3.5 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-hover btn-press transition-colors"
           >
-            Batal
+            {t("common.cancel")}
           </button>
           <button
             onClick={handleStart}
             disabled={mode === "existing" && !selectedPlaylistId}
             className="px-4 py-2 rounded-lg bg-accent text-background text-xs font-semibold hover:bg-accent/90 disabled:opacity-50 flex items-center space-x-1.5 btn-press shadow-sm"
           >
-            <span>{mode === "create" ? "Buat & Transfer" : "Gabung ke Playlist"}</span>
+            <span>{mode === "create" ? (isEn ? "Create & Transfer" : "Buat & Transfer") : (isEn ? "Append to Playlist" : "Gabung ke Playlist")}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>

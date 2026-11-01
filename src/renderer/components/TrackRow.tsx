@@ -2,6 +2,7 @@ import React from "react";
 import { Play, Replace, X, Disc, Music, ArrowRight, Check } from "lucide-react";
 import { TransferTrackItem } from "../../shared/types";
 import { getStatusBadgeProps } from "../utils/ui-helpers";
+import { useLanguage } from "../context/LanguageContext";
 
 interface TrackRowProps {
   item: TransferTrackItem;
@@ -24,6 +25,7 @@ export const TrackRow: React.FC<TrackRowProps> = ({
   onOpenAlternativePicker,
   onToggleExclude,
 }) => {
+  const { t } = useLanguage();
   const { source, sanitizedTitle, match, selectedCandidate, excluded } = item;
   const badge = getStatusBadgeProps(match.status);
   const isPlaying = selectedCandidate?.id && playingPreviewId === selectedCandidate.id;
@@ -47,7 +49,7 @@ export const TrackRow: React.FC<TrackRowProps> = ({
                 ? "bg-accent border-accent text-background"
                 : "border-border bg-surface-elevated text-transparent"
             }`}
-            title={excluded ? "Sertakan lagu ini" : "Kecualikan lagu ini"}
+            title={excluded ? t("track.include") : t("track.exclude")}
           >
             <Check className="w-3 h-3 stroke-[3]" />
           </button>
@@ -96,12 +98,12 @@ export const TrackRow: React.FC<TrackRowProps> = ({
           <div className="flex items-center gap-1 mt-1">
             {match.lyricsVerified && (
               <span className="px-1 py-0.2 text-[8px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 rounded">
-                ✓ Lirik
+                {t("track.lyricsMatched")}
               </span>
             )}
             {selectedCandidate && match.artistScore < 0.45 && (
               <span className="px-1 py-0.2 text-[8px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/25 rounded">
-                ⚠ Beda Artis
+                {t("track.differentArtist")}
               </span>
             )}
           </div>
@@ -132,7 +134,7 @@ export const TrackRow: React.FC<TrackRowProps> = ({
                         artworkUrl: selectedCandidate.artworkUrl || source.thumbnailUrl,
                       })
                     }
-                    title={isPlaying ? "Jeda cuplikan lagu" : "Putar cuplikan 30s"}
+                    title={isPlaying ? t("track.previewPause") : t("track.previewPlay")}
                     className={`absolute inset-0 flex items-center justify-center transition-opacity btn-press ${
                       isPlaying
                         ? "bg-black/75 opacity-100"
@@ -166,18 +168,18 @@ export const TrackRow: React.FC<TrackRowProps> = ({
           ) : (
             <div className="flex items-center space-x-2 text-xs text-status-danger flex-1">
               <X className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="truncate">Lagu tidak ditemukan</span>
+              <span className="truncate">{t("track.notFound")}</span>
             </div>
           )}
 
           {/* Action: Swap Alternative */}
           <button
             onClick={() => onOpenAlternativePicker(item)}
-            title="Cari alternatif lagu lain"
+            title={t("track.replaceTitle")}
             className="px-2 py-1 rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-text-secondary hover:text-text-primary btn-press transition flex items-center gap-1.5 text-[11px]"
           >
             <Replace className="w-3 h-3 text-text-secondary" />
-            <span>Ganti</span>
+            <span>{t("track.replace")}</span>
           </button>
         </div>
       </div>
@@ -245,7 +247,7 @@ export const TrackRow: React.FC<TrackRowProps> = ({
             </div>
           ) : (
             <p className="text-[11px] text-status-danger truncate">
-              Belum ada lagu yang cocok
+              {t("track.notFound")}
             </p>
           )}
 
@@ -256,12 +258,12 @@ export const TrackRow: React.FC<TrackRowProps> = ({
             </span>
             {match.lyricsVerified && (
               <span className="px-1 py-0.2 text-[8px] font-medium bg-status-success/15 text-status-success border border-status-success/20 rounded">
-                ✓ Lirik
+                {t("track.lyricsMatched")}
               </span>
             )}
             {selectedCandidate && match.artistScore < 0.45 && (
               <span className="px-1 py-0.2 text-[8px] font-medium bg-status-warning/15 text-status-warning border border-status-warning/20 rounded">
-                ⚠ Beda Artis
+                {t("track.differentArtist")}
               </span>
             )}
           </div>
@@ -272,7 +274,7 @@ export const TrackRow: React.FC<TrackRowProps> = ({
           <button
             onClick={() => onOpenAlternativePicker(item)}
             className="p-1.5 rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-text-secondary hover:text-text-primary btn-press"
-            title="Ganti alternatif lagu"
+            title={t("track.replaceTitle")}
           >
             <Replace className="w-3.5 h-3.5 text-text-secondary" />
           </button>
@@ -284,7 +286,7 @@ export const TrackRow: React.FC<TrackRowProps> = ({
                 ? "bg-accent border-accent text-background"
                 : "border-border bg-surface-elevated text-transparent"
             }`}
-            title={excluded ? "Sertakan lagu" : "Kecualikan lagu"}
+            title={excluded ? t("track.include") : t("track.exclude")}
           >
             <Check className="w-3.5 h-3.5 stroke-[3]" />
           </button>

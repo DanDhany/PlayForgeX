@@ -1,6 +1,7 @@
 import React from "react";
 import { CheckCircle2, AlertCircle, RefreshCw, X } from "lucide-react";
 import { TransferJob } from "../../shared/types";
+import { useLanguage } from "../context/LanguageContext";
 
 interface TransferProgressModalProps {
   job: TransferJob | null;
@@ -9,6 +10,9 @@ interface TransferProgressModalProps {
 
 export const TransferProgressModal: React.FC<TransferProgressModalProps> = ({ job, onClose }) => {
   if (!job) return null;
+
+  const { t, lang } = useLanguage();
+  const isEn = lang === "en";
 
   const { playlistTitle, progress, status } = job;
   const isCompleted = status === "completed";
@@ -37,10 +41,10 @@ export const TransferProgressModal: React.FC<TransferProgressModalProps> = ({ jo
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="min-w-0 pr-3">
             <h3 className="text-sm md:text-base font-semibold text-text-primary">
-              Transfer Playlist
+              {t("modal.progressTitle")}
             </h3>
             <p className="text-xs text-text-secondary mt-0.5 truncate">
-              Target: <span className="text-text-primary font-medium">{playlistTitle}</span>
+              {isEn ? "Destination:" : "Target:"} <span className="text-text-primary font-medium">{playlistTitle}</span>
             </p>
           </div>
           {isFinished && (
@@ -56,7 +60,7 @@ export const TransferProgressModal: React.FC<TransferProgressModalProps> = ({ jo
         {/* Progress Bar & Indicators */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-text-secondary font-medium">Progres Sinkronisasi</span>
+            <span className="text-text-secondary font-medium">{t("modal.syncProgress")}</span>
             <span className="font-mono tabular-nums text-text-primary font-semibold">{percent}%</span>
           </div>
 
@@ -75,10 +79,12 @@ export const TransferProgressModal: React.FC<TransferProgressModalProps> = ({ jo
 
           <div className="flex items-center justify-between text-[11px] text-text-secondary font-mono tabular-nums">
             <span>
-              {displayCurrent} / {progress.total} lagu diproses
+              {t("modal.tracksProcessed", { current: displayCurrent, total: progress.total })}
             </span>
             <span className="text-text-primary">
-              {displaySuccess} berhasil · {progress.failed} gagal
+              {isEn
+                ? `${displaySuccess} succeeded · ${progress.failed} failed`
+                : `${displaySuccess} berhasil · ${progress.failed} gagal`}
             </span>
           </div>
         </div>
@@ -89,16 +95,18 @@ export const TransferProgressModal: React.FC<TransferProgressModalProps> = ({ jo
             <>
               <RefreshCw className="w-4 h-4 text-accent animate-spin flex-shrink-0" />
               <span className="text-text-secondary">
-                Menyuntikkan lagu secara bertahap dengan jeda aman anti-ban...
+                {t("modal.injectingSafely")}
               </span>
             </>
           ) : status === "completed" ? (
             <>
               <CheckCircle2 className="w-5 h-5 text-status-success flex-shrink-0" />
               <div className="space-y-0.5">
-                <p className="text-status-success font-semibold">Transfer Berhasil!</p>
+                <p className="text-status-success font-semibold">{t("modal.transferComplete")}</p>
                 <p className="text-[11px] text-text-secondary">
-                  Lagu telah tersimpan ke perpustakaan akun tujuan Anda.
+                  {isEn
+                    ? "Tracks have been saved to your destination library."
+                    : "Lagu telah tersimpan ke perpustakaan akun tujuan Anda."}
                 </p>
               </div>
             </>
@@ -107,12 +115,18 @@ export const TransferProgressModal: React.FC<TransferProgressModalProps> = ({ jo
               <AlertCircle className="w-5 h-5 text-status-danger flex-shrink-0" />
               <div className="space-y-0.5">
                 <p className="text-status-danger font-semibold">
-                  {progress.success > 0 ? "Transfer Selesai Sebagian" : "Transfer Belum Berhasil"}
+                  {progress.success > 0
+                    ? (isEn ? "Partially Completed" : "Transfer Selesai Sebagian")
+                    : (isEn ? "Transfer Unsuccessful" : "Transfer Belum Berhasil")}
                 </p>
                 <p className="text-[11px] text-text-secondary">
                   {progress.success > 0
-                    ? "Beberapa lagu tidak dapat ditemukan di katalog tujuan."
-                    : "Terjadi kendala saat menghubungkan atau memproses lagu."}
+                    ? (isEn
+                        ? "Some tracks could not be located in destination catalog."
+                        : "Beberapa lagu tidak dapat ditemukan di katalog tujuan.")
+                    : (isEn
+                        ? "Encountered an issue connecting or processing tracks."
+                        : "Terjadi kendala saat menghubungkan atau memproses lagu.")}
                 </p>
               </div>
             </>
@@ -126,7 +140,7 @@ export const TransferProgressModal: React.FC<TransferProgressModalProps> = ({ jo
               onClick={onClose}
               className="px-4 py-2 rounded-lg bg-accent text-background text-xs font-semibold hover:bg-accent/90 btn-press shadow-sm"
             >
-              Selesai & Tutup
+              {isEn ? "Done & Close" : "Selesai & Tutup"}
             </button>
           </div>
         )}

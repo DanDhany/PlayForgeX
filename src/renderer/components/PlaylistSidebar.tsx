@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Search, RefreshCw, X, ChevronRight, Disc3 } from "lucide-react";
 import { PlaylistSummary } from "../../shared/types";
+import { useLanguage } from "../context/LanguageContext";
 
 interface PlaylistSidebarProps {
   playlists: PlaylistSummary[];
@@ -31,6 +32,7 @@ export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
   appleCount,
   isMobileInline = false,
 }) => {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredPlaylists = playlists.filter((p) =>
@@ -49,7 +51,7 @@ export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Koleksi Playlist
+              {t("sidebar.collection")}
             </span>
             <span className="text-[11px] font-mono tabular-nums px-1.5 py-0.2 bg-white/[0.06] text-slate-300 rounded border border-white/[0.08]">
               {playlists.length}
@@ -117,7 +119,7 @@ export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
           <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
           <input
             type="text"
-            placeholder="Cari nama playlist..."
+            placeholder={t("sidebar.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-card border border-white/[0.08] rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-white/20 transition"
@@ -138,13 +140,13 @@ export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
         {isLoading ? (
           <div className="py-16 text-center text-slate-400 text-xs flex flex-col items-center gap-2.5">
             <RefreshCw className="w-5 h-5 text-primary animate-spin" />
-            <span className="text-slate-300">Memuat playlist...</span>
+            <span className="text-slate-300">{t("sidebar.loading")}</span>
           </div>
         ) : filteredPlaylists.length === 0 ? (
           <div className="py-16 px-4 text-center text-slate-500 text-xs leading-relaxed">
             {playlists.length === 0
-              ? `Belum ada playlist dari ${activeSource === "youtube" ? "YouTube Music" : "Apple Music"}. Pastikan akun sudah terhubung.`
-              : "Tidak ada playlist yang cocok dengan pencarian."}
+              ? t("sidebar.emptySource", { platform: activeSource === "youtube" ? "YouTube Music" : "Apple Music" })
+              : t("sidebar.noMatch")}
           </div>
         ) : (
           filteredPlaylists.map((pl) => {
@@ -186,7 +188,7 @@ export const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
                   </h4>
                   <div className="flex items-center space-x-2 text-[11px] text-slate-400 mt-0.5">
                     <span className="font-mono tabular-nums">
-                      {pl.trackCount > 0 ? `${pl.trackCount} lagu` : "Playlist"}
+                      {pl.trackCount > 0 ? t("common.tracks", { count: pl.trackCount }) : "Playlist"}
                     </span>
                   </div>
                 </div>

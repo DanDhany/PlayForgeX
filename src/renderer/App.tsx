@@ -34,7 +34,8 @@ import {
 } from "./demoData";
 
 export const App: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const isEn = lang === "en";
   const [viewMode, setViewMode] = useState<"studio" | "landing" | "auth">(() => {
     if (typeof window !== "undefined") {
       if (window.location.hash.startsWith("#auth")) {
@@ -109,12 +110,12 @@ export const App: React.FC = () => {
     }
 
     if (params.get("status") === "success" || params.get("status") === "imported") {
-      const aliasName = params.get("alias") || "Akun baru";
+      const aliasName = params.get("alias") || (isEn ? "New account" : "Akun baru");
       const isImport = params.get("status") === "imported";
       setSuccessBanner(
         isImport
-          ? `🎉 Playlist dari "${aliasName}" berhasil diimpor langsung dari HP!`
-          : `Koneksi akun "${aliasName}" berhasil ditambahkan!`
+          ? (isEn ? `🎉 Playlists from "${aliasName}" successfully imported directly from phone!` : `🎉 Playlist dari "${aliasName}" berhasil diimpor langsung dari HP!`)
+          : (isEn ? `Account connection "${aliasName}" added successfully!` : `Koneksi akun "${aliasName}" berhasil ditambahkan!`)
       );
       setTimeout(() => setSuccessBanner(null), 6000);
       window.history.replaceState(null, "", window.location.pathname);
@@ -320,13 +321,13 @@ export const App: React.FC = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(`Koneksi akun "${data.localAlias}" berhasil dan aktif!`);
+        alert(isEn ? `Account connection "${data.localAlias}" is active & healthy!` : `Koneksi akun "${data.localAlias}" berhasil dan aktif!`);
       } else {
-        alert(`Koneksi akun gagal: ${data.error || "Unknown error"}`);
+        alert(isEn ? `Account connection failed: ${data.error || "Unknown error"}` : `Koneksi akun gagal: ${data.error || "Unknown error"}`);
       }
       await loadAccounts();
     } catch (err: any) {
-      alert(`Koneksi gagal: ${err.message}`);
+      alert(isEn ? `Connection test failed: ${err.message}` : `Koneksi gagal: ${err.message}`);
     }
   };
 

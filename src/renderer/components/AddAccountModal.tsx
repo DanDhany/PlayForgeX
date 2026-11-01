@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { copyToClipboard } from "../utils/ui-helpers";
 import { AccountConnection } from "../../shared/types";
+import { useLanguage } from "../context/LanguageContext";
 import {
   generateYouTubeMobileSyncScript,
   generateAppleMobileSyncScript,
@@ -38,6 +39,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   onSuccess,
   existingAccounts = [],
 }) => {
+  const { t, lang } = useLanguage();
+  const isEn = lang === "en";
   if (!isOpen) return null;
 
   const [step, setStep] = useState<"name" | "connect">("name");
@@ -210,16 +213,16 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-xs md:text-sm font-semibold text-text-primary">
-                  Tambah Koneksi Akun
+                  {t("modal.addAccount")}
                 </h3>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-elevated border border-border text-text-secondary font-mono">
-                  {step === "name" ? "Langkah 1/2" : "Langkah 2/2"}
+                  {step === "name" ? t("modal.step1") : t("modal.step2")}
                 </span>
               </div>
               <p className="text-[11px] text-text-secondary">
                 {step === "name"
-                  ? "Tentukan layanan dan nama akun terlebih dahulu"
-                  : "Salin script yang telah disesuaikan dengan akun Anda"}
+                  ? t("modal.step1Desc")
+                  : t("modal.step2Desc")}
               </p>
             </div>
           </div>
@@ -323,23 +326,25 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               ) : canProceedToConnect ? (
                 <div className="flex items-center gap-1.5 text-[11px] text-status-success font-medium pt-0.5 animate-fadeIn">
                   <Check className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>Nama akun siap digunakan untuk generate script.</span>
+                  <span>{isEn ? "Account nickname is ready to generate script." : "Nama akun siap digunakan untuk generate script."}</span>
                 </div>
               ) : aliasTouched && trimmedAlias.length === 0 ? (
                 <div className="flex items-center gap-1.5 text-[11px] text-text-secondary pt-0.5">
                   <Info className="w-3.5 h-3.5 flex-shrink-0 text-text-secondary/80" />
-                  <span>Tulis nama untuk akun ini sebelum melihat script koneksi.</span>
+                  <span>{isEn ? "Enter a nickname for this account before proceeding to scripts." : "Tulis nama untuk akun ini sebelum melihat script koneksi."}</span>
                 </div>
               ) : (
                 <p className="text-[11px] text-text-secondary/80">
-                  Nama ini akan dicantumkan otomatis ke dalam script agar tidak tertukar dengan akun lain.
+                  {isEn
+                    ? "This nickname will be embedded into the script to prevent multi-account conflicts."
+                    : "Nama ini akan dicantumkan otomatis ke dalam script agar tidak tertukar dengan akun lain."}
                 </p>
               )}
 
               {/* Quick Suggestions Chips */}
               <div className="pt-2">
                 <span className="text-[10px] text-text-secondary/70 block mb-1.5">
-                  Inspirasi nama cepat:
+                  {isEn ? "Quick nickname suggestions:" : "Inspirasi nama cepat:"}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {nameSuggestions.map((suggestion) => {
@@ -530,10 +535,12 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-lg text-[11px] space-y-1">
                     <div className="flex items-center gap-1.5 font-medium text-accent">
                       <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span>Smart Mobile Sync (Bisa Langsung dari iPhone & HP)</span>
+                      <span>{isEn ? "Smart Mobile Sync (Direct from iPhone & Android)" : "Smart Mobile Sync (Bisa Langsung dari iPhone & HP)"}</span>
                     </div>
                     <p className="text-text-secondary leading-relaxed">
-                      Script ini berjalan langsung di dalam tab YouTube Music HP Anda, menggunakan sesi terautentikasi browser untuk mengambil playlist dan lagu pilihan secara otomatis tanpa kendala HttpOnly.
+                      {isEn
+                        ? "This script executes directly within your mobile YouTube Music browser tab, reading authorized sessions and playlists seamlessly without HttpOnly issues."
+                        : "Script ini berjalan langsung di dalam tab YouTube Music HP Anda, menggunakan sesi terautentikasi browser untuk mengambil playlist dan lagu pilihan secara otomatis tanpa kendala HttpOnly."}
                     </p>
                   </div>
                 )}
@@ -548,20 +555,20 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                     {bookmarkletCopied === "copied" ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-status-success" />
-                        <span className="text-status-success font-semibold">Tersalin ke Clipboard!</span>
+                        <span className="text-status-success font-semibold">{isEn ? "Copied to Clipboard!" : "Tersalin ke Clipboard!"}</span>
                       </>
                     ) : bookmarkletCopied === "selected" ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-accent" />
-                        <span className="text-accent font-semibold">Teks Terpilih (Tap Salin)</span>
+                        <span className="text-accent font-semibold">{isEn ? "Text Selected (Tap Copy)" : "Teks Terpilih (Tap Salin)"}</span>
                       </>
                     ) : (
                       <>
                         <Copy className="w-3.5 h-3.5 text-text-secondary" />
                         <span>
                           {scriptFormat === "bookmarklet"
-                            ? "Salin Kode Bookmarklet"
-                            : "Salin Script Console"}
+                            ? t("modal.copyBookmarklet")
+                            : t("modal.copyConsole")}
                         </span>
                       </>
                     )}
@@ -573,9 +580,9 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                         if (!e.metaKey && !e.ctrlKey) e.preventDefault();
                       }}
                       className="hidden md:flex py-2 px-3 rounded-lg bg-surface-elevated hover:bg-surface-hover text-text-primary text-xs font-medium border border-border items-center gap-1.5 cursor-grab active:cursor-grabbing"
-                      title="Tarik tombol ini ke Bookmarks Bar browser laptop/PC Anda"
+                      title={isEn ? "Drag this button to your desktop browser's Bookmarks Bar" : "Tarik tombol ini ke Bookmarks Bar browser laptop/PC Anda"}
                     >
-                      <span>Tarik ke Bookmark Bar</span>
+                      <span>{isEn ? "Drag to Bookmarks Bar" : "Tarik ke Bookmark Bar"}</span>
                     </a>
                   )}
                   <a
@@ -584,7 +591,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                     rel="noreferrer"
                     className="py-2 px-3 rounded-lg bg-accent/15 hover:bg-accent/25 text-accent text-xs font-medium border border-accent/20 flex items-center gap-1.5 btn-press transition-colors"
                   >
-                    <span>Buka Web</span>
+                    <span>{t("modal.openWeb")}</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
@@ -624,13 +631,14 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Terminal className="w-4 h-4 text-accent" />
                   <h4 className="text-xs font-semibold text-text-primary">
-                    Perintah Terminal NPM (Multi-Akun Otomatis)
+                    {isEn ? "Terminal CLI Command (Automated Multi-Account)" : "Perintah Terminal NPM (Multi-Akun Otomatis)"}
                   </h4>
                 </div>
                 <p className="text-[11px] text-text-secondary leading-relaxed">
-                  Jalankan perintah ini di terminal. Profil Chrome terisolasi akan dibuka otomatis
-                  dan sesi login langsung didaftarkan sebagai akun{" "}
-                  <strong>&quot;{trimmedAlias}&quot;</strong> ke domain{" "}
+                  {isEn
+                    ? "Run this command in terminal. An isolated browser profile will launch, and your login session will be registered as account "
+                    : "Jalankan perintah ini di terminal. Profil Chrome terisolasi akan dibuka otomatis dan sesi login langsung didaftarkan sebagai akun "}
+                  <strong>&quot;{trimmedAlias}&quot;</strong> {isEn ? "to host " : "ke domain "}
                   <code className="text-text-primary font-mono">{origin}</code>.
                 </p>
                 <div
@@ -656,12 +664,12 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   {copiedCli ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-status-success" />
-                      <span>Perintah Berhasil Disalin!</span>
+                      <span>{isEn ? "Command Copied!" : "Perintah Berhasil Disalin!"}</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5 text-text-secondary" />
-                      <span>Salin Perintah Terminal</span>
+                      <span>{t("modal.copyCli")}</span>
                     </>
                   )}
                 </button>
@@ -678,7 +686,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                     </label>
                     <textarea
                       rows={3}
-                      placeholder="Tempel header Cookie dari DevTools Network (harus mengandung SAPISID atau __Secure-3PAPISID)"
+                      placeholder={isEn ? "Paste Cookie header from DevTools Network (must include SAPISID or __Secure-3PAPISID)" : "Tempel header Cookie dari DevTools Network (harus mengandung SAPISID atau __Secure-3PAPISID)"}
                       value={cookieString}
                       onChange={(e) => setCookieString(e.target.value)}
                       className="w-full p-2.5 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
@@ -692,7 +700,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                       </label>
                       <textarea
                         rows={2}
-                        placeholder="Tempel media-user-token dari cookie atau localStorage music.apple.com"
+                        placeholder={isEn ? "Paste media-user-token from cookie or localStorage on music.apple.com" : "Tempel media-user-token dari cookie atau localStorage music.apple.com"}
                         value={musicUserToken}
                         onChange={(e) => setMusicUserToken(e.target.value)}
                         className="w-full p-2.5 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
@@ -700,11 +708,11 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                     </div>
                     <div className="space-y-1">
                       <label className="text-[11px] font-medium text-text-secondary">
-                        Developer Token (Opsional)
+                        {isEn ? "Developer Token (Optional)" : "Developer Token (Opsional)"}
                       </label>
                       <input
                         type="text"
-                        placeholder="Gunakan token internal jika dikosongkan"
+                        placeholder={isEn ? "Defaults to internal developer token if empty" : "Gunakan token internal jika dikosongkan"}
                         value={developerToken}
                         onChange={(e) => setDeveloperToken(e.target.value)}
                         className="w-full p-2 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
@@ -719,8 +727,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   className="w-full py-2 rounded-lg bg-accent text-background font-medium text-xs hover:bg-accent/90 disabled:opacity-50 btn-press"
                 >
                   {isSubmitting
-                    ? "Menyimpan Koneksi..."
-                    : `Simpan Akun "${trimmedAlias}"`}
+                    ? t("modal.saving")
+                    : t("modal.saveAccount", { alias: trimmedAlias })}
                 </button>
               </form>
             )}
@@ -733,7 +741,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 className="text-xs text-text-secondary hover:text-text-primary flex items-center gap-1.5 btn-press transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Kembali ke Ganti Nama</span>
+                <span>{isEn ? "Back to Account Name" : "Kembali ke Ganti Nama"}</span>
               </button>
             </div>
           </div>
@@ -743,7 +751,9 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
         <div className="flex items-start gap-1.5 text-[10px] text-text-secondary/70 pt-1">
           <Info className="w-3 h-3 flex-shrink-0 mt-0.5 text-text-secondary" />
           <span>
-            Sesi disimpan 100% lokal di folder data host instalasi Anda. Tidak ada data yang dikirim ke cloud pengembang.
+            {isEn
+              ? "Sessions are stored 100% locally in your host data folder. No data is ever transmitted to any developer cloud."
+              : "Sesi disimpan 100% lokal di folder data host instalasi Anda. Tidak ada data yang dikirim ke cloud pengembang."}
           </span>
         </div>
       </div>

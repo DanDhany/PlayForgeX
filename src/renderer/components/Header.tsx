@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Disc3, LogIn, LogOut, RefreshCw, Layers, ListMusic, ChevronDown, X, Sparkles } from "lucide-react";
 import { ServiceAuthStatus, User } from "../../shared/types";
 import { UserProfileMenu } from "./auth/UserProfileMenu";
+import { useLanguage } from "../context/LanguageContext";
 
 interface HeaderProps {
   authStatus: ServiceAuthStatus;
@@ -38,6 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAuth,
   onUserLogout,
 }) => {
+  const { t } = useLanguage();
   const [isAccountsMenuOpen, setIsAccountsMenuOpen] = useState(false);
 
   const bothConnected = authStatus.youtube.connected && authStatus.apple.connected;
@@ -107,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
                 <button
                   onClick={() => onLogout("youtube")}
-                  title="Disconnect YouTube Music"
+                  title={t("header.disconnectYt")}
                   className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-white/[0.06] transition btn-press"
                 >
                   <LogOut className="w-3 h-3" />
@@ -120,7 +122,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="ml-2 px-2 py-0.5 bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 rounded text-[11px] font-medium flex items-center gap-1 btn-press transition"
               >
                 {isLoadingYt ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <LogIn className="w-2.5 h-2.5" />}
-                <span>Login</span>
+                <span>{t("auth.login")}</span>
               </button>
             )}
           </div>
@@ -140,7 +142,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
                 <button
                   onClick={() => onLogout("apple")}
-                  title="Disconnect Apple Music"
+                  title={t("header.disconnectApple")}
                   className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-white/[0.06] transition btn-press"
                 >
                   <LogOut className="w-3 h-3" />
@@ -153,7 +155,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="ml-2 px-2 py-0.5 bg-primary/15 hover:bg-primary/25 text-rose-300 border border-primary/30 rounded text-[11px] font-medium flex items-center gap-1 btn-press transition"
               >
                 {isLoadingApple ? <RefreshCw className="w-2.5 h-2.5 animate-spin" /> : <LogIn className="w-2.5 h-2.5" />}
-                <span>Login</span>
+                <span>{t("auth.login")}</span>
               </button>
             )}
           </div>
@@ -161,11 +163,11 @@ export const Header: React.FC<HeaderProps> = ({
           {onOpenLanding && (
             <button
               onClick={onOpenLanding}
-              title="Buka Landing Page TuneBridge"
+              title={t("app.about")}
               className="px-2.5 py-1 rounded-lg bg-card border border-white/[0.08] text-xs text-slate-300 hover:text-white hover:border-white/[0.2] btn-press transition flex items-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5 text-accent" />
-              <span>Tentang</span>
+              <span>{t("header.about")}</span>
             </button>
           )}
 
@@ -205,7 +207,7 @@ export const Header: React.FC<HeaderProps> = ({
               <span className={`w-2 h-2 rounded-full border border-surface ${authStatus.youtube.connected ? "bg-red-500" : "bg-slate-600"}`} />
               <span className={`w-2 h-2 rounded-full border border-surface ${authStatus.apple.connected ? "bg-primary" : "bg-slate-600"}`} />
             </div>
-            <span className="text-[11px] font-medium">Akun</span>
+            <span className="text-[11px] font-medium">{t("header.accounts")}</span>
             <ChevronDown className="w-3 h-3 text-slate-400" />
           </button>
         </div>
@@ -223,7 +225,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto -mt-2 mb-2" />
 
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white">Status Koneksi Layanan</h3>
+              <h3 className="text-sm font-semibold text-white">{t("header.connectionStatus")}</h3>
               <button
                 onClick={() => setIsAccountsMenuOpen(false)}
                 className="p-1 text-slate-400 hover:text-white rounded-lg"
@@ -241,8 +243,8 @@ export const Header: React.FC<HeaderProps> = ({
                     <h4 className="text-xs font-semibold text-white">YouTube Music</h4>
                     <p className="text-[11px] text-slate-400">
                       {authStatus.youtube.connected
-                        ? `${authStatus.youtube.playlistCount || 0} playlist terdeteksi`
-                        : "Belum terhubung"}
+                        ? `${authStatus.youtube.playlistCount || 0} ${t("header.detected")}`
+                        : t("header.notConnected")}
                     </p>
                   </div>
                 </div>
@@ -254,7 +256,7 @@ export const Header: React.FC<HeaderProps> = ({
                     }}
                     className="px-2.5 py-1 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg btn-press"
                   >
-                    Logout
+                    {t("auth.logout")}
                   </button>
                 ) : (
                   <button
@@ -265,7 +267,7 @@ export const Header: React.FC<HeaderProps> = ({
                     disabled={isLoadingYt}
                     className="px-3 py-1.5 text-xs text-white bg-red-600 rounded-lg font-medium btn-press"
                   >
-                    {isLoadingYt ? "Menghubungkan..." : "Login"}
+                    {isLoadingYt ? t("header.connecting") : t("auth.login")}
                   </button>
                 )}
               </div>
@@ -278,8 +280,8 @@ export const Header: React.FC<HeaderProps> = ({
                     <h4 className="text-xs font-semibold text-white">Apple Music</h4>
                     <p className="text-[11px] text-slate-400">
                       {authStatus.apple.connected
-                        ? `${authStatus.apple.playlistCount || 0} playlist terdeteksi`
-                        : "Belum terhubung"}
+                        ? `${authStatus.apple.playlistCount || 0} ${t("header.detected")}`
+                        : t("header.notConnected")}
                     </p>
                   </div>
                 </div>
@@ -291,7 +293,7 @@ export const Header: React.FC<HeaderProps> = ({
                     }}
                     className="px-2.5 py-1 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg btn-press"
                   >
-                    Logout
+                    {t("auth.logout")}
                   </button>
                 ) : (
                   <button
@@ -302,7 +304,7 @@ export const Header: React.FC<HeaderProps> = ({
                     disabled={isLoadingApple}
                     className="px-3 py-1.5 text-xs text-white bg-primary rounded-lg font-medium btn-press"
                   >
-                    {isLoadingApple ? "Menghubungkan..." : "Login"}
+                    {isLoadingApple ? t("header.connecting") : t("auth.login")}
                   </button>
                 )}
               </div>
@@ -316,7 +318,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="w-full py-2 bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 btn-press"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Refresh Status Koneksi</span>
+              <span>{t("header.refreshStatus")}</span>
             </button>
           </div>
         </div>

@@ -137,7 +137,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     {pl.title}
                   </h4>
                   <div className="text-[11px] text-text-secondary flex items-center gap-1.5 mt-0.5">
-                    <span>{pl.trackCount !== undefined ? `${pl.trackCount} tracks` : "—"}</span>
+                    <span>{pl.trackCount !== undefined ? t("library.tracksCount", { count: pl.trackCount }) : "—"}</span>
                     {pl.accountAlias && (
                       <>
                         <span>•</span>

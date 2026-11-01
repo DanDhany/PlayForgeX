@@ -9,8 +9,10 @@ import {
 } from "lucide-react";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { formatSeconds } from "../utils/ui-helpers";
+import { useLanguage } from "../context/LanguageContext";
 
 export const MusicPlayerBar: React.FC = () => {
+  const { t } = useLanguage();
   const {
     currentTrack,
     isPlaying,
@@ -96,7 +98,7 @@ export const MusicPlayerBar: React.FC = () => {
             <button
               onClick={() => togglePlay()}
               className="w-8 h-8 rounded-full bg-accent text-background flex items-center justify-center shadow-md btn-press hover:scale-105 active:scale-95 transition-transform"
-              title={isPlaying ? "Jeda (Pause)" : "Putar (Play)"}
+              title={isPlaying ? t("player.pause") : t("player.play")}
             >
               {isPlaying ? (
                 <Pause className="w-4 h-4 fill-background" />
@@ -110,7 +112,7 @@ export const MusicPlayerBar: React.FC = () => {
               <button
                 onClick={toggleMute}
                 className="p-1.5 text-text-secondary hover:text-text-primary rounded-lg transition-colors btn-press"
-                title={isMuted ? "Bunyikan" : "Bisukan"}
+                title={isMuted ? t("player.unmute") : t("player.mute")}
               >
                 {isMuted || volume === 0 ? (
                   <VolumeX className="w-4 h-4 text-status-danger" />
@@ -134,7 +136,7 @@ export const MusicPlayerBar: React.FC = () => {
             <button
               onClick={stop}
               className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-white/10 rounded-lg transition-colors btn-press"
-              title="Tutup Pemutar"
+              title={t("player.closePlayer")}
             >
               <X className="w-4 h-4" />
             </button>
@@ -152,7 +154,7 @@ export const MusicPlayerBar: React.FC = () => {
             onClick={handleSeekClick}
             onTouchMove={handleTouchMove}
             className="flex-1 h-3 flex items-center cursor-pointer relative group"
-            title="Geser timeline lagu"
+            title={t("player.scrubTimeline")}
           >
             <div className="w-full h-1 group-hover:h-1.5 bg-white/15 rounded-full overflow-hidden transition-all duration-150 relative">
               <div

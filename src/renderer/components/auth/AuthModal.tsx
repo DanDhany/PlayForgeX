@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { User } from "../../../shared/types";
+import { useLanguage } from "../../context/LanguageContext";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -30,6 +31,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const { t, lang } = useLanguage();
+  const isEn = lang === "en";
   const [tab, setTab] = useState<"login" | "register">(initialTab);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -87,7 +90,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || (tab === "login" ? "Gagal masuk" : "Gagal mendaftar"));
+        throw new Error(
+          data.error ||
+            (lang === "en"
+              ? tab === "login"
+                ? "Sign in failed"
+                : "Registration failed"
+              : tab === "login"
+              ? "Gagal masuk"
+              : "Gagal mendaftar")
+        );
       }
 
       if (data.token) {
@@ -98,11 +110,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onAuthSuccess(data.user, data.token);
       onClose();
     } catch (err: any) {
-      let friendlyError = err.message || "Terjadi kesalahan saat memproses permintaan.";
+      let friendlyError =
+        err.message ||
+        (lang === "en"
+          ? "An unexpected error occurred while processing your request."
+          : "Terjadi kesalahan saat memproses permintaan.");
       if (friendlyError.includes("already taken") || friendlyError.includes("ER_DUP_ENTRY")) {
-        friendlyError = `Username "${cleanUsername}" sudah digunakan. Silakan pilih username lain atau masuk.`;
+        friendlyError =
+          lang === "en"
+            ? `Username "${cleanUsername}" is already taken. Please choose another username or sign in.`
+            : `Username "${cleanUsername}" sudah digunakan. Silakan pilih username lain atau masuk.`;
       } else if (friendlyError.includes("Invalid username or password")) {
-        friendlyError = "Username atau kata sandi tidak sesuai.";
+        friendlyError =
+          lang === "en"
+            ? "Invalid username or password."
+            : "Username atau kata sandi tidak sesuai.";
       }
       setErrorMessage(friendlyError);
     } finally {
@@ -126,12 +148,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-semibold text-text-primary tracking-tight">
-                {tab === "login" ? "Masuk ke TuneBridge" : "Buat Akun TuneBridge"}
+                {tab === "login" ? (isEn ? "Sign In to TuneBridge" : "Masuk ke TuneBridge") : (isEn ? "Create TuneBridge Account" : "Buat Akun TuneBridge")}
               </h3>
               <p className="text-[11px] text-text-secondary">
                 {tab === "login"
-                  ? "Akses koleksi playlist dan multi-akun Anda"
-                  : "Simpan riwayat transfer dan akun Anda"}
+                  ? (isEn ? "Access your playlists and connected accounts" : "Akses koleksi playlist dan multi-akun Anda")
+                  : (isEn ? "Safely persist your transfer history and vaults" : "Simpan riwayat transfer dan akun Anda")}
               </p>
             </div>
           </div>
@@ -156,7 +178,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               }`}
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>Masuk</span>
+              <span>{t("auth.login")}</span>
             </button>
             <button
               type="button"
@@ -168,7 +190,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               }`}
             >
               <UserPlus className="w-3.5 h-3.5" />
-              <span>Daftar Akun</span>
+              <span>{t("auth.register")}</span>
             </button>
           </div>
         </div>
@@ -186,7 +208,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-text-secondary flex items-center justify-between">
               <span>Username</span>
-              <span className="text-[10px] text-text-secondary/70">Min. 3 karakter</span>
+              <span className="text-[10px] text-text-secondary/70">{isEn ? "Min. 3 characters" : "Min. 3 karakter"}</span>
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-secondary">
@@ -196,7 +218,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="misal: alex_music"
+                placeholder={isEn ? "e.g. alex_music" : "misal: alex_music"}
                 autoCapitalize="none"
                 autoCorrect="off"
                 required
@@ -208,8 +230,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {/* Password Input */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-text-secondary flex items-center justify-between">
-              <span>Kata Sandi</span>
-              <span className="text-[10px] text-text-secondary/70">Min. 6 karakter</span>
+              <span>{isEn ? "Password" : "Kata Sandi"}</span>
+              <span className="text-[10px] text-text-secondary/70">{isEn ? "Min. 6 characters" : "Min. 6 karakter"}</span>
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-secondary">
@@ -237,10 +259,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {tab === "register" && (
             <div className="space-y-1.5 animate-dialog-in">
               <label className="text-xs font-medium text-text-secondary flex items-center justify-between">
-                <span>Ulangi Kata Sandi</span>
+                <span>{t("auth.confirmPassword")}</span>
                 {confirmPassword && password === confirmPassword && (
                   <span className="text-[10px] text-status-success flex items-center gap-1 font-medium">
-                    <CheckCircle2 className="w-3 h-3" /> Cocok
+                    <CheckCircle2 className="w-3 h-3" /> {isEn ? "Match" : "Cocok"}
                   </span>
                 )}
               </label>
@@ -271,7 +293,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div className="p-3 rounded-xl bg-surface-elevated/60 border border-border/80 flex items-start gap-2.5 text-[11px] text-text-secondary">
             <ShieldCheck className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              Kata sandi dienkripsi menggunakan scrypt dengan garam kriptografis unik. Data akun disimpan aman di server lokal.
+              {lang === "en"
+                ? "Passwords are cryptographically salted and hashed. Account data remains safe in your local server."
+                : "Kata sandi dienkripsi menggunakan scrypt dengan garam kriptografis unik. Data akun disimpan aman di server lokal."}
             </p>
           </div>
 

@@ -72,12 +72,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || (tab === "login" ? "Gagal masuk" : "Gagal mendaftar"));
+        throw new Error(
+          data.error ||
+            (lang === "en"
+              ? tab === "login"
+                ? "Sign in failed"
+                : "Registration failed"
+              : tab === "login"
+              ? "Gagal masuk"
+              : "Gagal mendaftar")
+        );
       }
 
       onLoginSuccess(data.user, data.token);
     } catch (err: any) {
-      setErrorMessage(err.message || "Terjadi kesalahan. Silakan coba lagi.");
+      setErrorMessage(
+        err.message ||
+          (lang === "en"
+            ? "An unexpected error occurred. Please try again."
+            : "Terjadi kesalahan. Silakan coba lagi.")
+      );
     } finally {
       setIsLoading(false);
     }

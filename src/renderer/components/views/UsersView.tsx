@@ -46,7 +46,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ currentUser }) => {
       }
       setUsers(data.users || []);
     } catch (err: any) {
-      setErrorBanner(err.message || "Gagal memuat daftar pengguna");
+      setErrorBanner(err.message || (isEn ? "Failed to load user list" : "Gagal memuat daftar pengguna"));
     } finally {
       setIsLoading(false);
     }
