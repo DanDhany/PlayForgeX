@@ -7,7 +7,11 @@ interface TrackRowProps {
   item: TransferTrackItem;
   index: number;
   playingPreviewId: string | null;
-  onTogglePlayPreview: (previewUrl: string, trackId: string) => void;
+  onTogglePlayPreview: (
+    previewUrl: string,
+    trackId: string,
+    metadata?: { title: string; artist: string; artworkUrl?: string }
+  ) => void;
   onOpenAlternativePicker: (item: TransferTrackItem) => void;
   onToggleExclude: (item: TransferTrackItem) => void;
 }
@@ -121,7 +125,13 @@ export const TrackRow: React.FC<TrackRowProps> = ({
 
                 {selectedCandidate.previewUrl && (
                   <button
-                    onClick={() => onTogglePlayPreview(selectedCandidate.previewUrl!, selectedCandidate.id)}
+                    onClick={() =>
+                      onTogglePlayPreview(selectedCandidate.previewUrl!, selectedCandidate.id, {
+                        title: selectedCandidate.name,
+                        artist: selectedCandidate.artistName,
+                        artworkUrl: selectedCandidate.artworkUrl || source.thumbnailUrl,
+                      })
+                    }
                     title={isPlaying ? "Jeda cuplikan lagu" : "Putar cuplikan 30s"}
                     className={`absolute inset-0 flex items-center justify-center transition-opacity btn-press ${
                       isPlaying
@@ -189,7 +199,13 @@ export const TrackRow: React.FC<TrackRowProps> = ({
 
           {selectedCandidate?.previewUrl && (
             <button
-              onClick={() => onTogglePlayPreview(selectedCandidate.previewUrl!, selectedCandidate.id)}
+              onClick={() =>
+                onTogglePlayPreview(selectedCandidate.previewUrl!, selectedCandidate.id, {
+                  title: selectedCandidate.name,
+                  artist: selectedCandidate.artistName,
+                  artworkUrl: selectedCandidate.artworkUrl || source.thumbnailUrl,
+                })
+              }
               className={`absolute inset-0 flex items-center justify-center transition-colors ${
                 isPlaying ? "bg-black/70" : "bg-black/40"
               }`}

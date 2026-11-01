@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import {
   ArrowRight,
   Disc3,
@@ -18,6 +18,7 @@ import {
   calculateMatchStats,
 } from "../utils/ui-helpers";
 import { TrackRow } from "./TrackRow";
+import { useAudioPlayer } from "../context/AudioPlayerContext";
 
 interface ReviewStudioProps {
   selectedPlaylist: PlaylistSummary | null;
@@ -50,8 +51,8 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
 }) => {
   const [filter, setFilter] = useState<FilterTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [playingPreviewId, setPlayingPreviewId] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { currentTrack, isPlaying, togglePlay } = useAudioPlayer();
+  const playingPreviewId = isPlaying && currentTrack ? currentTrack.id : null;
 
   const stats = calculateMatchStats(items);
 
@@ -67,20 +68,18 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
     return sourceMatch || targetMatch;
   });
 
-  const handleTogglePlayPreview = (previewUrl: string, trackId: string) => {
-    if (playingPreviewId === trackId) {
-      audioRef.current?.pause();
-      setPlayingPreviewId(null);
-    } else {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      const audio = new Audio(previewUrl);
-      audio.play();
-      audio.onended = () => setPlayingPreviewId(null);
-      audioRef.current = audio;
-      setPlayingPreviewId(trackId);
-    }
+  const handleTogglePlayPreview = (
+    previewUrl: string,
+    trackId: string,
+    metadata?: { title: string; artist: string; artworkUrl?: string }
+  ) => {
+    togglePlay({
+      id: trackId,
+      previewUrl,
+      title: metadata?.title || "Audio Preview",
+      artist: metadata?.artist || "Apple Music",
+      artworkUrl: metadata?.artworkUrl,
+    });
   };
 
   const handleToggleSelectAll = (select: boolean) => {

@@ -10,6 +10,7 @@ import { AddAccountModal } from "./components/AddAccountModal";
 import { AlternativePickerModal } from "./components/AlternativePickerModal";
 import { ExportModal } from "./components/ExportModal";
 import { TransferProgressModal } from "./components/TransferProgressModal";
+import { MusicPlayerBar } from "./components/MusicPlayerBar";
 import {
   AccountConnection,
   ActivityLogItem,
@@ -504,6 +505,9 @@ export const App: React.FC = () => {
         job={transferJob}
         onClose={() => setTransferJob(null)}
       />
+
+      {/* Floating Apple Music x Linear Music Player Controller */}
+      <MusicPlayerBar />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, Search, Disc, Play, Pause, Check, RefreshCw } from "lucide-react";
 import { TransferTrackItem, AppleMusicTrack } from "../../shared/types";
 import { formatMillis } from "../utils/ui-helpers";
+import { useAudioPlayer } from "../context/AudioPlayerContext";
 
 interface AlternativePickerModalProps {
   item: TransferTrackItem | null;
@@ -23,16 +24,11 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
   const [query, setQuery] = useState(item.sanitizedTitle.originalTitle || item.source.title);
   const [results, setResults] = useState<AppleMusicTrack[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [playingPreviewId, setPlayingPreviewId] = useState<string | null>(null);
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const { currentTrack, isPlaying, togglePlay } = useAudioPlayer();
+  const playingPreviewId = isPlaying && currentTrack ? currentTrack.id : null;
 
   useEffect(() => {
     handleSearch();
-    return () => {
-      if (audioElement) {
-        audioElement.pause();
-      }
-    };
   }, []);
 
   const handleSearch = async (overrideQuery?: string) => {
@@ -49,22 +45,15 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
     }
   };
 
-  const handleTogglePlay = (previewUrl?: string, trackId?: string) => {
-    if (!previewUrl || !trackId) return;
-
-    if (playingPreviewId === trackId) {
-      audioElement?.pause();
-      setPlayingPreviewId(null);
-    } else {
-      if (audioElement) {
-        audioElement.pause();
-      }
-      const audio = new Audio(previewUrl);
-      audio.play();
-      audio.onended = () => setPlayingPreviewId(null);
-      setAudioElement(audio);
-      setPlayingPreviewId(trackId);
-    }
+  const handleTogglePlay = (candidate: AppleMusicTrack) => {
+    if (!candidate.previewUrl) return;
+    togglePlay({
+      id: candidate.id,
+      previewUrl: candidate.previewUrl,
+      title: candidate.name,
+      artist: candidate.artistName,
+      artworkUrl: candidate.artworkUrl,
+    });
   };
 
   const platformTitle = targetPlatform === "youtube" ? "YouTube Music" : "Apple Music";
@@ -72,13 +61,7 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4">
       {/* Backdrop click to close */}
-      <div
-        className="fixed inset-0 -z-10"
-        onClick={() => {
-          if (audioElement) audioElement.pause();
-          onClose();
-        }}
-      />
+      <div className="fixed inset-0 -z-10" onClick={onClose} />
 
       {/* Modal / Bottom Sheet Box */}
       <div className="bg-surface border-t md:border border-border rounded-t-3xl md:rounded-2xl w-full max-w-2xl max-h-[90dvh] md:max-h-[82dvh] flex flex-col shadow-2xl overflow-hidden animate-sheet-up md:animate-dialog-in pb-safe">
@@ -96,10 +79,7 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
             </p>
           </div>
           <button
-            onClick={() => {
-              if (audioElement) audioElement.pause();
-              onClose();
-            }}
+            onClick={onClose}
             className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover btn-press transition-colors"
           >
             <X className="w-4 h-4" />
@@ -190,7 +170,7 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
           ) : (
             results.map((candidate) => {
               const isSelected = item.selectedCandidate?.id === candidate.id;
-              const isPlaying = playingPreviewId === candidate.id;
+              const isCandidatePlaying = playingPreviewId === candidate.id;
 
               return (
                 <div
@@ -216,14 +196,14 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
 
                       {candidate.previewUrl && (
                         <button
-                          onClick={() => handleTogglePlay(candidate.previewUrl, candidate.id)}
+                          onClick={() => handleTogglePlay(candidate)}
                           className={`absolute inset-0 flex items-center justify-center transition ${
-                            isPlaying
+                            isCandidatePlaying
                               ? "bg-black/75 opacity-100"
                               : "bg-black/60 opacity-0 group-hover/can:opacity-100"
                           }`}
                         >
-                          {isPlaying ? (
+                          {isCandidatePlaying ? (
                             <Pause className="w-3.5 h-3.5 text-accent" />
                           ) : (
                             <Play className="w-3.5 h-3.5 text-white fill-white ml-0.5" />
@@ -254,7 +234,6 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
                   {/* Select CTA */}
                   <button
                     onClick={() => {
-                      if (audioElement) audioElement.pause();
                       onSelectAlternative(item, candidate);
                       onClose();
                     }}
