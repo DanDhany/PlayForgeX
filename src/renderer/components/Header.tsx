@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Disc3, LogIn, LogOut, RefreshCw, Layers, ListMusic, ChevronDown, X } from "lucide-react";
+import { Disc3, LogIn, LogOut, RefreshCw, Layers, ListMusic, ChevronDown, X, Sparkles } from "lucide-react";
 import { ServiceAuthStatus } from "../../shared/types";
 
 interface HeaderProps {
@@ -10,6 +10,7 @@ interface HeaderProps {
   onLoginApple: () => void;
   onLogout: (service: "youtube" | "apple") => void;
   onRefresh: () => void;
+  onOpenLanding?: () => void;
   onToggleMobileDrawer?: () => void;
   activeMobileTab?: "playlists" | "review";
   onChangeMobileTab?: (tab: "playlists" | "review") => void;
@@ -25,6 +26,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLoginApple,
   onLogout,
   onRefresh,
+  onOpenLanding,
   activeMobileTab = "playlists",
   onChangeMobileTab,
   matchedCount = 0,
@@ -148,6 +150,17 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
           </div>
+
+          {onOpenLanding && (
+            <button
+              onClick={onOpenLanding}
+              title="Buka Landing Page TuneBridge"
+              className="px-2.5 py-1 rounded-lg bg-card border border-white/[0.08] text-xs text-slate-300 hover:text-white hover:border-white/[0.2] btn-press transition flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-accent" />
+              <span>Tentang</span>
+            </button>
+          )}
 
           <button
             onClick={onRefresh}

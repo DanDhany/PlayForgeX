@@ -8,6 +8,7 @@ import {
   Settings,
   Disc3,
   Server,
+  Sparkles,
 } from "lucide-react";
 
 export type NavTab = "overview" | "transfer" | "library" | "accounts" | "activity" | "settings";
@@ -16,12 +17,14 @@ interface NavigationRailProps {
   activeTab: NavTab;
   onChangeTab: (tab: NavTab) => void;
   connectedCount: number;
+  onOpenLanding?: () => void;
 }
 
 export const NavigationRail: React.FC<NavigationRailProps> = ({
   activeTab,
   onChangeTab,
   connectedCount,
+  onOpenLanding,
 }) => {
   const desktopNavItems: { id: NavTab; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -97,6 +100,23 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
                 </button>
               );
             })}
+
+            {onOpenLanding && (
+              <div className="pt-2 mt-2 border-t border-border/50">
+                <button
+                  onClick={onOpenLanding}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors btn-press group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
+                    <span>Tentang TuneBridge</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-accent/10 text-accent font-medium border border-accent/20">
+                    Landing
+                  </span>
+                </button>
+              </div>
+            )}
           </nav>
         </div>
 
@@ -124,6 +144,16 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onOpenLanding && (
+            <button
+              onClick={onOpenLanding}
+              className="p-1.5 rounded-lg border bg-surface-elevated border-border text-text-secondary hover:text-accent btn-press transition-colors"
+              title="Tentang TuneBridge / Landing Page"
+            >
+              <Sparkles className="w-4 h-4 text-accent" />
+            </button>
+          )}
+
           <button
             onClick={() => onChangeTab("accounts")}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-[11px] text-text-secondary font-mono btn-press"

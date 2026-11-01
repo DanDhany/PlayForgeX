@@ -11,6 +11,7 @@ import { AlternativePickerModal } from "./components/AlternativePickerModal";
 import { ExportModal } from "./components/ExportModal";
 import { TransferProgressModal } from "./components/TransferProgressModal";
 import { MusicPlayerBar } from "./components/MusicPlayerBar";
+import { LandingPage } from "./components/landing/LandingPage";
 import {
   AccountConnection,
   ActivityLogItem,
@@ -22,6 +23,11 @@ import {
 } from "../shared/types";
 
 export const App: React.FC = () => {
+  const [viewMode, setViewMode] = useState<"studio" | "landing">(() => {
+    return typeof window !== "undefined" && window.location.hash.startsWith("#landing")
+      ? "landing"
+      : "studio";
+  });
   const [activeTab, setActiveTab] = useState<NavTab>("overview");
   const [accounts, setAccounts] = useState<AccountConnection[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>([]);
@@ -82,6 +88,31 @@ export const App: React.FC = () => {
       window.history.replaceState(null, "", window.location.pathname);
     }
   }, []);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith("#landing")) {
+        setViewMode("landing");
+      } else if (hash.startsWith("#studio") || !hash) {
+        setViewMode("studio");
+      }
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  const handleOpenStudio = () => {
+    setViewMode("studio");
+    if (window.location.hash.startsWith("#landing")) {
+      window.history.pushState(null, "", window.location.pathname);
+    }
+  };
+
+  const handleOpenLanding = () => {
+    setViewMode("landing");
+    window.location.hash = "#landing";
+  };
 
   const loadAccounts = async () => {
     try {
@@ -406,6 +437,10 @@ export const App: React.FC = () => {
   const currentSourcePlatform = currentSourcePl?.platform || "youtube";
   const currentTargetPlatform = currentSourcePlatform === "youtube" ? "apple" : "youtube";
 
+  if (viewMode === "landing") {
+    return <LandingPage onOpenStudio={handleOpenStudio} />;
+  }
+
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] w-full bg-background overflow-hidden text-text-primary font-sans selection:bg-accent selection:text-background">
       {/* Linear-Style Navigation Rail on Desktop & Mobile Tabbar */}
@@ -413,6 +448,7 @@ export const App: React.FC = () => {
         activeTab={activeTab}
         onChangeTab={setActiveTab}
         connectedCount={accounts.length}
+        onOpenLanding={handleOpenLanding}
       />
 
       {/* Main Content Pane */}
