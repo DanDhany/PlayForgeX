@@ -184,20 +184,33 @@ export class AccountManager {
       throw new Error("Cookie must contain valid SAPISID or __Secure-3PAPISID");
     }
 
-    // Verify by fetching playlists
-    const playlists = await client.fetchPlaylists();
+    // Verify by fetching playlists if possible
+    let playlistCount = 0;
+    try {
+      const playlists = await client.fetchPlaylists();
+      playlistCount = playlists.length;
+    } catch (err: any) {
+      console.warn("[AccountManager] Playlist fetch check warning:", err?.message);
+    }
 
-    const id = `acc_ytm_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
-    const localAlias = alias?.trim() || `YouTube Music (${playlists.length} lagu)`;
+    // Reuse existing account if matching alias already exists, otherwise generate unique id
+    const existing = alias?.trim()
+      ? Array.from(this.accounts.values()).find(
+          (a) => a.platform === "youtube" && a.localAlias.toLowerCase() === alias.trim().toLowerCase()
+        )
+      : undefined;
+
+    const id = existing ? existing.id : `acc_ytm_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+    const localAlias = alias?.trim() || existing?.localAlias || (playlistCount > 0 ? `YouTube Music (${playlistCount} lagu)` : "YouTube Music");
 
     const acc: AccountConnection = {
       id,
       platform: "youtube",
       localAlias,
       status: "connected",
-      createdAt: Date.now(),
+      createdAt: existing ? existing.createdAt : Date.now(),
       lastVerifiedAt: Date.now(),
-      playlistCount: playlists.length,
+      playlistCount,
     };
 
     this.accounts.set(id, acc);
@@ -230,8 +243,14 @@ export class AccountManager {
       count = pl.length;
     } catch {}
 
-    const id = `acc_apple_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
-    const localAlias = alias?.trim() || `Apple Music (${sf.toUpperCase()})`;
+    const existing = alias?.trim()
+      ? Array.from(this.accounts.values()).find(
+          (a) => a.platform === "apple" && a.localAlias.toLowerCase() === alias.trim().toLowerCase()
+        )
+      : undefined;
+
+    const id = existing ? existing.id : `acc_apple_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+    const localAlias = alias?.trim() || existing?.localAlias || `Apple Music (${sf.toUpperCase()})`;
 
     const acc: AccountConnection = {
       id,
@@ -239,7 +258,7 @@ export class AccountManager {
       localAlias,
       status: "connected",
       storefront: sf,
-      createdAt: Date.now(),
+      createdAt: existing ? existing.createdAt : Date.now(),
       lastVerifiedAt: Date.now(),
       playlistCount: count,
     };

@@ -19,15 +19,49 @@ function findChromePath() {
   );
 }
 
-const service = (process.argv[2] || "youtube").toLowerCase();
-const DATA_DIR = path.resolve(process.cwd(), "data");
-const SESSION_FILE = path.join(DATA_DIR, "session.json");
-const CHROME_PROFILE_DIR = path.resolve(DATA_DIR, "chrome-profile");
+// Parse command line arguments
+const rawArgs = process.argv.slice(2);
+let service = "youtube";
+let alias = "";
+let customProfile = "";
+let shouldClean = false;
+let isNew = false;
 
-const shouldClean = process.argv.includes("--clean") || process.argv.includes("-c") || service === "reset";
+for (let i = 0; i < rawArgs.length; i++) {
+  const arg = rawArgs[i];
+  if (arg === "youtube" || arg === "apple" || arg === "reset") {
+    service = arg;
+  } else if (arg === "--alias" || arg === "-a") {
+    alias = rawArgs[++i] || "";
+  } else if (arg === "--profile" || arg === "-p") {
+    customProfile = rawArgs[++i] || "";
+  } else if (arg === "--clean" || arg === "-c") {
+    shouldClean = true;
+  } else if (arg === "--new" || arg === "-n") {
+    isNew = true;
+  }
+}
+
+const DATA_DIR = process.env.DATA_DIR || path.resolve(process.cwd(), "data");
+const SESSION_FILE = path.join(DATA_DIR, "session.json");
+const APP_PORT = process.env.APP_PORT || process.env.PORT || "3080";
+const API_BASE = `http://localhost:${APP_PORT}`;
+
+// Compute isolated profile directory so subsequent accounts don't collide
+const slug = alias ? alias.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() : "";
+let profileDirName = "chrome-profile";
+if (customProfile) {
+  profileDirName = `chrome-profile-${customProfile}`;
+} else if (slug) {
+  profileDirName = `chrome-profile-${slug}`;
+} else if (isNew) {
+  profileDirName = `chrome-profile-new-${Date.now()}`;
+}
+
+const CHROME_PROFILE_DIR = path.resolve(DATA_DIR, profileDirName);
 
 if (shouldClean && fs.existsSync(CHROME_PROFILE_DIR)) {
-  console.log("🧹 Membersihkan cache dan profil Chrome sebelumnya...");
+  console.log(`🧹 Membersihkan cache dan profil Chrome (${profileDirName})...`);
   try {
     fs.rmSync(CHROME_PROFILE_DIR, { recursive: true, force: true });
     console.log("✓ Profil Chrome berhasil dibersihkan.");
@@ -58,37 +92,60 @@ function saveSession(data) {
   const current = loadSession();
   const updated = { ...current, ...data };
   fs.writeFileSync(SESSION_FILE, JSON.stringify(updated, null, 2), "utf-8");
-  console.log(`\n✓ Credentials saved to ${SESSION_FILE}`);
+  console.log(`✓ Sesi disimpan di ${SESSION_FILE}`);
 }
 
-async function notifyDocker(endpoint, payload) {
+async function registerToTuneBridge(payload) {
   try {
-    const res = await fetch(`http://localhost:3080/api/auth/${endpoint}`, {
+    const res = await fetch(`${API_BASE}/api/accounts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     if (res.ok) {
-      console.log(`✓ Docker container updated via http://localhost:3080/api/auth/${endpoint}`);
+      const data = await res.json();
+      console.log(`\n✓ Sukses terdaftar di TuneBridge Multi-Account!`);
+      console.log(`  - Account ID : ${data.account?.id}`);
+      console.log(`  - Local Alias: ${data.account?.localAlias}`);
+      console.log(`  - Status     : ${data.account?.status}`);
+      return data.account;
+    } else {
+      const err = await res.text();
+      console.warn(`! Server /api/accounts merespons: ${err}`);
     }
   } catch {
-    // Docker container might not be running yet, which is fine since session.json is persistent!
+    console.log(`! Catatan: Server TuneBridge (${API_BASE}) tidak dapat dijangkau. Sesi tetap tersimpan di file lokal.`);
   }
+  return null;
+}
+
+async function notifyDockerLegacy(endpoint, payload) {
+  try {
+    await fetch(`${API_BASE}/api/auth/${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {}
 }
 
 async function main() {
   const executablePath = findChromePath();
-  console.log(`\n🎵 MirrorSong Auto-Catch Cookie Launcher`);
-  console.log(`=========================================`);
-  console.log(`Target: ${service.toUpperCase()}`);
-  console.log(`Launching Chrome from: ${executablePath}`);
-  console.log(`Silakan login seperti biasa di jendela Chrome yang terbuka.\nMirrorSong akan otomatis menangkap sesi login tanpa perlu membuka Network DevTools!\n`);
+  console.log(`\n🎵 TuneBridge Auto-Catch Multi-Account Launcher`);
+  console.log(`===============================================`);
+  console.log(`Target Platform : ${service.toUpperCase()}`);
+  console.log(`Account Alias   : ${alias || "(Default / Primary)"}`);
+  console.log(`Chrome Profile  : ${profileDirName}`);
+  console.log(`Server Endpoint : ${API_BASE}/api/accounts`);
+  console.log(`Launching Chrome: ${executablePath}\n`);
+  console.log(`Silakan login seperti biasa di jendela Chrome yang terbuka.`);
+  console.log(`TuneBridge akan otomatis menangkap sesi login tanpa perlu membuka DevTools!\n`);
 
   const browser = await puppeteer.launch({
     executablePath,
     headless: false,
     defaultViewport: null,
-    userDataDir: path.resolve(DATA_DIR, "chrome-profile"),
+    userDataDir: CHROME_PROFILE_DIR,
     ignoreDefaultArgs: ["--enable-automation"],
     args: [
       "--disable-blink-features=AutomationControlled",
@@ -154,15 +211,24 @@ async function main() {
             .join("; ");
 
           console.log(`\n🎉 Berhasil! Akun YouTube Music terverifikasi dan cookie sesi tertangkap!`);
+          
+          const accountAlias = alias || "Koleksi Utama (YouTube Music)";
+          await registerToTuneBridge({
+            platform: "youtube",
+            cookieString,
+            alias: accountAlias,
+          });
+
+          // Legacy backwards-compatibility
           saveSession({ ytCookieString: cookieString });
-          await notifyDocker("youtube", { cookieString });
+          await notifyDockerLegacy("youtube", { cookieString, alias: accountAlias });
 
           setTimeout(async () => {
             await browser.close();
             process.exit(0);
           }, 1500);
         }
-      } catch (err) {
+      } catch {
         // ignore polling errors
       }
     };
@@ -204,22 +270,37 @@ async function main() {
     const checkAppleSession = async () => {
       if (isCaptured) return;
       try {
-        if (capturedUserToken) {
+        const finalizeApple = async (userTok, devTok) => {
           isCaptured = true;
-          console.log(`\n🎉 Berhasil! Token Apple Music tertangkap dari request!`);
-          saveSession({
-            appleUserToken: capturedUserToken,
-            appleDevToken: capturedDevToken || undefined,
+          console.log(`\n🎉 Berhasil! Token Apple Music tertangkap!`);
+          
+          const accountAlias = alias || "Koleksi Utama (Apple Music)";
+          await registerToTuneBridge({
+            platform: "apple",
+            musicUserToken: userTok,
+            developerToken: devTok || undefined,
+            alias: accountAlias,
           });
-          await notifyDocker("apple", {
-            musicUserToken: capturedUserToken,
-            developerToken: capturedDevToken || undefined,
+
+          // Legacy backwards-compatibility
+          saveSession({
+            appleUserToken: userTok,
+            appleDevToken: devTok || undefined,
+          });
+          await notifyDockerLegacy("apple", {
+            musicUserToken: userTok,
+            developerToken: devTok || undefined,
+            alias: accountAlias,
           });
 
           setTimeout(async () => {
             await browser.close();
             process.exit(0);
           }, 1000);
+        };
+
+        if (capturedUserToken) {
+          await finalizeApple(capturedUserToken, capturedDevToken);
           return;
         }
 
@@ -227,21 +308,7 @@ async function main() {
         const cookies = await page.cookies("https://music.apple.com");
         const mediaToken = cookies.find((c) => c.name === "media-user-token");
         if (mediaToken && mediaToken.value) {
-          isCaptured = true;
-          console.log(`\n🎉 Berhasil! media-user-token tertangkap dari cookies!`);
-          saveSession({
-            appleUserToken: mediaToken.value,
-            appleDevToken: capturedDevToken || undefined,
-          });
-          await notifyDocker("apple", {
-            musicUserToken: mediaToken.value,
-            developerToken: capturedDevToken || undefined,
-          });
-
-          setTimeout(async () => {
-            await browser.close();
-            process.exit(0);
-          }, 1000);
+          await finalizeApple(mediaToken.value, capturedDevToken);
         }
       } catch {}
     };

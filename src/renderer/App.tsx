@@ -38,6 +38,7 @@ export const App: React.FC = () => {
   const [transferJob, setTransferJob] = useState<TransferJob | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
+  const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
   const matchingPollerRef = useRef<any>(null);
 
@@ -55,6 +56,23 @@ export const App: React.FC = () => {
   useEffect(() => {
     loadAccounts();
     loadActivity();
+
+    // Detect redirect callback params from bookmarklet form submission
+    const hash = window.location.hash;
+    const search = window.location.search;
+    const queryStr = search || (hash.includes("?") ? hash.substring(hash.indexOf("?")) : hash.replace(/^#/, "?"));
+    const params = new URLSearchParams(queryStr);
+
+    if (params.get("tab") === "accounts" || hash.includes("tab=accounts")) {
+      setActiveTab("accounts");
+    }
+
+    if (params.get("status") === "success") {
+      const aliasName = params.get("alias") || "Akun baru";
+      setSuccessBanner(`Koneksi akun "${aliasName}" berhasil ditambahkan!`);
+      setTimeout(() => setSuccessBanner(null), 5000);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
   }, []);
 
   const loadAccounts = async () => {
@@ -384,6 +402,18 @@ export const App: React.FC = () => {
 
       {/* Main Content Pane */}
       <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0 w-full relative">
+        {successBanner && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-status-success/20 border border-status-success/40 text-status-success px-4 py-2.5 rounded-xl shadow-xl backdrop-blur-md flex items-center space-x-2 animate-dialog-in text-xs font-medium">
+            <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" />
+            <span>{successBanner}</span>
+            <button
+              onClick={() => setSuccessBanner(null)}
+              className="ml-2 hover:opacity-75 text-sm leading-none"
+            >
+              &times;
+            </button>
+          </div>
+        )}
         {activeTab === "overview" && (
           <OverviewView
             accounts={accounts}

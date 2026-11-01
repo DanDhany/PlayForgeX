@@ -25,6 +25,7 @@ const DATA_DIR = process.env.DATA_DIR || path.resolve(process.cwd(), "data");
 
 app.use(cors());
 app.use(express.json({ limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 // Ensure data dir exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -72,11 +73,11 @@ app.post("/api/accounts", async (req: Request, res: Response) => {
 // PATCH /api/accounts/:id - Rename alias
 app.patch("/api/accounts/:id", (req: Request, res: Response) => {
   const accountId = String(req.params.id);
-  const { alias } = req.body;
-  if (!alias) return res.status(400).json({ error: "alias is required" });
+  const newAlias = req.body.alias || req.body.localAlias;
+  if (!newAlias) return res.status(400).json({ error: "alias or localAlias is required" });
 
   try {
-    const updated = accountManager.updateAlias(accountId, alias);
+    const updated = accountManager.updateAlias(accountId, newAlias);
     res.json({ success: true, account: updated });
   } catch (err: any) {
     res.status(404).json({ error: err.message });
@@ -165,6 +166,63 @@ app.post("/api/auth/apple", async (req: Request, res: Response) => {
     res.json({ success: true, account: acc, storefront: acc.storefront, playlistCount: acc.playlistCount });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed authenticating Apple Music" });
+  }
+});
+
+// POST /api/auth/web-catch - Universal Browser Form Navigation Callback
+// Enables 1-click account addition from mobile (iOS/Android) & remote LAN clients,
+// completely bypassing Mixed-Content (HTTPS -> HTTP) and CORS blocks via top-level form POST navigation.
+app.post("/api/auth/web-catch", async (req: Request, res: Response) => {
+  const { platform, cookieString, musicUserToken, developerToken, alias, returnUrl } = req.body;
+
+  if (platform !== "youtube" && platform !== "apple") {
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Platform Tidak Valid</title></head>
+        <body style="background:#0B0C0F;color:#F5F5F7;font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;padding:32px;text-align:center;">
+          <h2 style="color:#FF777F;">Platform Tidak Dikenal</h2>
+          <p style="color:#A3A8B5;">Platform harus 'youtube' atau 'apple'.</p>
+          <a href="/#tab=accounts" style="display:inline-block;margin-top:16px;padding:10px 24px;background:#A99BFF;color:#0B0C0F;text-decoration:none;border-radius:12px;font-weight:600;">Kembali ke TuneBridge</a>
+        </body>
+      </html>
+    `);
+  }
+
+  try {
+    let addedAcc;
+    if (platform === "youtube") {
+      if (!cookieString) throw new Error("Cookie string YouTube kosong atau tidak valid");
+      addedAcc = await accountManager.addYouTubeAccount(
+        cookieString,
+        alias || `YouTube Music (${new Date().toLocaleDateString("id-ID")})`
+      );
+    } else {
+      if (!musicUserToken) throw new Error("Token Apple Music kosong");
+      addedAcc = await accountManager.addAppleAccount(
+        musicUserToken,
+        developerToken,
+        alias || `Apple Music (${new Date().toLocaleDateString("id-ID")})`
+      );
+    }
+
+    const redirectTarget = returnUrl
+      ? returnUrl
+      : `/#tab=accounts&status=success&platform=${platform}&alias=${encodeURIComponent(addedAcc.localAlias)}`;
+
+    return res.redirect(redirectTarget);
+  } catch (err: any) {
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Koneksi Gagal</title></head>
+        <body style="background:#0B0C0F;color:#F5F5F7;font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;padding:32px;text-align:center;">
+          <h2 style="color:#FF777F;margin-bottom:8px;">Gagal Menghubungkan Akun</h2>
+          <p style="color:#A3A8B5;margin-bottom:20px;font-size:14px;max-width:480px;margin-left:auto;margin-right:auto;">${err.message || "Terjadi kesalahan saat memproses sesi."}</p>
+          <a href="/#tab=accounts" style="display:inline-block;padding:10px 24px;background:#A99BFF;color:#0B0C0F;text-decoration:none;border-radius:12px;font-weight:600;">Kembali ke TuneBridge</a>
+        </body>
+      </html>
+    `);
   }
 });
 

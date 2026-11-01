@@ -92,4 +92,43 @@ describe("AccountManager Multi-Account Storage & Migration", () => {
     expect(secretsRaw).not.toContain("tok_1");
     expect(secretsRaw).toContain("tok_2");
   });
+
+  it("adds multiple distinct accounts (Account A, B, C) and keeps them isolated", async () => {
+    const mgr = new AccountManager(tmpDir);
+
+    // Add 3 separate accounts
+    const accA = await mgr.addAppleAccount("tok_a", undefined, "Koleksi Orang A");
+    const accB = await mgr.addAppleAccount("tok_b_old", undefined, "Koleksi Orang B");
+    const accC = await mgr.addAppleAccount("tok_c", undefined, "Koleksi Orang C");
+
+    expect(mgr.getAccounts().length).toBe(3);
+    expect(accA.id).not.toBe(accB.id);
+    expect(accB.id).not.toBe(accC.id);
+
+    // Verify updating an existing alias refreshes rather than duplicates
+    const refreshedB = await mgr.addAppleAccount("tok_b_updated", undefined, "Koleksi Orang B");
+    expect(refreshedB.id).toBe(accB.id);
+    expect(mgr.getAccounts().length).toBe(3);
+
+    // Verify secrets are isolated
+    const secretsRaw = fs.readFileSync(path.join(tmpDir, "secrets.json"), "utf-8");
+    expect(secretsRaw).toContain("tok_a");
+    expect(secretsRaw).toContain("tok_b_updated");
+    expect(secretsRaw).not.toContain("tok_b_old"); // replaced
+    expect(secretsRaw).toContain("tok_c");
+  });
+
+  it("adds YouTube accounts with SAPISID cookie string", async () => {
+    const mgr = new AccountManager(tmpDir);
+    const ytCookie = "SAPISID=fake_sapisid_xyz; __Secure-3PAPISID=fake_3p; LOGIN_INFO=fake_info;";
+
+    const acc = await mgr.addYouTubeAccount(ytCookie, "Koleksi Orang D (YouTube)");
+    expect(acc.platform).toBe("youtube");
+    expect(acc.localAlias).toBe("Koleksi Orang D (YouTube)");
+    expect(acc.status).toBe("connected");
+
+    const retrieved = mgr.getAccount(acc.id);
+    expect(retrieved).toBeDefined();
+    expect(retrieved?.localAlias).toBe("Koleksi Orang D (YouTube)");
+  });
 });
