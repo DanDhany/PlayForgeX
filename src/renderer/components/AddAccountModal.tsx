@@ -306,6 +306,16 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 )}
               </button>
               <a
+                href={activeBookmarklet}
+                onClick={(e) => {
+                  if (!e.metaKey && !e.ctrlKey) e.preventDefault();
+                }}
+                className="hidden md:flex py-2 px-3 rounded-lg bg-surface-elevated hover:bg-surface-hover text-text-primary text-xs font-medium border border-border items-center gap-1.5 cursor-grab active:cursor-grabbing"
+                title="Tarik tombol ini ke Bookmarks Bar browser laptop/PC Anda"
+              >
+                <span>Tarik ke Bookmark Bar</span>
+              </a>
+              <a
                 href={targetSiteUrl}
                 target="_blank"
                 rel="noreferrer"
@@ -337,9 +347,28 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 onTouchStart={handleSelectBookmarklet}
                 className="w-full p-2.5 bg-background border border-border rounded-lg font-mono text-[11px] text-text-secondary focus:text-text-primary focus:border-accent focus:outline-none select-all break-all cursor-pointer leading-relaxed resize-none"
               />
-              <p className="text-[10px] text-text-secondary/70 leading-normal">
-                💡 <strong>Khusus iPhone (HTTP LAN):</strong> Kebijakan iOS WebKit membatasi akses clipboard otomatis pada HTTP non-HTTPS. Jika tombol di atas tidak menyalin, ketuk kotak teks di atas agar seluruh kode terblok, lalu tap <strong>"Salin" / "Copy"</strong> pada balon hitam bawaan iPhone Anda.
-              </p>
+
+              {/* Explaining Browser Self-XSS Address Bar Protection */}
+              <div className="p-2.5 rounded-lg bg-surface border border-border text-[11px] text-text-secondary space-y-1.5">
+                <div className="font-semibold text-text-primary flex items-center gap-1.5 text-xs">
+                  <AlertCircle className="w-3.5 h-3.5 text-status-warning flex-shrink-0" />
+                  <span>Kenapa browser menolak kode saat di-paste ke Address Bar?</span>
+                </div>
+                <p className="text-[10px] text-text-secondary leading-relaxed">
+                  Semua browser modern (Chrome, Safari, Edge) memiliki proteksi keamanan (*Self-XSS*). Browser akan <strong>secara otomatis memotong kata <code className="text-accent font-mono">javascript:</code></strong> jika Anda menempelkannya langsung ke kolom URL/Address Bar.
+                </p>
+                <div className="text-[10px] space-y-1 pt-0.5 text-text-secondary">
+                  <p><strong>Cara Menjalankannya di HP:</strong></p>
+                  <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
+                    <li>
+                      <strong>Trik 1 (Cepat):</strong> Tempel script ke address bar di <code className="text-text-primary font-mono">{platform === "youtube" ? "music.youtube.com" : "music.apple.com"}</code>, lalu geser kursor ke paling depan dan ketik manual <code className="text-accent font-semibold font-mono">javascript:</code> sebelum menekan Go/Enter.
+                    </li>
+                    <li>
+                      <strong>Trik 2 (Bookmark):</strong> Simpan halaman apa saja sebagai Bookmark di HP, lalu edit alamat bookmark tersebut dan tempel kode script ini. Saat membuka YouTube/Apple Music, cukup ketuk Bookmark tersebut.
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         )}
