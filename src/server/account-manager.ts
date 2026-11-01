@@ -671,29 +671,35 @@ export class AccountManager {
     return acc;
   }
 
+  public getSecret(id: string): AccountSecret | undefined {
+    return this.secrets.get(id);
+  }
+
   public getPlaylistTracks(accountId: string, playlistId: string): TrackMetadata[] {
     const snap = this.snapshots.get(accountId);
     if (!snap) return [];
-    const pl = snap.find(
-      (p) =>
-        p.id === playlistId ||
-        p.id === `VL${playlistId}` ||
-        `VL${p.id}` === playlistId ||
-        (playlistId.startsWith("VL") && p.id === playlistId.slice(2))
-    );
+    const pl =
+      snap.find(
+        (p) =>
+          p.id === playlistId ||
+          p.id === `VL${playlistId}` ||
+          `VL${p.id}` === playlistId ||
+          (playlistId.startsWith("VL") && p.id === playlistId.slice(2))
+      ) || (playlistId === accountId && snap.length === 1 ? snap[0] : undefined);
     return pl?.tracks || [];
   }
 
   public hasSnapshotTracks(accountId: string, playlistId: string): boolean {
     const snap = this.snapshots.get(accountId);
     if (!snap) return false;
-    const pl = snap.find(
-      (p) =>
-        p.id === playlistId ||
-        p.id === `VL${playlistId}` ||
-        `VL${p.id}` === playlistId ||
-        (playlistId.startsWith("VL") && p.id === playlistId.slice(2))
-    );
+    const pl =
+      snap.find(
+        (p) =>
+          p.id === playlistId ||
+          p.id === `VL${playlistId}` ||
+          `VL${p.id}` === playlistId ||
+          (playlistId.startsWith("VL") && p.id === playlistId.slice(2))
+      ) || (playlistId === accountId && snap.length === 1 ? snap[0] : undefined);
     return Boolean(pl && pl.tracks && pl.tracks.length > 0);
   }
 

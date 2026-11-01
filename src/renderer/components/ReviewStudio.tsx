@@ -155,10 +155,17 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                 <h2 className="text-sm md:text-base font-semibold text-text-primary tracking-tight truncate">
                   {selectedPlaylist.title}
                 </h2>
-                <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-mono uppercase bg-surface-elevated text-text-secondary rounded border border-border">
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono bg-surface-elevated text-text-secondary rounded-lg border border-border">
                   <span className={sourceMeta.textColor}>{sourceMeta.shortCode}</span>
                   <span>➔</span>
-                  <span className={targetMeta.textColor}>{targetMeta.shortCode}</span>
+                  <button
+                    type="button"
+                    onClick={onStartTransfer}
+                    title={isEn ? "Click to change target platform or export" : "Klik untuk pilih platform tujuan"}
+                    className={`font-semibold underline decoration-dotted underline-offset-2 hover:opacity-80 transition cursor-pointer ${targetMeta.textColor}`}
+                  >
+                    {targetMeta.name}
+                  </button>
                 </span>
               </div>
               <p className="text-[11px] text-text-secondary mt-0.5 truncate">
@@ -185,7 +192,9 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
               className="px-3.5 py-1.5 bg-accent text-background hover:bg-accent/90 disabled:opacity-50 text-xs font-semibold rounded-lg flex items-center gap-2 btn-press transition shadow-sm"
             >
               <ArrowRight className="w-3.5 h-3.5" />
-              <span>Transfer ({stats.activeForImport})</span>
+              <span>
+                {isEn ? `Export to ${targetMeta.shortCode}` : `Ekspor ke ${targetMeta.shortCode}`} ({stats.activeForImport})
+              </span>
             </button>
           </div>
         </div>

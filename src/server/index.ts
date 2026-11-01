@@ -1089,8 +1089,58 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
           failed,
         };
       }
-    } else {
-      // targetPlatform === "youtube"
+    } else if (targetPlatform === "spotify") {
+      const adapter = PlatformRegistry.getAdapter("spotify") as any;
+      const secret = targetAcc ? accountManager.getSecret(targetAcc.id) : null;
+      const token = (targetAcc as any)?.accessToken || secret?.appleUserToken;
+
+      if (adapter && adapter.createPlaylist && token) {
+        if (mode === "existing") {
+          if (!existingPlaylistId) return res.status(400).json({ error: "existingPlaylistId is required" });
+          destinationId = existingPlaylistId;
+        } else {
+          destinationId = await adapter.createPlaylist(playlistTitle, "Imported via PlayForgeX", token);
+        }
+        if (adapter.addTracksToPlaylist) {
+          const uris = trackIds.map((id) => (id.startsWith("spotify:track:") ? id : `spotify:track:${id}`));
+          for (let i = 0; i < uris.length; i += 50) {
+            const chunk = uris.slice(i, i + 50);
+            await adapter.addTracksToPlaylist(destinationId, chunk, token);
+          }
+        }
+        success = total;
+      } else {
+        const exportTracks: TrackMetadata[] = activeItems.map((item) => ({
+          id: item.selectedCandidate?.id || item.source.id || item.source.videoId,
+          title: item.selectedCandidate?.name || item.source.title,
+          artist: item.selectedCandidate?.artistName || item.source.artist,
+          album: item.selectedCandidate?.albumName || item.source.album,
+          durationSeconds: item.selectedCandidate?.durationInMillis
+            ? Math.round(item.selectedCandidate.durationInMillis / 1000)
+            : item.source.durationSeconds,
+          thumbnailUrl: item.selectedCandidate?.artworkUrl || item.source.thumbnailUrl,
+        }));
+
+        const snapAcc = accountManager.importSnapshotAccount(
+          playlistTitle,
+          [
+            {
+              id: existingPlaylistId || `export_spotify_${Date.now()}`,
+              title: playlistTitle,
+              trackCount: exportTracks.length,
+              tracks: exportTracks,
+              platform: "spotify",
+              thumbnailUrl: exportTracks[0]?.thumbnailUrl,
+            },
+          ],
+          (req as any).user?.id,
+          "spotify"
+        );
+        await accountManager.saveAccountToDb(snapAcc, undefined, (req as any).user?.id);
+        success = exportTracks.length;
+        destinationId = snapAcc.id;
+      }
+    } else if (targetPlatform === "youtube") {
       const ytClient = targetAcc ? accountManager.getYTMClient(targetAcc.id) : null;
       if (!ytClient || !ytClient.hasValidAuth()) {
         return res.status(401).json({ error: "Target YouTube Music client not connected" });
@@ -1138,6 +1188,37 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
           }
         }
       }
+    } else {
+      // Any other platform (youtube_video, deezer, soundcloud, etc.):
+      const exportTracks: TrackMetadata[] = activeItems.map((item) => ({
+        id: item.selectedCandidate?.id || item.source.id || item.source.videoId,
+        title: item.selectedCandidate?.name || item.source.title,
+        artist: item.selectedCandidate?.artistName || item.source.artist,
+        album: item.selectedCandidate?.albumName || item.source.album,
+        durationSeconds: item.selectedCandidate?.durationInMillis
+          ? Math.round(item.selectedCandidate.durationInMillis / 1000)
+          : item.source.durationSeconds,
+        thumbnailUrl: item.selectedCandidate?.artworkUrl || item.source.thumbnailUrl,
+      }));
+
+      const snapAcc = accountManager.importSnapshotAccount(
+        playlistTitle,
+        [
+          {
+            id: existingPlaylistId || `export_${targetPlatform}_${Date.now()}`,
+            title: playlistTitle,
+            trackCount: exportTracks.length,
+            tracks: exportTracks,
+            platform: targetPlatform as any,
+            thumbnailUrl: exportTracks[0]?.thumbnailUrl,
+          },
+        ],
+        (req as any).user?.id,
+        targetPlatform as any
+      );
+      await accountManager.saveAccountToDb(snapAcc, undefined, (req as any).user?.id);
+      success = exportTracks.length;
+      destinationId = snapAcc.id;
     }
 
     currentProgress = {

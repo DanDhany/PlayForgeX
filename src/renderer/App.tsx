@@ -25,6 +25,7 @@ import {
   TransferJob,
   PlaylistDraft,
   User,
+  PlatformType,
 } from "../shared/types";
 import {
   IS_PAGES_OR_STATIC,
@@ -84,6 +85,7 @@ export const App: React.FC = () => {
 
   // Transfer & Review states
   const [selectedPlaylist, setSelectedPlaylist] = useState<PlaylistSummary | null>(null);
+  const [selectedTargetPlatform, setSelectedTargetPlatform] = useState<PlatformType | string>("apple");
   const [trackItems, setTrackItems] = useState<TransferTrackItem[]>([]);
   const [isMatching, setIsMatching] = useState(false);
   const [totalTracksToMatch, setTotalTracksToMatch] = useState(0);
@@ -383,7 +385,12 @@ export const App: React.FC = () => {
 
     const sourcePl = allPlaylists.find((p) => p.id === playlist.id);
     const sourcePlatform = sourcePl?.platform || playlist.platform || "youtube";
-    const targetPlatform = sourcePlatform === "apple" ? "youtube" : "apple";
+    const targetPlatform =
+      selectedTargetPlatform === sourcePlatform
+        ? sourcePlatform === "apple"
+          ? "youtube"
+          : "apple"
+        : selectedTargetPlatform;
 
     try {
       let draft: PlaylistDraft | null = null;
@@ -521,13 +528,16 @@ export const App: React.FC = () => {
     playlistTitle: string;
     existingPlaylistId?: string;
     existingPlaylistTitle?: string;
+    targetPlatform?: PlatformType | string;
+    targetAccountId?: string;
   }) => {
     if (!selectedPlaylist) return;
     setIsExportModalOpen(false);
 
     const sourcePl = allPlaylists.find((p) => p.id === selectedPlaylist.id);
     const sourcePlatform = sourcePl?.platform || selectedPlaylist.platform || "youtube";
-    const targetPlatform = sourcePlatform === "apple" ? "youtube" : "apple";
+    const targetPlatform = options.targetPlatform || effectiveTargetPlatform;
+    const targetAccountId = options.targetAccountId;
 
     const job: TransferJob = {
       playlistId: selectedPlaylist.id,
@@ -569,6 +579,7 @@ export const App: React.FC = () => {
           playlistTitle: options.playlistTitle,
           items: trackItems,
           targetPlatform,
+          targetAccountId,
           mode: options.mode,
           existingPlaylistId: options.existingPlaylistId,
           sourcePlaylistId: selectedPlaylist.id,
@@ -607,7 +618,12 @@ export const App: React.FC = () => {
     ? allPlaylists.find((p) => p.id === selectedPlaylist.id)
     : null;
   const currentSourcePlatform = currentSourcePl?.platform || selectedPlaylist?.platform || "youtube";
-  const currentTargetPlatform = currentSourcePlatform === "apple" ? "youtube" : "apple";
+  const effectiveTargetPlatform =
+    selectedTargetPlatform === currentSourcePlatform
+      ? currentSourcePlatform === "apple"
+        ? "youtube"
+        : "apple"
+      : selectedTargetPlatform;
 
   if (viewMode === "landing") {
     return <LandingPage onOpenStudio={handleOpenStudio} />;
@@ -690,7 +706,7 @@ export const App: React.FC = () => {
                 totalTracksToMatch={totalTracksToMatch}
                 isTransferring={transferJob?.status === "processing"}
                 sourcePlatform={currentSourcePlatform}
-                targetPlatform={currentTargetPlatform}
+                targetPlatform={effectiveTargetPlatform}
                 onSelectPlaylist={handleSelectPlaylistForTransfer}
                 onToggleExclude={handleToggleExclude}
                 onOpenAlternativePicker={setEditingItem}
@@ -756,7 +772,9 @@ export const App: React.FC = () => {
         onClose={() => setIsExportModalOpen(false)}
         onConfirm={handleExecuteTransfer}
         defaultTitle={selectedPlaylist?.title || "Playlist"}
-        targetPlatform={currentTargetPlatform}
+        targetPlatform={effectiveTargetPlatform}
+        availableAccounts={accounts}
+        onChangeTargetPlatform={setSelectedTargetPlatform}
         trackCount={trackItems.filter((t) => !t.excluded && t.selectedCandidate).length}
         isMatching={isMatching}
       />
@@ -766,7 +784,7 @@ export const App: React.FC = () => {
         onClose={() => setEditingItem(null)}
         onSelectAlternative={handleSelectAlternative}
         onSearchCatalog={handleSearchCandidateCatalog}
-        targetPlatform={currentTargetPlatform}
+        targetPlatform={effectiveTargetPlatform}
       />
 
       <TransferProgressModal

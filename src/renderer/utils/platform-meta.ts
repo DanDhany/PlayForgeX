@@ -7,6 +7,7 @@ export interface PlatformDisplayMeta {
   textColor: string;
   dotColor: string;
   accentBg: string;
+  brandColor: string;
 }
 
 export const PLATFORM_REGISTRY_META: Record<string, PlatformDisplayMeta> = {
@@ -19,6 +20,7 @@ export const PLATFORM_REGISTRY_META: Record<string, PlatformDisplayMeta> = {
     textColor: "text-red-400",
     dotColor: "bg-red-500",
     accentBg: "bg-red-500",
+    brandColor: "#FF0000",
   },
   youtube_video: {
     id: "youtube_video",
@@ -29,6 +31,7 @@ export const PLATFORM_REGISTRY_META: Record<string, PlatformDisplayMeta> = {
     textColor: "text-rose-400",
     dotColor: "bg-rose-500",
     accentBg: "bg-rose-500",
+    brandColor: "#FF4500",
   },
   apple: {
     id: "apple",
@@ -39,6 +42,7 @@ export const PLATFORM_REGISTRY_META: Record<string, PlatformDisplayMeta> = {
     textColor: "text-pink-400",
     dotColor: "bg-pink-500",
     accentBg: "bg-pink-500",
+    brandColor: "#FA2D48",
   },
   spotify: {
     id: "spotify",
@@ -49,6 +53,7 @@ export const PLATFORM_REGISTRY_META: Record<string, PlatformDisplayMeta> = {
     textColor: "text-emerald-400",
     dotColor: "bg-emerald-500",
     accentBg: "bg-emerald-500",
+    brandColor: "#1DB954",
   },
   soundcloud: {
     id: "soundcloud",
@@ -59,6 +64,7 @@ export const PLATFORM_REGISTRY_META: Record<string, PlatformDisplayMeta> = {
     textColor: "text-orange-400",
     dotColor: "bg-orange-500",
     accentBg: "bg-orange-500",
+    brandColor: "#FF5500",
   },
   deezer: {
     id: "deezer",
@@ -69,6 +75,7 @@ export const PLATFORM_REGISTRY_META: Record<string, PlatformDisplayMeta> = {
     textColor: "text-purple-400",
     dotColor: "bg-purple-500",
     accentBg: "bg-purple-500",
+    brandColor: "#A238FF",
   },
   file: {
     id: "file",
@@ -79,6 +86,7 @@ export const PLATFORM_REGISTRY_META: Record<string, PlatformDisplayMeta> = {
     textColor: "text-sky-400",
     dotColor: "bg-sky-500",
     accentBg: "bg-sky-500",
+    brandColor: "#0EA5E9",
   },
   tidal: {
     id: "tidal",
@@ -89,6 +97,7 @@ export const PLATFORM_REGISTRY_META: Record<string, PlatformDisplayMeta> = {
     textColor: "text-cyan-400",
     dotColor: "bg-cyan-500",
     accentBg: "bg-cyan-500",
+    brandColor: "#000000",
   },
   subsonic: {
     id: "subsonic",
@@ -99,6 +108,7 @@ export const PLATFORM_REGISTRY_META: Record<string, PlatformDisplayMeta> = {
     textColor: "text-amber-400",
     dotColor: "bg-amber-500",
     accentBg: "bg-amber-500",
+    brandColor: "#F59E0B",
   },
 };
 
@@ -113,6 +123,7 @@ export function getPlatformMeta(platform?: string): PlatformDisplayMeta {
       textColor: "text-slate-400",
       dotColor: "bg-slate-500",
       accentBg: "bg-slate-500",
+      brandColor: "#A3A8B5",
     };
   }
 
@@ -131,5 +142,6 @@ export function getPlatformMeta(platform?: string): PlatformDisplayMeta {
     textColor: "text-accent",
     dotColor: "bg-accent",
     accentBg: "bg-accent",
+    brandColor: "#A99BFF",
   };
 }

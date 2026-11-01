@@ -105,6 +105,7 @@ export interface ExportOptions {
   playlistTitle: string;
   existingPlaylistId?: string;
   targetPlatform: PlatformType | string;
+  targetAccountId?: string;
 }
 
 export interface ServiceAuthStatus {
