@@ -27,6 +27,9 @@ export interface MatchResult {
   titleScore: number;
   artistScore: number;
   albumScore: number;
+  durationScore?: number;
+  lyricsVerified?: boolean;
+  lyricsSnippet?: string;
   candidate?: AppleMusicTrack;
   reason?: string;
 }

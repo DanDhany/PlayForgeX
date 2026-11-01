@@ -1,6 +1,8 @@
 import { TrackMetadata, AppleMusicTrack, MatchResult } from "../shared/types";
 import { cleanTitle } from "./sanitizer";
 import { calculateMatchScore } from "./matcher";
+import { getArtistAliases } from "./artist-matcher";
+import { fetchAppleLyrics } from "./lyrics";
 
 export function formatCatalogSearchUrl(storefront: string, term: string, limit = 25): string {
   return `https://amp-api.music.apple.com/v1/catalog/${storefront}/search?types=songs&term=${encodeURIComponent(term)}&limit=${limit}`;
@@ -31,7 +33,11 @@ export function mapAppleMusicSong(raw: any): AppleMusicTrack {
   };
 }
 
-export function searchAndMatchTrack(source: TrackMetadata, candidates: AppleMusicTrack[]): MatchResult {
+export function searchAndMatchTrack(
+  source: TrackMetadata,
+  candidates: AppleMusicTrack[],
+  options?: { sourceLyrics?: string; candidateLyrics?: string }
+): MatchResult {
   if (!candidates || candidates.length === 0) {
     return {
       status: "NOT_FOUND",
@@ -43,7 +49,7 @@ export function searchAndMatchTrack(source: TrackMetadata, candidates: AppleMusi
     };
   }
 
-  const scoredResults = candidates.map((candidate) => calculateMatchScore(source, candidate));
+  const scoredResults = candidates.map((candidate) => calculateMatchScore(source, candidate, options));
 
   // Sort descending by totalScore
   scoredResults.sort((a, b) => b.totalScore - a.totalScore);
@@ -176,7 +182,11 @@ export class AppleMusicClient {
     const url = formatCatalogSearchUrl(sf, query, 15);
 
     const res = await fetch(url, {
-      headers: this.getHeaders(),
+      headers: {
+        Authorization: `Bearer ${this.developerToken}`,
+        Origin: "https://apple.com",
+        Referer: "https://apple.com/",
+      },
     });
 
     if (!res.ok) {
@@ -195,9 +205,10 @@ export class AppleMusicClient {
 
   /**
    * Search catalog prioritizing:
-   * 1. Original title alone (essential for Japanese / non-Latin characters)
-   * 2. Original title + artist name
-   * 3. Subtitle / translated title (if present in brackets)
+   * 1. Original Title + Artist (Primary)
+   * 2. Original Title + Known Artist Aliases (Cross-script)
+   * 3. Subtitle + Artist (if present in brackets)
+   * 4. Original Title alone (fallback if zero results)
    */
   public async searchWithOriginalPriority(
     track: TrackMetadata,
@@ -210,29 +221,42 @@ export class AppleMusicClient {
     const sanitized = cleanTitle(track.title);
     const candidateMap = new Map<string, AppleMusicTrack>();
 
-    // 1. Primary Query: Search original title first
-    const primaryResults = await this.searchCatalog(sanitized.originalTitle, storefront);
+    // 1. Primary Query (PRIORITY #1): Always search Title + Artist
+    const primaryQuery = `${sanitized.originalTitle} ${track.artist}`.trim();
+    const primaryResults = await this.searchCatalog(primaryQuery, storefront);
     for (const item of primaryResults) {
       candidateMap.set(item.id, item);
     }
 
-    // Check if we already got an exact match
     let bestMatch = searchAndMatchTrack(track, Array.from(candidateMap.values()));
 
-    // 2. Secondary Query: If not exact or few candidates, search Original Title + Artist
+    // 2. Secondary Query: Try known aliases for artist (Kanji <-> Romaji / English)
     if (bestMatch.status !== "EXACT_MATCH") {
-      const combinedQuery = `${sanitized.originalTitle} ${track.artist}`.trim();
-      const secondaryResults = await this.searchCatalog(combinedQuery, storefront);
-      for (const item of secondaryResults) {
+      const aliases = getArtistAliases(track.artist);
+      for (const alias of aliases.slice(0, 2)) {
+        const aliasQuery = `${sanitized.originalTitle} ${alias}`.trim();
+        const aliasResults = await this.searchCatalog(aliasQuery, storefront);
+        for (const item of aliasResults) {
+          candidateMap.set(item.id, item);
+        }
+      }
+      bestMatch = searchAndMatchTrack(track, Array.from(candidateMap.values()));
+    }
+
+    // 3. Tertiary Query: Subtitle + Artist if available
+    if (bestMatch.status !== "EXACT_MATCH" && sanitized.subtitle) {
+      const subQuery = `${sanitized.subtitle} ${track.artist}`.trim();
+      const subResults = await this.searchCatalog(subQuery, storefront);
+      for (const item of subResults) {
         candidateMap.set(item.id, item);
       }
       bestMatch = searchAndMatchTrack(track, Array.from(candidateMap.values()));
     }
 
-    // 3. Tertiary Query: If still not exact and bracketed subtitle exists, search subtitle
-    if (bestMatch.status !== "EXACT_MATCH" && sanitized.subtitle) {
-      const subResults = await this.searchCatalog(sanitized.subtitle, storefront);
-      for (const item of subResults) {
+    // 4. Quaternary Query: Title alone (fallback only if candidates list is still empty)
+    if (candidateMap.size === 0) {
+      const titleOnlyResults = await this.searchCatalog(sanitized.originalTitle, storefront);
+      for (const item of titleOnlyResults) {
         candidateMap.set(item.id, item);
       }
       bestMatch = searchAndMatchTrack(track, Array.from(candidateMap.values()));
@@ -244,6 +268,11 @@ export class AppleMusicClient {
       match: bestMatch,
       allResults,
     };
+  }
+
+  public async fetchTrackLyrics(songId: string, storefront?: string): Promise<string | null> {
+    const sf = storefront || (await this.getUserStorefront());
+    return fetchAppleLyrics(songId, sf, this.developerToken, this.musicUserToken);
   }
 
   public async createPlaylist(name: string, description = "Imported from YouTube Music via MirrorSong"): Promise<string> {

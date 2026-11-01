@@ -289,12 +289,14 @@ app.post("/api/tracks/match", async (req: Request, res: Response) => {
         match = resMatch.match;
       }
 
+      const shouldExclude = match.status !== "EXACT_MATCH" || match.artistScore < 0.45;
+
       results.push({
         source: track,
         sanitizedTitle: sanitized,
         match,
         selectedCandidate: candidate,
-        excluded: match.status === "NOT_FOUND",
+        excluded: shouldExclude,
       });
     } catch (err) {
       console.error(`Error matching ${track.title} on ${targetPlatform}:`, err);

@@ -85,11 +85,23 @@ export const TrackRow: React.FC<TrackRowProps> = ({
           >
             <span>{badge.label}</span>
           </div>
-          <span className="text-[10px] font-mono text-slate-300 font-medium mt-1">
-            {Math.round(match.totalScore * 100)}% match
-          </span>
+          <div className="flex items-center gap-1 mt-1 flex-wrap justify-center">
+            <span className="text-[10px] font-mono text-slate-300 font-medium">
+              {Math.round(match.totalScore * 100)}%
+            </span>
+            {match.lyricsVerified && (
+              <span className="px-1 py-0.2 text-[8px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded">
+                ✓ Lirik
+              </span>
+            )}
+            {selectedCandidate && match.artistScore < 0.45 && (
+              <span className="px-1 py-0.2 text-[8px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
+                ⚠ Beda Artis
+              </span>
+            )}
+          </div>
           {match.reason && (
-            <span className="text-[9px] text-slate-500 truncate max-w-[130px]" title={match.reason}>
+            <span className="text-[9px] text-slate-500 truncate max-w-[140px] mt-0.5" title={match.reason}>
               {match.reason}
             </span>
           )}
@@ -186,6 +198,16 @@ export const TrackRow: React.FC<TrackRowProps> = ({
               <span>{badge.label}</span>
               <span className="text-[9px] opacity-80">({Math.round(match.totalScore * 100)}%)</span>
             </div>
+            {match.lyricsVerified && (
+              <span className="px-1.5 py-0.5 text-[9px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-md">
+                ✓ Lirik
+              </span>
+            )}
+            {selectedCandidate && match.artistScore < 0.45 && (
+              <span className="px-1.5 py-0.5 text-[9px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-md">
+                ⚠ Beda Artis
+              </span>
+            )}
           </div>
 
           <button

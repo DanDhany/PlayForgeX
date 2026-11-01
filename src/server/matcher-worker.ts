@@ -4,6 +4,7 @@ import { PlaylistDraft, TransferTrackItem, PlaylistSummary, TrackMetadata } from
 import { YouTubeMusicClient } from "../core/ytmusic";
 import { AppleMusicClient } from "../core/applemusic";
 import { cleanTitle } from "../core/sanitizer";
+import { compareLyrics } from "../core/lyrics";
 
 const DATA_DIR = process.env.DATA_DIR || path.resolve(process.cwd(), "data");
 const DRAFTS_DIR = path.resolve(DATA_DIR, "drafts");
@@ -191,12 +192,47 @@ export async function startBackgroundMatching(
             match = resMatch.match;
           }
 
+          // Lyrics cross-verification when both clients are available
+          if (candidate && ytClient && appleClient) {
+            try {
+              const ytId = sourcePlatform === "youtube" ? track.videoId : candidate.id;
+              const appleId = sourcePlatform === "apple" ? track.videoId : candidate.id;
+
+              if (ytId && appleId) {
+                const [ytLyr, appleLyr] = await Promise.all([
+                  ytClient.fetchTrackLyrics(ytId).catch(() => null),
+                  appleClient.fetchTrackLyrics(appleId, sf).catch(() => null),
+                ]);
+
+                if (ytLyr && appleLyr) {
+                  const lyrSim = compareLyrics(ytLyr, appleLyr);
+                  if (lyrSim >= 0.50) {
+                    match.lyricsVerified = true;
+                    match.status = "EXACT_MATCH";
+                    match.totalScore = Math.max(match.totalScore, 0.95);
+                    match.reason = "Judul, artis & lirik terverifikasi identik";
+                  } else if (lyrSim < 0.15 && ytLyr.length > 50 && appleLyr.length > 50) {
+                    // Both have substantial lyrics, but they do NOT match -> completely different song!
+                    match.status = "NOT_FOUND";
+                    match.totalScore = 0.20;
+                    match.reason = "Lirik berbeda (bukan lagu yang sama)";
+                  }
+                }
+              }
+            } catch {
+              // Ignore network lyric check errors and keep metadata match
+            }
+          }
+
+          // Strict inclusion: exclude if not EXACT_MATCH or if artist mismatch
+          const shouldExclude = match.status !== "EXACT_MATCH" || match.artistScore < 0.45;
+
           const matchedItem: TransferTrackItem = {
             source: track,
             sanitizedTitle: sanitized,
             match,
             selectedCandidate: candidate,
-            excluded: match.status === "NOT_FOUND",
+            excluded: shouldExclude,
           };
 
           if (existingIdx !== -1) {

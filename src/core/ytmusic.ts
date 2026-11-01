@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import { TrackMetadata, PlaylistSummary, AppleMusicTrack, MatchResult } from "../shared/types";
 import { cleanTitle } from "./sanitizer";
 import { searchAndMatchTrack } from "./applemusic";
+import { getArtistAliases } from "./artist-matcher";
+import { fetchYouTubeLyrics } from "./lyrics";
 
 export function generateSapisidHash(sapisid: string, origin = "https://music.youtube.com"): string {
   const timestamp = Math.floor(Date.now() / 1000);
@@ -367,13 +369,57 @@ export class YouTubeMusicClient {
         if (!videoId || seenIds.has(videoId)) continue;
         seenIds.add(videoId);
 
-        const subRuns = flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
-        const subParts = subRuns.map((r: any) => r.text).join("").split(" • ");
+        const subRuns: any[] = flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
 
+        // 1. Try to find artist from navigationEndpoint with MUSIC_PAGE_TYPE_ARTIST
         let artist = "";
         let album = "";
-        if (subParts.length >= 1) artist = subParts[0].trim();
-        if (subParts.length >= 2) album = subParts[1].trim();
+        let durationSeconds: number | undefined;
+
+        const artistRun = subRuns.find(
+          (r: any) =>
+            r.navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs
+              ?.browseEndpointContextMusicConfig?.pageType === "MUSIC_PAGE_TYPE_ARTIST" ||
+            r.navigationEndpoint?.browseEndpoint?.browseId?.startsWith("UC")
+        );
+        if (artistRun) {
+          artist = artistRun.text.trim();
+        }
+
+        const albumRun = subRuns.find(
+          (r: any) =>
+            r.navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs
+              ?.browseEndpointContextMusicConfig?.pageType === "MUSIC_PAGE_TYPE_ALBUM"
+        );
+        if (albumRun) {
+          album = albumRun.text.trim();
+        }
+
+        // 2. Fallback: Parse runs text and split by " • "
+        const textRuns = subRuns.map((r: any) => r.text).join("");
+        const rawParts = textRuns.split(" • ").map((s: string) => s.trim()).filter(Boolean);
+
+        // Filter out item type badges
+        const TYPE_BADGES = new Set(["曲", "動画", "Song", "Video", "Single", "EP", "Album", "エピソード", "Track"]);
+        const cleanParts = rawParts.filter((p: string) => !TYPE_BADGES.has(p));
+
+        if (!artist && cleanParts.length > 0) {
+          artist = cleanParts[0];
+        }
+        if (!album && cleanParts.length > 1) {
+          if (!/^\d+:\d+$/.test(cleanParts[1]) && !cleanParts[1].includes("回") && !cleanParts[1].includes("view")) {
+            album = cleanParts[1];
+          }
+        }
+
+        // Find duration if present
+        for (const part of rawParts) {
+          const durMatch = part.match(/^(\d+):(\d+)$/);
+          if (durMatch) {
+            durationSeconds = parseInt(durMatch[1], 10) * 60 + parseInt(durMatch[2], 10);
+            break;
+          }
+        }
 
         const thumbnails = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
         const artworkUrl = thumbnails[thumbnails.length - 1]?.url;
@@ -383,6 +429,7 @@ export class YouTubeMusicClient {
           name: title,
           artistName: artist,
           albumName: album || undefined,
+          durationInMillis: durationSeconds ? durationSeconds * 1000 : undefined,
           artworkUrl,
         });
       }
@@ -404,28 +451,42 @@ export class YouTubeMusicClient {
     const sanitized = cleanTitle(track.title);
     const candidateMap = new Map<string, AppleMusicTrack>();
 
-    // 1. Primary Query: Search original title first
-    const primaryResults = await this.searchCatalog(sanitized.originalTitle);
+    // 1. Primary Query (PRIORITY #1): Always search Title + Artist
+    const primaryQuery = `${sanitized.originalTitle} ${track.artist}`.trim();
+    const primaryResults = await this.searchCatalog(primaryQuery);
     for (const item of primaryResults) {
       candidateMap.set(item.id, item);
     }
 
     let bestMatch = searchAndMatchTrack(track, Array.from(candidateMap.values()));
 
-    // 2. Secondary Query: If not exact, search Original Title + Artist
+    // 2. Secondary Query: Try known aliases for artist (Kanji <-> Romaji / English)
     if (bestMatch.status !== "EXACT_MATCH") {
-      const combinedQuery = `${sanitized.originalTitle} ${track.artist}`.trim();
-      const secondaryResults = await this.searchCatalog(combinedQuery);
-      for (const item of secondaryResults) {
+      const aliases = getArtistAliases(track.artist);
+      for (const alias of aliases.slice(0, 2)) {
+        const aliasQuery = `${sanitized.originalTitle} ${alias}`.trim();
+        const aliasResults = await this.searchCatalog(aliasQuery);
+        for (const item of aliasResults) {
+          candidateMap.set(item.id, item);
+        }
+      }
+      bestMatch = searchAndMatchTrack(track, Array.from(candidateMap.values()));
+    }
+
+    // 3. Tertiary Query: Subtitle + Artist if available
+    if (bestMatch.status !== "EXACT_MATCH" && sanitized.subtitle) {
+      const subQuery = `${sanitized.subtitle} ${track.artist}`.trim();
+      const subResults = await this.searchCatalog(subQuery);
+      for (const item of subResults) {
         candidateMap.set(item.id, item);
       }
       bestMatch = searchAndMatchTrack(track, Array.from(candidateMap.values()));
     }
 
-    // 3. Tertiary Query: Subtitle if available
-    if (bestMatch.status !== "EXACT_MATCH" && sanitized.subtitle) {
-      const subResults = await this.searchCatalog(sanitized.subtitle);
-      for (const item of subResults) {
+    // 4. Quaternary Query: Title alone (fallback only if candidates list is still empty)
+    if (candidateMap.size === 0) {
+      const titleOnlyResults = await this.searchCatalog(sanitized.originalTitle);
+      for (const item of titleOnlyResults) {
         candidateMap.set(item.id, item);
       }
       bestMatch = searchAndMatchTrack(track, Array.from(candidateMap.values()));
@@ -437,6 +498,10 @@ export class YouTubeMusicClient {
       match: bestMatch,
       allResults,
     };
+  }
+
+  public async fetchTrackLyrics(videoId: string): Promise<string | null> {
+    return fetchYouTubeLyrics(videoId, this.cookieString);
   }
 
   public async createPlaylist(
