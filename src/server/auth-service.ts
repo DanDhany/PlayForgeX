@@ -240,8 +240,14 @@ export async function ensureDefaultAdmin(): Promise<User> {
   const count = Number(countRows?.[0]?.count || 0);
 
   if (count === 0) {
-    console.log("[AuthService] No users detected. Seeding default admin user ('admin')...");
-    return register("admin", "tunebridge2026", "admin");
+    try {
+      console.log("[AuthService] No users detected. Seeding default admin user ('admin')...");
+      return await register("admin", "tunebridge2026", "admin");
+    } catch (err: any) {
+      const existing = await getUserByUsername("admin");
+      if (existing) return existing;
+      throw err;
+    }
   }
 
   const existingAdmin = await getUserByUsername("admin");

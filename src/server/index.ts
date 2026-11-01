@@ -18,6 +18,8 @@ import {
 } from "./matcher-worker.js";
 import { AccountManager } from "./account-manager.js";
 import { MergeEngine } from "./merge-engine.js";
+import { initDatabase, isDbConnected } from "./db.js";
+import * as authService from "./auth-service.js";
 
 const app = express();
 const PORT = parseInt(process.env.APP_PORT || process.env.PORT || "3080", 10);
@@ -32,6 +34,61 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+// Initialize Database & ensure default admin user
+if (process.env.NODE_ENV !== "test") {
+  initDatabase()
+    .then(async (ok) => {
+      if (ok) {
+        try {
+          const admin = await authService.ensureDefaultAdmin();
+          await authService.migrateLegacyDataToAdmin(admin.id, DATA_DIR);
+        } catch (err) {
+          console.warn("[Server] Auth initialization warning:", err);
+        }
+      }
+    })
+    .catch((err) => {
+      console.warn("[Server] Database init error:", err);
+    });
+}
+
+// Authentication Middleware
+const authMiddleware = async (req: Request, _res: Response, next: any) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const cookieHeader = req.headers.cookie;
+    let cookieToken: string | undefined;
+    if (cookieHeader) {
+      const match = cookieHeader.match(/tb_token=([^;]+)/);
+      if (match) cookieToken = match[1];
+    }
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : (cookieToken || (req.headers["x-tunebridge-token"] as string | undefined));
+
+    if (token) {
+      const user = await authService.verifyToken(token);
+      if (user) {
+        (req as any).user = user;
+        return next();
+      }
+      (req as any).user = null;
+      return next();
+    }
+
+    // Fallback to default admin for single-user local development mode
+    const defaultAdmin = await authService.getUserByUsername("admin");
+    if (defaultAdmin) {
+      (req as any).user = defaultAdmin;
+    }
+  } catch (err) {
+    // fallback gracefully
+  }
+  next();
+};
+
+app.use(authMiddleware);
+
 // Initialize Multi-Account & Merge Managers
 const accountManager = new AccountManager(DATA_DIR);
 const mergeEngine = new MergeEngine(DATA_DIR, accountManager);
@@ -39,17 +96,66 @@ const mergeEngine = new MergeEngine(DATA_DIR, accountManager);
 let currentProgress = { current: 0, total: 0, success: 0, failed: 0 };
 
 // ==========================================
-// 1. Multi-Account Management APIs
+// 1. User Authentication APIs
+// ==========================================
+
+// POST /api/auth/register
+app.post("/api/auth/register", async (req: Request, res: Response) => {
+  const { username, password, role } = req.body || {};
+  if (!username || typeof username !== "string" || username.trim().length < 3) {
+    return res.status(400).json({ error: "Username must be at least 3 characters long" });
+  }
+  if (!password || typeof password !== "string" || password.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters long" });
+  }
+
+  try {
+    await authService.register(username, password, role || "user");
+    const session = await authService.login(username, password);
+    res.json({ success: true, user: session.user, token: session.token });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Registration failed" });
+  }
+});
+
+// POST /api/auth/login
+app.post("/api/auth/login", async (req: Request, res: Response) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password are required" });
+  }
+
+  try {
+    const session = await authService.login(username, password);
+    res.json({ success: true, user: session.user, token: session.token });
+  } catch (err: any) {
+    res.status(401).json({ error: err.message || "Invalid username or password" });
+  }
+});
+
+// GET /api/auth/me
+app.get("/api/auth/me", (req: Request, res: Response) => {
+  res.json({ user: (req as any).user || null });
+});
+
+// ==========================================
+// 2. Multi-Account Management APIs
 // ==========================================
 
 // GET /api/accounts - List all connected accounts (sanitized, zero secrets exposed)
-app.get("/api/accounts", (_req: Request, res: Response) => {
-  res.json(accountManager.getAccounts());
+app.get("/api/accounts", async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  if (userId && (await isDbConnected())) {
+    const dbAccounts = await accountManager.loadFromDb(userId);
+    return res.json(dbAccounts);
+  }
+  res.json(accountManager.getAccounts(userId));
 });
 
 // POST /api/accounts - Add a new connection
 app.post("/api/accounts", async (req: Request, res: Response) => {
   const { platform, cookieString, musicUserToken, developerToken, alias } = req.body;
+  const userId = (req as any).user?.id;
 
   if (platform !== "youtube" && platform !== "apple") {
     return res.status(400).json({ error: "platform must be 'youtube' or 'apple'" });
@@ -63,11 +169,11 @@ app.post("/api/accounts", async (req: Request, res: Response) => {
   try {
     if (platform === "youtube") {
       if (!cookieString) return res.status(400).json({ error: "cookieString is required for YouTube Music" });
-      const acc = await accountManager.addYouTubeAccount(cookieString, cleanAlias);
+      const acc = await accountManager.addYouTubeAccount(cookieString, cleanAlias, userId);
       return res.json({ success: true, account: acc });
     } else {
       if (!musicUserToken) return res.status(400).json({ error: "musicUserToken is required for Apple Music" });
-      const acc = await accountManager.addAppleAccount(musicUserToken, developerToken, cleanAlias);
+      const acc = await accountManager.addAppleAccount(musicUserToken, developerToken, cleanAlias, undefined, userId);
       return res.json({ success: true, account: acc });
     }
   } catch (err: any) {
@@ -122,11 +228,12 @@ app.get("/api/accounts/:id/playlists", async (req: Request, res: Response) => {
 // POST /api/accounts/import-snapshot - Direct JSON snapshot import
 app.post("/api/accounts/import-snapshot", (req: Request, res: Response) => {
   const { alias, playlists } = req.body;
+  const userId = (req as any).user?.id;
   if (!playlists || !Array.isArray(playlists)) {
     return res.status(400).json({ error: "playlists array is required" });
   }
   try {
-    const acc = accountManager.importSnapshotAccount(alias, playlists);
+    const acc = accountManager.importSnapshotAccount(alias, playlists, userId);
     res.json({ success: true, account: acc, playlistCount: acc.playlistCount });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -134,7 +241,7 @@ app.post("/api/accounts/import-snapshot", (req: Request, res: Response) => {
 });
 
 // ==========================================
-// 2. Legacy-Compatible Authentication APIs
+// 3. Legacy-Compatible Authentication APIs
 // ==========================================
 
 // GET /api/status - Returns primary accounts status for backward compatibility
@@ -161,10 +268,11 @@ app.get("/api/status", async (_req: Request, res: Response) => {
 // POST /api/auth/youtube
 app.post("/api/auth/youtube", async (req: Request, res: Response) => {
   const { cookieString, alias } = req.body;
+  const userId = (req as any).user?.id;
   if (!cookieString) return res.status(400).json({ error: "cookieString is required" });
 
   try {
-    const acc = await accountManager.addYouTubeAccount(cookieString, alias || "Koleksi Utama (YouTube)");
+    const acc = await accountManager.addYouTubeAccount(cookieString, alias || "Koleksi Utama (YouTube)", userId);
     res.json({ success: true, account: acc, playlistCount: acc.playlistCount });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed authenticating YouTube Music" });
@@ -174,13 +282,16 @@ app.post("/api/auth/youtube", async (req: Request, res: Response) => {
 // POST /api/auth/apple
 app.post("/api/auth/apple", async (req: Request, res: Response) => {
   const { musicUserToken, developerToken, alias } = req.body;
+  const userId = (req as any).user?.id;
   if (!musicUserToken) return res.status(400).json({ error: "musicUserToken is required" });
 
   try {
     const acc = await accountManager.addAppleAccount(
       musicUserToken,
       developerToken,
-      alias || "Koleksi Utama (Apple)"
+      alias || "Koleksi Utama (Apple)",
+      undefined,
+      userId
     );
     res.json({ success: true, account: acc, storefront: acc.storefront, playlistCount: acc.playlistCount });
   } catch (err: any) {
@@ -193,6 +304,7 @@ app.post("/api/auth/apple", async (req: Request, res: Response) => {
 // completely bypassing Mixed-Content (HTTPS -> HTTP) and CORS blocks via top-level form POST navigation.
 app.post("/api/auth/web-catch", async (req: Request, res: Response) => {
   const { platform, cookieString, musicUserToken, developerToken, alias, returnUrl } = req.body;
+  const userId = (req as any).user?.id;
 
   if (platform !== "youtube" && platform !== "apple") {
     return res.status(400).send(`
@@ -230,9 +342,9 @@ app.post("/api/auth/web-catch", async (req: Request, res: Response) => {
         const raw = req.body.payload || req.body.playlists;
         const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
         const plList = parsed.playlists || parsed;
-        addedAcc = accountManager.importSnapshotAccount(cleanAlias, plList);
+        addedAcc = accountManager.importSnapshotAccount(cleanAlias, plList, userId);
       } else if (cookieString) {
-        addedAcc = await accountManager.addYouTubeAccount(cookieString, cleanAlias);
+        addedAcc = await accountManager.addYouTubeAccount(cookieString, cleanAlias, userId);
       } else {
         throw new Error("Data playlist atau cookie string YouTube tidak ditemukan");
       }
@@ -241,7 +353,9 @@ app.post("/api/auth/web-catch", async (req: Request, res: Response) => {
       addedAcc = await accountManager.addAppleAccount(
         musicUserToken,
         developerToken,
-        cleanAlias
+        cleanAlias,
+        undefined,
+        userId
       );
     }
 
@@ -266,8 +380,14 @@ app.post("/api/auth/web-catch", async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/logout
-app.post("/api/auth/logout", (req: Request, res: Response) => {
-  const { service, accountId } = req.body;
+app.post("/api/auth/logout", async (req: Request, res: Response) => {
+  const { service, accountId, token } = req.body || {};
+  const authHeader = req.headers.authorization;
+  const sessionToken = token || (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined);
+
+  if (sessionToken) {
+    await authService.logout(sessionToken);
+  }
 
   if (accountId) {
     accountManager.removeAccount(accountId);
@@ -743,7 +863,12 @@ if (fs.existsSync(distDir)) {
   });
 }
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`TuneBridge Server running at http://0.0.0.0:${PORT}`);
-  console.log(`Persistent data directory: ${DATA_DIR}`);
-});
+let server: any = null;
+if (process.env.NODE_ENV !== "test") {
+  server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`TuneBridge Server running at http://0.0.0.0:${PORT}`);
+    console.log(`Persistent data directory: ${DATA_DIR}`);
+  });
+}
+
+export { app, server, accountManager, mergeEngine };

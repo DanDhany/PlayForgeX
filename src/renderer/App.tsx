@@ -12,6 +12,7 @@ import { ExportModal } from "./components/ExportModal";
 import { TransferProgressModal } from "./components/TransferProgressModal";
 import { MusicPlayerBar } from "./components/MusicPlayerBar";
 import { LandingPage } from "./components/landing/LandingPage";
+import { AuthModal } from "./components/auth/AuthModal";
 import {
   AccountConnection,
   ActivityLogItem,
@@ -20,6 +21,7 @@ import {
   AppleMusicTrack,
   TransferJob,
   PlaylistDraft,
+  User,
 } from "../shared/types";
 
 export const App: React.FC = () => {
@@ -35,6 +37,11 @@ export const App: React.FC = () => {
     (PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: "youtube" | "apple" })[]
   >([]);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
+
+  // Authentication states
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<"login" | "register">("login");
 
   // Transfer & Review states
   const [selectedPlaylist, setSelectedPlaylist] = useState<PlaylistSummary | null>(null);
@@ -61,6 +68,7 @@ export const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    checkUserSession();
     loadAccounts();
     loadActivity();
 
@@ -114,9 +122,68 @@ export const App: React.FC = () => {
     window.location.hash = "#landing";
   };
 
-  const loadAccounts = async () => {
+  const checkUserSession = async () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
     try {
-      const res = await fetch("/api/accounts");
+      const res = await fetch("/api/auth/me", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          setCurrentUser(data.user);
+        } else if (token) {
+          localStorage.removeItem("tunebridge_token");
+          setCurrentUser(null);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed checking user session:", err);
+    }
+  };
+
+  const handleAuthSuccess = (user: User, token: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("tunebridge_token", token);
+    }
+    setCurrentUser(user);
+    setIsAuthModalOpen(false);
+    setSuccessBanner(`Selamat datang kembali, ${user.username}!`);
+    setTimeout(() => setSuccessBanner(null), 4000);
+    loadAccounts();
+    loadActivity();
+  };
+
+  const handleLogoutUser = async () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ token }),
+      });
+    } catch (err) {
+      console.warn("Logout error:", err);
+    }
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("tunebridge_token");
+    }
+    setCurrentUser(null);
+    await checkUserSession();
+    await loadAccounts();
+    setSuccessBanner("Sesi akun Anda telah ditutup.");
+    setTimeout(() => setSuccessBanner(null), 4000);
+  };
+
+  const loadAccounts = async () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    try {
+      const res = await fetch("/api/accounts", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (res.ok) {
         const data: AccountConnection[] = await res.json();
         setAccounts(data);
@@ -449,6 +516,12 @@ export const App: React.FC = () => {
         onChangeTab={setActiveTab}
         connectedCount={accounts.length}
         onOpenLanding={handleOpenLanding}
+        currentUser={currentUser}
+        onOpenAuth={(tab) => {
+          setAuthModalTab(tab || "login");
+          setIsAuthModalOpen(true);
+        }}
+        onUserLogout={handleLogoutUser}
       />
 
       {/* Main Content Pane */}
@@ -524,6 +597,13 @@ export const App: React.FC = () => {
       </main>
 
       {/* Modals & Dialogs */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+        initialTab={authModalTab}
+      />
+
       <AddAccountModal
         isOpen={isAddAccountModalOpen}
         onClose={() => setIsAddAccountModalOpen(false)}

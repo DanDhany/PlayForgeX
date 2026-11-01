@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Disc3, LogIn, LogOut, RefreshCw, Layers, ListMusic, ChevronDown, X, Sparkles } from "lucide-react";
-import { ServiceAuthStatus } from "../../shared/types";
+import { ServiceAuthStatus, User } from "../../shared/types";
+import { UserProfileMenu } from "./auth/UserProfileMenu";
 
 interface HeaderProps {
   authStatus: ServiceAuthStatus;
@@ -16,6 +17,9 @@ interface HeaderProps {
   onChangeMobileTab?: (tab: "playlists" | "review") => void;
   selectedPlaylistTitle?: string;
   matchedCount?: number;
+  currentUser?: User | null;
+  onOpenAuth?: (initialTab?: "login" | "register") => void;
+  onUserLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -30,6 +34,9 @@ export const Header: React.FC<HeaderProps> = ({
   activeMobileTab = "playlists",
   onChangeMobileTab,
   matchedCount = 0,
+  currentUser,
+  onOpenAuth,
+  onUserLogout,
 }) => {
   const [isAccountsMenuOpen, setIsAccountsMenuOpen] = useState(false);
 
@@ -169,10 +176,23 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
+
+          {/* User Profile Menu */}
+          <UserProfileMenu
+            currentUser={currentUser}
+            onOpenAuth={onOpenAuth || (() => {})}
+            onLogout={onUserLogout || (() => {})}
+          />
         </div>
 
         {/* Mobile Accounts Hub Trigger (Compact on < md) */}
         <div className="md:hidden flex items-center space-x-1.5">
+          <UserProfileMenu
+            compact
+            currentUser={currentUser}
+            onOpenAuth={onOpenAuth || (() => {})}
+            onLogout={onUserLogout || (() => {})}
+          />
           <button
             onClick={() => setIsAccountsMenuOpen(true)}
             className={`px-2 py-1 rounded-lg border text-xs font-medium flex items-center gap-1.5 btn-press transition ${

@@ -10,6 +10,8 @@ import {
   Server,
   Sparkles,
 } from "lucide-react";
+import { User } from "../../shared/types";
+import { UserProfileMenu } from "./auth/UserProfileMenu";
 
 export type NavTab = "overview" | "transfer" | "library" | "accounts" | "activity" | "settings";
 
@@ -18,6 +20,9 @@ interface NavigationRailProps {
   onChangeTab: (tab: NavTab) => void;
   connectedCount: number;
   onOpenLanding?: () => void;
+  currentUser?: User | null;
+  onOpenAuth?: (initialTab?: "login" | "register") => void;
+  onUserLogout?: () => void;
 }
 
 export const NavigationRail: React.FC<NavigationRailProps> = ({
@@ -25,6 +30,9 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
   onChangeTab,
   connectedCount,
   onOpenLanding,
+  currentUser,
+  onOpenAuth,
+  onUserLogout,
 }) => {
   const desktopNavItems: { id: NavTab; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -120,9 +128,16 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
           </nav>
         </div>
 
-        {/* Desktop Self-Hosted Footer */}
-        <div className="p-3 border-t border-border/80">
-          <div className="px-3 py-2 rounded-lg bg-surface-elevated/50 border border-border/60 flex items-center justify-between text-xs text-text-secondary">
+        {/* Desktop User Profile & Self-Hosted Footer */}
+        <div className="p-3 border-t border-border/80 space-y-2">
+          <div className="w-full">
+            <UserProfileMenu
+              currentUser={currentUser}
+              onOpenAuth={onOpenAuth || (() => {})}
+              onLogout={onUserLogout || (() => {})}
+            />
+          </div>
+          <div className="px-3 py-1.5 rounded-lg bg-surface-elevated/50 border border-border/60 flex items-center justify-between text-xs text-text-secondary">
             <div className="flex items-center gap-2">
               <Server className="w-3.5 h-3.5 text-status-success" />
               <span className="text-[11px] font-mono">Self-Hosted</span>
@@ -153,6 +168,13 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
               <Sparkles className="w-4 h-4 text-accent" />
             </button>
           )}
+
+          <UserProfileMenu
+            compact
+            currentUser={currentUser}
+            onOpenAuth={onOpenAuth || (() => {})}
+            onLogout={onUserLogout || (() => {})}
+          />
 
           <button
             onClick={() => onChangeTab("accounts")}

@@ -409,7 +409,11 @@ export class AccountManager {
     return this.appleClients.get(accountId) || null;
   }
 
-  public async addYouTubeAccount(cookieString: string, alias?: string): Promise<AccountConnection> {
+  public async addYouTubeAccount(
+    cookieString: string,
+    alias?: string,
+    targetUserId?: string
+  ): Promise<AccountConnection> {
     const client = new YouTubeMusicClient(cookieString);
     if (!client.hasValidAuth()) {
       throw new Error("Cookie must contain valid SAPISID or __Secure-3PAPISID");
@@ -440,6 +444,7 @@ export class AccountManager {
 
     const id = existing ? existing.id : `acc_ytm_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
     const localAlias = alias?.trim() || existing?.localAlias || (playlistCount > 0 ? `YouTube Music (${playlistCount} lagu)` : "YouTube Music");
+    const uid = targetUserId || this.userId;
 
     const acc: AccountConnection = {
       id,
@@ -450,7 +455,7 @@ export class AccountManager {
       createdAt: existing ? existing.createdAt : Date.now(),
       lastVerifiedAt: Date.now(),
       playlistCount,
-      userId: this.userId,
+      userId: uid,
     };
 
     const sec = { id, ytCookieString: cookieString };
@@ -459,8 +464,8 @@ export class AccountManager {
     this.ytmClients.set(id, client);
 
     this.persist();
-    if (this.userId) {
-      this.saveAccountToDb(acc, sec).catch(() => {});
+    if (uid) {
+      this.saveAccountToDb(acc, sec, uid).catch(() => {});
     }
     return acc;
   }
@@ -469,7 +474,8 @@ export class AccountManager {
     musicUserToken: string,
     developerToken?: string,
     alias?: string,
-    storefront?: string
+    storefront?: string,
+    targetUserId?: string
   ): Promise<AccountConnection> {
     const client = new AppleMusicClient(musicUserToken, developerToken);
     let sf = storefront;
@@ -495,6 +501,7 @@ export class AccountManager {
 
     const id = existing ? existing.id : `acc_apple_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
     const localAlias = alias?.trim() || existing?.localAlias || `Apple Music (${sf.toUpperCase()})`;
+    const uid = targetUserId || this.userId;
 
     const acc: AccountConnection = {
       id,
@@ -505,7 +512,7 @@ export class AccountManager {
       createdAt: existing ? existing.createdAt : Date.now(),
       lastVerifiedAt: Date.now(),
       playlistCount: count,
-      userId: this.userId,
+      userId: uid,
     };
 
     const sec = { id, appleUserToken: musicUserToken, appleDevToken: developerToken };
@@ -514,8 +521,8 @@ export class AccountManager {
     this.appleClients.set(id, client);
 
     this.persist();
-    if (this.userId) {
-      this.saveAccountToDb(acc, sec).catch(() => {});
+    if (uid) {
+      this.saveAccountToDb(acc, sec, uid).catch(() => {});
     }
     return acc;
   }
@@ -589,7 +596,8 @@ export class AccountManager {
 
   public importSnapshotAccount(
     alias: string,
-    playlists: SnapshotPlaylist[]
+    playlists: SnapshotPlaylist[],
+    targetUserId?: string
   ): AccountConnection {
     if (!playlists || !Array.isArray(playlists)) {
       throw new Error("playlists array is required for snapshot import");
@@ -603,6 +611,7 @@ export class AccountManager {
     const id = existing
       ? existing.id
       : `acc_ytm_snap_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+    const uid = targetUserId || this.userId;
 
     const acc: AccountConnection = {
       id,
@@ -613,7 +622,7 @@ export class AccountManager {
       createdAt: existing ? existing.createdAt : Date.now(),
       lastVerifiedAt: Date.now(),
       playlistCount: playlists.length,
-      userId: this.userId,
+      userId: uid,
     };
 
     this.accounts.set(id, acc);
@@ -627,8 +636,8 @@ export class AccountManager {
     }
 
     this.persist();
-    if (this.userId) {
-      this.saveAccountToDb(acc).catch(() => {});
+    if (uid) {
+      this.saveAccountToDb(acc, undefined, uid).catch(() => {});
     }
     return acc;
   }

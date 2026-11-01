@@ -1,3 +1,16 @@
+export interface User {
+  id: string;
+  username: string;
+  role: "admin" | "user";
+  createdAt: number;
+  lastLoginAt?: number | null;
+}
+
+export interface AuthSession {
+  user: User;
+  token: string;
+}
+
 export interface TrackMetadata {
   id?: string;
   videoId?: string;
