@@ -1,4 +1,4 @@
-import mysql, { Pool, PoolOptions, ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import mysql, { Pool, PoolOptions } from "mysql2/promise";
 
 export interface DbConfig {
   host?: string;
