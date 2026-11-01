@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X, KeyRound, AlertCircle, ChevronDown, ChevronUp, Copy, Check, Smartphone, Monitor } from "lucide-react";
+import { copyToClipboard } from "../utils/ui-helpers";
 
 interface AuthModalWebProps {
   service: "youtube" | "apple" | null;
@@ -36,10 +37,12 @@ export const AuthModalWeb: React.FC<AuthModalWebProps> = ({
   const targetSiteUrl = service === "youtube" ? "https://music.youtube.com" : "https://music.apple.com";
   const cliCommand = service === "youtube" ? "npm run auth:yt" : "npm run auth:apple";
 
-  const handleCopyBookmarklet = () => {
-    navigator.clipboard.writeText(activeBookmarklet);
-    setCopiedBookmarklet(true);
-    setTimeout(() => setCopiedBookmarklet(false), 2000);
+  const handleCopyBookmarklet = async () => {
+    const ok = await copyToClipboard(activeBookmarklet);
+    if (ok) {
+      setCopiedBookmarklet(true);
+      setTimeout(() => setCopiedBookmarklet(false), 2000);
+    }
   };
 
   const handleSubmitManual = async (e: React.FormEvent) => {
@@ -118,9 +121,11 @@ export const AuthModalWeb: React.FC<AuthModalWebProps> = ({
           <div className="bg-surface border border-white/[0.08] rounded-lg p-2 flex items-center justify-between font-mono text-xs text-emerald-300">
             <code>{cliCommand}</code>
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(cliCommand);
-                alert(`Perintah '${cliCommand}' berhasil disalin.`);
+              onClick={async () => {
+                const ok = await copyToClipboard(cliCommand);
+                if (ok) {
+                  alert(`Perintah '${cliCommand}' berhasil disalin.`);
+                }
               }}
               className="p-1 text-slate-400 hover:text-white transition btn-press"
               title="Salin perintah"

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   X,
   KeyRound,
@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Info,
 } from "lucide-react";
+import { copyToClipboard } from "../utils/ui-helpers";
 
 interface AddAccountModalProps {
   isOpen: boolean;
@@ -32,10 +33,13 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   const [cookieString, setCookieString] = useState("");
   const [musicUserToken, setMusicUserToken] = useState("");
   const [developerToken, setDeveloperToken] = useState("");
-  const [copiedBookmarklet, setCopiedBookmarklet] = useState(false);
+  const [bookmarkletCopied, setBookmarkletCopied] = useState<"idle" | "copied" | "selected">("idle");
   const [copiedCli, setCopiedCli] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const bookmarkletRef = useRef<HTMLTextAreaElement>(null);
+  const cliRef = useRef<HTMLDivElement>(null);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3080";
   const safeAlias = alias.trim() || (platform === "youtube" ? "YouTube Music" : "Apple Music");
@@ -55,16 +59,34 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       ? `npm run auth:yt -- --alias "${safeAlias}"`
       : `npm run auth:apple -- --alias "${safeAlias}"`;
 
-  const handleCopyBookmarklet = () => {
-    navigator.clipboard.writeText(activeBookmarklet);
-    setCopiedBookmarklet(true);
-    setTimeout(() => setCopiedBookmarklet(false), 2000);
+  const handleCopyBookmarklet = async () => {
+    const success = await copyToClipboard(activeBookmarklet);
+    if (success) {
+      setBookmarkletCopied("copied");
+      setTimeout(() => setBookmarkletCopied("idle"), 2500);
+    } else {
+      // Fallback on iPhone when WebKit rejects programmatic clipboard write over HTTP:
+      // Programmatically select all text in the textarea so iOS displays native Copy callout
+      handleSelectBookmarklet();
+    }
   };
 
-  const handleCopyCli = () => {
-    navigator.clipboard.writeText(cliCommand);
-    setCopiedCli(true);
-    setTimeout(() => setCopiedCli(false), 2000);
+  const handleSelectBookmarklet = () => {
+    if (bookmarkletRef.current) {
+      bookmarkletRef.current.focus();
+      bookmarkletRef.current.select();
+      bookmarkletRef.current.setSelectionRange(0, activeBookmarklet.length);
+      setBookmarkletCopied("selected");
+      setTimeout(() => setBookmarkletCopied("idle"), 4000);
+    }
+  };
+
+  const handleCopyCli = async () => {
+    const success = await copyToClipboard(cliCommand);
+    if (success) {
+      setCopiedCli(true);
+      setTimeout(() => setCopiedCli(false), 2000);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -258,16 +280,23 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               Mendukung koneksi langsung dari browser HP atau komputer lain di jaringan LAN. Buka tab baru di{" "}
               <span className="text-text-primary font-mono">{platform === "youtube" ? "music.youtube.com" : "music.apple.com"}</span>, pastikan sudah login, lalu jalankan bookmarklet ini. Browser otomatis mengirim sesi ke TuneBridge tanpa hambatan Mixed-Content HTTPS.
             </p>
+
+            {/* Copy / Open Action Buttons */}
             <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={handleCopyBookmarklet}
-                className="flex-1 py-1.5 px-3 rounded-lg bg-surface-hover hover:bg-border border border-border text-xs text-text-primary font-medium flex items-center justify-center gap-1.5 btn-press"
+                className="flex-1 py-2 px-3 rounded-lg bg-surface-hover hover:bg-border border border-border text-xs text-text-primary font-medium flex items-center justify-center gap-1.5 btn-press transition-colors"
               >
-                {copiedBookmarklet ? (
+                {bookmarkletCopied === "copied" ? (
                   <>
                     <Check className="w-3.5 h-3.5 text-status-success" />
-                    <span>Script Tersalin ke Clipboard!</span>
+                    <span className="text-status-success font-semibold">Tersalin ke Clipboard!</span>
+                  </>
+                ) : bookmarkletCopied === "selected" ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-accent" />
+                    <span className="text-accent font-semibold">Teks Terpilih (Tap Salin)</span>
                   </>
                 ) : (
                   <>
@@ -280,11 +309,37 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 href={targetSiteUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="py-1.5 px-3 rounded-lg bg-accent/15 hover:bg-accent/25 text-accent text-xs font-medium border border-accent/20 flex items-center gap-1.5 btn-press"
+                className="py-2 px-3 rounded-lg bg-accent/15 hover:bg-accent/25 text-accent text-xs font-medium border border-accent/20 flex items-center gap-1.5 btn-press transition-colors"
               >
                 <span>Buka Web</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
+            </div>
+
+            {/* Direct Tap-to-Select Script Box (Guaranteed 100% on iOS WebKit without HTTPS) */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-[11px] text-text-secondary">
+                <span>Kode Script Bookmarklet:</span>
+                <button
+                  type="button"
+                  onClick={handleSelectBookmarklet}
+                  className="text-accent hover:underline text-[10px] font-medium"
+                >
+                  Pilih Semua Teks
+                </button>
+              </div>
+              <textarea
+                ref={bookmarkletRef}
+                readOnly
+                rows={3}
+                value={activeBookmarklet}
+                onClick={handleSelectBookmarklet}
+                onTouchStart={handleSelectBookmarklet}
+                className="w-full p-2.5 bg-background border border-border rounded-lg font-mono text-[11px] text-text-secondary focus:text-text-primary focus:border-accent focus:outline-none select-all break-all cursor-pointer leading-relaxed resize-none"
+              />
+              <p className="text-[10px] text-text-secondary/70 leading-normal">
+                💡 <strong>Khusus iPhone (HTTP LAN):</strong> Kebijakan iOS WebKit membatasi akses clipboard otomatis pada HTTP non-HTTPS. Jika tombol di atas tidak menyalin, ketuk kotak teks di atas agar seluruh kode terblok, lalu tap <strong>"Salin" / "Copy"</strong> pada balon hitam bawaan iPhone Anda.
+              </p>
             </div>
           </div>
         )}
@@ -301,13 +356,25 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
             <p className="text-[11px] text-text-secondary leading-relaxed">
               Jalankan perintah ini di terminal komputer host yang menjalankan TuneBridge. Chrome akan otomatis membuka profil terisolasi baru sehingga akun ke-2 atau ke-3 Anda tidak akan menimpa akun utama.
             </p>
-            <div className="p-2.5 bg-background rounded-lg border border-border/80 font-mono text-[11px] text-text-primary break-all select-all">
+            <div
+              ref={cliRef}
+              onClick={() => {
+                const selection = window.getSelection();
+                const range = document.createRange();
+                if (cliRef.current && selection) {
+                  range.selectNodeContents(cliRef.current);
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                }
+              }}
+              className="p-2.5 bg-background rounded-lg border border-border/80 font-mono text-[11px] text-text-primary break-all select-all cursor-pointer"
+            >
               {cliCommand}
             </div>
             <button
               type="button"
               onClick={handleCopyCli}
-              className="w-full py-1.5 px-3 rounded-lg bg-surface-hover hover:bg-border border border-border text-xs text-text-primary font-medium flex items-center justify-center gap-1.5 btn-press"
+              className="w-full py-2 px-3 rounded-lg bg-surface-hover hover:bg-border border border-border text-xs text-text-primary font-medium flex items-center justify-center gap-1.5 btn-press transition-colors"
             >
               {copiedCli ? (
                 <>

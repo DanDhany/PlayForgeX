@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { getStatusBadgeProps, filterReviewTracks, calculateMatchStats } from "../src/renderer/utils/ui-helpers";
+import {
+  getStatusBadgeProps,
+  filterReviewTracks,
+  calculateMatchStats,
+  copyToClipboard,
+} from "../src/renderer/utils/ui-helpers";
 import { TransferTrackItem } from "../src/shared/types";
 
 describe("UI Match Helpers", () => {
@@ -41,5 +46,12 @@ describe("UI Match Helpers", () => {
     expect(stats.covers).toBe(1);
     expect(stats.unmatched).toBe(1);
     expect(stats.activeForImport).toBe(2);
+  });
+
+  it("handles copyToClipboard fallback gracefully without throwing errors", async () => {
+    // Test in environment where navigator.clipboard might be missing or mocked
+    const result = await copyToClipboard("javascript:alert(1)");
+    // Should return a boolean without crashing
+    expect(typeof result).toBe("boolean");
   });
 });

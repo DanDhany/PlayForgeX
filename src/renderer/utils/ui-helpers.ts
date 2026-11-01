@@ -93,3 +93,65 @@ export function formatMillis(ms?: number): string {
   if (!ms) return "--:--";
   return formatSeconds(Math.floor(ms / 1000));
 }
+
+/**
+ * Robust cross-platform clipboard copy helper.
+ * Solves iOS WebKit (Safari & Chrome on iPhone) failure on non-secure HTTP contexts (LAN IPs like 192.168.x.x),
+ * where navigator.clipboard is undefined or throws NotAllowedError.
+ */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  // 1. Try modern Async Clipboard API if available and context is secure
+  if (
+    typeof navigator !== "undefined" &&
+    navigator.clipboard &&
+    typeof navigator.clipboard.writeText === "function" &&
+    (typeof window !== "undefined" && window.isSecureContext)
+  ) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Proceed to fallback on failure
+    }
+  }
+
+  // 2. Synchronous execCommand fallback (works on iOS Safari/Chrome over HTTP LAN)
+  if (typeof document !== "undefined") {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+
+      // Ensure textarea is technically visible to iOS WebKit without visual disruption
+      textarea.style.fontSize = "16px"; // Prevent viewport zoom on iOS
+      textarea.style.position = "fixed";
+      textarea.style.top = "0";
+      textarea.style.left = "-9999px";
+      textarea.style.width = "2em";
+      textarea.style.height = "2em";
+      textarea.style.padding = "0";
+      textarea.style.border = "none";
+      textarea.style.outline = "none";
+      textarea.style.boxShadow = "none";
+      textarea.style.background = "transparent";
+      textarea.setAttribute("readonly", "");
+
+      document.body.appendChild(textarea);
+
+      // WebKit / iOS selection range
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, text.length);
+
+      const success = document.execCommand("copy");
+      document.body.removeChild(textarea);
+
+      if (success) {
+        return true;
+      }
+    } catch (err) {
+      console.warn("[Clipboard] execCommand fallback failed:", err);
+    }
+  }
+
+  return false;
+}

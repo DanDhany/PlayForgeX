@@ -8,6 +8,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import { copyToClipboard } from "../../utils/ui-helpers";
 
 interface SettingsViewProps {
   onRefresh?: () => void;
@@ -19,10 +20,12 @@ export const SettingsView: React.FC<SettingsViewProps> = () => {
 
   const lanUrl = typeof window !== "undefined" ? window.location.origin : "http://192.168.1.42:3080";
 
-  const handleCopyUrl = () => {
-    navigator.clipboard.writeText(lanUrl);
-    setCopiedUrl(true);
-    setTimeout(() => setCopiedUrl(false), 2000);
+  const handleCopyUrl = async () => {
+    const ok = await copyToClipboard(lanUrl);
+    if (ok) {
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    }
   };
 
   return (
