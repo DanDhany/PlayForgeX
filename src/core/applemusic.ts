@@ -3,6 +3,7 @@ import { cleanTitle } from "./sanitizer";
 import { calculateMatchScore } from "./matcher";
 import { getArtistAliases } from "./artist-matcher";
 import { fetchAppleLyrics } from "./lyrics";
+import { getBrowserStealthHeaders, humanDelay, circuitBreaker } from "./stealth";
 
 export function formatCatalogSearchUrl(storefront: string, term: string, limit = 25): string {
   return `https://amp-api.music.apple.com/v1/catalog/${storefront}/search?types=songs&term=${encodeURIComponent(term)}&limit=${limit}`;
@@ -76,12 +77,14 @@ export class AppleMusicClient {
   }
 
   private getHeaders(): Record<string, string> {
+    const origin = "https://music.apple.com";
     return {
       Authorization: `Bearer ${this.developerToken}`,
       "Music-User-Token": this.musicUserToken,
       "Content-Type": "application/json",
-      Origin: "https://music.apple.com",
-      Referer: "https://music.apple.com/",
+      Origin: origin,
+      Referer: `${origin}/`,
+      ...getBrowserStealthHeaders(origin),
     };
   }
 
@@ -178,6 +181,8 @@ export class AppleMusicClient {
   }
 
   public async searchCatalog(query: string, storefront?: string, retryCount = 0): Promise<AppleMusicTrack[]> {
+    await circuitBreaker.waitIfCoolingDown("apple");
+
     const sf = storefront || (await this.getUserStorefront());
     const url = formatCatalogSearchUrl(sf, query, 15);
 
@@ -187,14 +192,18 @@ export class AppleMusicClient {
           Authorization: `Bearer ${this.developerToken}`,
           Origin: "https://apple.com",
           Referer: "https://apple.com/",
+          ...getBrowserStealthHeaders("https://apple.com"),
         },
       });
 
       if (!res.ok) {
-        if (res.status === 429 && retryCount < 2) {
-          console.warn(`Apple Music API 429 rate limit reached for "${query}", backing off (retry ${retryCount + 1}/2)...`);
-          await new Promise((resolve) => setTimeout(resolve, 2500 * (retryCount + 1)));
-          return this.searchCatalog(query, storefront, retryCount + 1);
+        if (res.status === 429) {
+          circuitBreaker.triggerCooldown("apple", 20000);
+          if (retryCount < 2) {
+            console.warn(`Apple Music API 429 rate limit reached for "${query}", backing off (retry ${retryCount + 1}/2)...`);
+            await humanDelay(3000 * (retryCount + 1), 5000 * (retryCount + 1));
+            return this.searchCatalog(query, storefront, retryCount + 1);
+          }
         }
         return [];
       }
@@ -355,9 +364,14 @@ export class AppleMusicClient {
         failed += chunk.length;
       }
 
-      // Safe pace to avoid 429
+      // Safe humanized pace between chunks to avoid 429
       if (i + chunkSize < trackIds.length) {
-        await new Promise((resolve) => setTimeout(resolve, 350));
+        if ((i + chunkSize) % 100 === 0) {
+          // Breather every 100 tracks
+          await humanDelay(3500, 5000);
+        } else {
+          await humanDelay(1200, 2400);
+        }
       }
     }
 

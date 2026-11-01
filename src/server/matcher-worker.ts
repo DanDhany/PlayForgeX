@@ -5,6 +5,7 @@ import { YouTubeMusicClient } from "../core/ytmusic";
 import { AppleMusicClient } from "../core/applemusic";
 import { cleanTitle } from "../core/sanitizer";
 import { compareLyrics } from "../core/lyrics";
+import { humanDelay, circuitBreaker } from "../core/stealth";
 
 const DATA_DIR = process.env.DATA_DIR || path.resolve(process.cwd(), "data");
 const DRAFTS_DIR = path.resolve(DATA_DIR, "drafts");
@@ -165,6 +166,9 @@ export async function startBackgroundMatching(
           break;
         }
 
+        // Stealth Guard: Wait if service triggered a rate-limit cooldown
+        await circuitBreaker.waitIfCoolingDown(targetPlatform);
+
         const track = sourceTracks[i];
         const existingIdx = draft!.items.findIndex(
           (it) =>
@@ -266,8 +270,8 @@ export async function startBackgroundMatching(
         draft!.matchedCount = draft!.items.length;
         saveDraft(draft!);
 
-        // Pace to avoid rate limits
-        await new Promise((r) => setTimeout(r, 350));
+        // Stealth pacing with randomized jitter (anti-machine cadence)
+        await humanDelay(450, 950);
       }
 
       draft!.status = "ready";

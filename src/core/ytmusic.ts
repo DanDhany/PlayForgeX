@@ -4,6 +4,7 @@ import { cleanTitle } from "./sanitizer";
 import { searchAndMatchTrack } from "./applemusic";
 import { getArtistAliases } from "./artist-matcher";
 import { fetchYouTubeLyrics } from "./lyrics";
+import { getBrowserStealthHeaders, humanDelay, circuitBreaker } from "./stealth";
 
 export function generateSapisidHash(sapisid: string, origin = "https://music.youtube.com"): string {
   const timestamp = Math.floor(Date.now() / 1000);
@@ -225,8 +226,7 @@ export class YouTubeMusicClient {
       "X-Origin": origin,
       "X-YouTube-Client-Name": "67", // WEB_REMIX
       "X-YouTube-Client-Version": "1.20241028.01.00",
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+      ...getBrowserStealthHeaders(origin),
     };
   }
 
@@ -311,6 +311,8 @@ export class YouTubeMusicClient {
   }
 
   public async searchCatalog(query: string): Promise<AppleMusicTrack[]> {
+    await circuitBreaker.waitIfCoolingDown("youtube");
+
     const payload = {
       context: {
         client: {
@@ -331,6 +333,9 @@ export class YouTubeMusicClient {
       });
 
       if (!res.ok) {
+        if (res.status === 429) {
+          circuitBreaker.triggerCooldown("youtube", 25000);
+        }
         return [];
       }
 
@@ -595,7 +600,12 @@ export class YouTubeMusicClient {
       }
 
       if (i + chunkSize < videoIds.length) {
-        await new Promise((r) => setTimeout(r, 300));
+        if ((i + chunkSize) % 100 === 0) {
+          // Breather every 100 tracks to avoid bulk manipulation trigger
+          await humanDelay(3500, 5000);
+        } else {
+          await humanDelay(1200, 2400);
+        }
       }
     }
 
