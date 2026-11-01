@@ -3,7 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { YouTubeMusicClient } from "../core/ytmusic.js";
 import { AppleMusicClient } from "../core/applemusic.js";
-import { AccountConnection, PlaylistSummary } from "../shared/types.js";
+import { AccountConnection, PlaylistSummary, TrackMetadata } from "../shared/types.js";
 
 interface AccountSecret {
   id: string;
@@ -12,25 +12,35 @@ interface AccountSecret {
   appleDevToken?: string;
 }
 
+export interface SnapshotPlaylist extends PlaylistSummary {
+  tracks?: TrackMetadata[];
+}
+
 export class AccountManager {
   private dataDir: string;
   private accountsFile: string;
   private secretsFile: string;
   private legacySessionFile: string;
+  private snapshotsDir: string;
 
   private accounts: Map<string, AccountConnection> = new Map();
   private secrets: Map<string, AccountSecret> = new Map();
   private ytmClients: Map<string, YouTubeMusicClient> = new Map();
   private appleClients: Map<string, AppleMusicClient> = new Map();
+  private snapshots: Map<string, SnapshotPlaylist[]> = new Map();
 
   constructor(dataDir: string) {
     this.dataDir = dataDir;
     this.accountsFile = path.join(dataDir, "accounts.json");
     this.secretsFile = path.join(dataDir, "secrets.json");
     this.legacySessionFile = path.join(dataDir, "session.json");
+    this.snapshotsDir = path.join(dataDir, "snapshots");
 
     if (!fs.existsSync(this.dataDir)) {
       fs.mkdirSync(this.dataDir, { recursive: true });
+    }
+    if (!fs.existsSync(this.snapshotsDir)) {
+      fs.mkdirSync(this.snapshotsDir, { recursive: true });
     }
 
     this.loadAndMigrate();
@@ -112,7 +122,24 @@ export class AccountManager {
       }
     }
 
-    // 4. Instantiate clients for active accounts
+    // 4. Load snapshots
+    if (fs.existsSync(this.snapshotsDir)) {
+      try {
+        const files = fs.readdirSync(this.snapshotsDir);
+        for (const file of files) {
+          if (file.endsWith(".json")) {
+            const accId = file.replace(/\.json$/, "");
+            const raw = fs.readFileSync(path.join(this.snapshotsDir, file), "utf-8");
+            const data: SnapshotPlaylist[] = JSON.parse(raw);
+            this.snapshots.set(accId, data);
+          }
+        }
+      } catch (err) {
+        console.warn("[AccountManager] Failed loading snapshots:", err);
+      }
+    }
+
+    // 5. Instantiate clients for active accounts
     this.initializeClients();
   }
 
@@ -293,6 +320,17 @@ export class AccountManager {
     const acc = this.accounts.get(id);
     if (!acc) throw new Error(`Account ${id} not found`);
 
+    // If it's a snapshot-backed account, it is always connected with local cache
+    if (this.snapshots.has(id)) {
+      const snap = this.snapshots.get(id)!;
+      acc.status = "connected";
+      acc.playlistCount = snap.length;
+      acc.lastVerifiedAt = Date.now();
+      acc.errorMessage = undefined;
+      this.persist();
+      return acc;
+    }
+
     acc.status = "checking";
 
     try {
@@ -332,11 +370,90 @@ export class AccountManager {
     return acc;
   }
 
+  public importSnapshotAccount(
+    alias: string,
+    playlists: SnapshotPlaylist[]
+  ): AccountConnection {
+    if (!playlists || !Array.isArray(playlists)) {
+      throw new Error("playlists array is required for snapshot import");
+    }
+
+    const trimmedAlias = alias?.trim() || "YouTube Music (Mobile)";
+    const existing = Array.from(this.accounts.values()).find(
+      (a) => a.platform === "youtube" && a.localAlias.toLowerCase() === trimmedAlias.toLowerCase()
+    );
+
+    const id = existing
+      ? existing.id
+      : `acc_ytm_snap_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+
+    const acc: AccountConnection = {
+      id,
+      platform: "youtube",
+      localAlias: trimmedAlias,
+      status: "connected",
+      syncType: "snapshot",
+      createdAt: existing ? existing.createdAt : Date.now(),
+      lastVerifiedAt: Date.now(),
+      playlistCount: playlists.length,
+    };
+
+    this.accounts.set(id, acc);
+    this.snapshots.set(id, playlists);
+
+    try {
+      const snapPath = path.join(this.snapshotsDir, `${id}.json`);
+      fs.writeFileSync(snapPath, JSON.stringify(playlists, null, 2), "utf-8");
+    } catch (err) {
+      console.error("[AccountManager] Failed saving snapshot file:", err);
+    }
+
+    this.persist();
+    return acc;
+  }
+
+  public getPlaylistTracks(accountId: string, playlistId: string): TrackMetadata[] {
+    const snap = this.snapshots.get(accountId);
+    if (!snap) return [];
+    const pl = snap.find(
+      (p) =>
+        p.id === playlistId ||
+        p.id === `VL${playlistId}` ||
+        `VL${p.id}` === playlistId ||
+        (playlistId.startsWith("VL") && p.id === playlistId.slice(2))
+    );
+    return pl?.tracks || [];
+  }
+
+  public hasSnapshotTracks(accountId: string, playlistId: string): boolean {
+    const snap = this.snapshots.get(accountId);
+    if (!snap) return false;
+    const pl = snap.find(
+      (p) =>
+        p.id === playlistId ||
+        p.id === `VL${playlistId}` ||
+        `VL${p.id}` === playlistId ||
+        (playlistId.startsWith("VL") && p.id === playlistId.slice(2))
+    );
+    return Boolean(pl && pl.tracks && pl.tracks.length > 0);
+  }
+
   public removeAccount(id: string): boolean {
     const existed = this.accounts.delete(id);
     this.secrets.delete(id);
     this.ytmClients.delete(id);
     this.appleClients.delete(id);
+    this.snapshots.delete(id);
+
+    try {
+      const snapPath = path.join(this.snapshotsDir, `${id}.json`);
+      if (fs.existsSync(snapPath)) {
+        fs.unlinkSync(snapPath);
+      }
+    } catch (err) {
+      console.warn("[AccountManager] Failed deleting snapshot file:", err);
+    }
+
     if (existed) {
       this.persist();
     }
@@ -346,6 +463,17 @@ export class AccountManager {
   public async getPlaylists(accountId: string): Promise<PlaylistSummary[]> {
     const acc = this.accounts.get(accountId);
     if (!acc) throw new Error(`Account ${accountId} not found`);
+
+    if (this.snapshots.has(accountId)) {
+      const snap = this.snapshots.get(accountId)!;
+      return snap.map((p) => ({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        trackCount: p.tracks?.length || p.trackCount || 0,
+        thumbnailUrl: p.thumbnailUrl,
+      }));
+    }
 
     if (acc.platform === "youtube") {
       const client = this.ytmClients.get(accountId);

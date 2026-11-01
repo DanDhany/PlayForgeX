@@ -64,14 +64,21 @@ export const App: React.FC = () => {
     const queryStr = search || (hash.includes("?") ? hash.substring(hash.indexOf("?")) : hash.replace(/^#/, "?"));
     const params = new URLSearchParams(queryStr);
 
-    if (params.get("tab") === "accounts" || hash.includes("tab=accounts")) {
+    if (params.get("tab") === "transfer" || hash.includes("tab=transfer")) {
+      setActiveTab("transfer");
+    } else if (params.get("tab") === "accounts" || hash.includes("tab=accounts")) {
       setActiveTab("accounts");
     }
 
-    if (params.get("status") === "success") {
+    if (params.get("status") === "success" || params.get("status") === "imported") {
       const aliasName = params.get("alias") || "Akun baru";
-      setSuccessBanner(`Koneksi akun "${aliasName}" berhasil ditambahkan!`);
-      setTimeout(() => setSuccessBanner(null), 5000);
+      const isImport = params.get("status") === "imported";
+      setSuccessBanner(
+        isImport
+          ? `🎉 Playlist dari "${aliasName}" berhasil diimpor langsung dari HP!`
+          : `Koneksi akun "${aliasName}" berhasil ditambahkan!`
+      );
+      setTimeout(() => setSuccessBanner(null), 6000);
       window.history.replaceState(null, "", window.location.pathname);
     }
   }, []);
@@ -368,16 +375,23 @@ export const App: React.FC = () => {
       });
 
       const data = await res.json();
-      setTransferJob((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: res.ok ? "completed" : "failed",
-              appleMusicPlaylistId: data.destinationPlaylistId || data.createdPlaylistId,
-              youtubePlaylistId: data.destinationPlaylistId || data.createdPlaylistId,
-            }
-          : null
-      );
+      setTransferJob((prev) => {
+        if (!prev) return null;
+        const total = prev.progress.total;
+        const finalProgress = data.progress || {
+          current: total,
+          total,
+          success: typeof data.added === "number" ? data.added : total,
+          failed: typeof data.failed === "number" ? data.failed : 0,
+        };
+        return {
+          ...prev,
+          status: res.ok ? "completed" : "failed",
+          progress: finalProgress,
+          appleMusicPlaylistId: data.destinationPlaylistId || data.createdPlaylistId,
+          youtubePlaylistId: data.destinationPlaylistId || data.createdPlaylistId,
+        };
+      });
       await loadActivity();
     } catch {
       setTransferJob((prev) => (prev ? { ...prev, status: "failed" } : null));
@@ -481,6 +495,7 @@ export const App: React.FC = () => {
           loadAccounts();
           loadActivity();
         }}
+        existingAccounts={accounts}
       />
 
       <ExportModal

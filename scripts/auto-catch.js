@@ -26,6 +26,7 @@ let alias = "";
 let customProfile = "";
 let shouldClean = false;
 let isNew = false;
+let serverUrl = "";
 
 for (let i = 0; i < rawArgs.length; i++) {
   const arg = rawArgs[i];
@@ -39,13 +40,16 @@ for (let i = 0; i < rawArgs.length; i++) {
     shouldClean = true;
   } else if (arg === "--new" || arg === "-n") {
     isNew = true;
+  } else if (arg === "--server" || arg === "-s" || arg === "--url") {
+    serverUrl = rawArgs[++i] || "";
   }
 }
 
 const DATA_DIR = process.env.DATA_DIR || path.resolve(process.cwd(), "data");
 const SESSION_FILE = path.join(DATA_DIR, "session.json");
 const APP_PORT = process.env.APP_PORT || process.env.PORT || "3080";
-const API_BASE = `http://localhost:${APP_PORT}`;
+const rawServer = serverUrl || process.env.SERVER_URL || `http://localhost:${APP_PORT}`;
+const API_BASE = rawServer.replace(/\/+$/, "");
 
 // Compute isolated profile directory so subsequent accounts don't collide
 const slug = alias ? alias.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() : "";

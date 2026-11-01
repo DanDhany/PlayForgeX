@@ -80,7 +80,8 @@ export async function startBackgroundMatching(
   playlist: PlaylistSummary,
   ytClient: YouTubeMusicClient | null,
   appleClient: AppleMusicClient | null,
-  force: boolean = false
+  force: boolean = false,
+  presetTracks?: TrackMetadata[]
 ): Promise<PlaylistDraft> {
   const key = `${sourcePlatform}_${playlist.id}`;
 
@@ -143,7 +144,9 @@ export async function startBackgroundMatching(
 
       // A. Fetch tracks from source playlist if needed
       let sourceTracks: TrackMetadata[] = [];
-      if (sourcePlatform === "youtube") {
+      if (presetTracks && presetTracks.length > 0) {
+        sourceTracks = presetTracks;
+      } else if (sourcePlatform === "youtube") {
         if (!ytClient || !ytClient.hasValidAuth()) {
           throw new Error("YouTube Music client not authenticated");
         }

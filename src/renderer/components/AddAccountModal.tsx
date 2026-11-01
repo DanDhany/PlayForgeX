@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   X,
   KeyRound,
@@ -9,27 +9,43 @@ import {
   Smartphone,
   ExternalLink,
   Info,
+  ArrowRight,
+  ArrowLeft,
+  Globe,
+  Edit2,
+  Sparkles,
 } from "lucide-react";
 import { copyToClipboard } from "../utils/ui-helpers";
+import { AccountConnection } from "../../shared/types";
+import {
+  generateYouTubeMobileSyncScript,
+  generateAppleMobileSyncScript,
+} from "../utils/bookmarklet-generator";
 
 interface AddAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  existingAccounts?: AccountConnection[];
 }
 
 type ConnectMethod = "bookmarklet" | "cli" | "manual";
+type ScriptFormat = "bookmarklet" | "console";
 
 export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  existingAccounts = [],
 }) => {
   if (!isOpen) return null;
 
+  const [step, setStep] = useState<"name" | "connect">("name");
   const [platform, setPlatform] = useState<"youtube" | "apple">("youtube");
   const [alias, setAlias] = useState("");
+  const [aliasTouched, setAliasTouched] = useState(false);
   const [connectMethod, setConnectMethod] = useState<ConnectMethod>("bookmarklet");
+  const [scriptFormat, setScriptFormat] = useState<ScriptFormat>("bookmarklet");
   const [cookieString, setCookieString] = useState("");
   const [musicUserToken, setMusicUserToken] = useState("");
   const [developerToken, setDeveloperToken] = useState("");
@@ -41,32 +57,64 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   const bookmarkletRef = useRef<HTMLTextAreaElement>(null);
   const cliRef = useRef<HTMLDivElement>(null);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3080";
-  const safeAlias = alias.trim() || (platform === "youtube" ? "YouTube Music" : "Apple Music");
+  // Reset to Step 1 whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setStep("name");
+      setAlias("");
+      setAliasTouched(false);
+      setError(null);
+      setBookmarkletCopied("idle");
+      setCopiedCli(false);
+    }
+  }, [isOpen]);
 
-  // Anti-Mixed-Content Form Navigation Bookmarklet
-  // Uses top-level form submission so remote clients (phones, laptops on LAN) avoid HTTPS->HTTP mixed-content blocks
-  const ytBookmarklet = `javascript:(function(){try{const c=document.cookie;if(!c||(!c.includes('SAPISID')&&!c.includes('__Secure-3PAPISID'))){alert('Sesi YouTube Music belum terdeteksi! Pastikan Anda sudah login di music.youtube.com terlebih dahulu.');return;}const f=document.createElement('form');f.method='POST';f.action='${origin}/api/auth/web-catch';f.style.display='none';const a=(n,v)=>{const i=document.createElement('input');i.type='hidden';i.name=n;i.value=v;f.appendChild(i);};a('platform','youtube');a('cookieString',c);a('alias',${JSON.stringify(safeAlias)});a('returnUrl','${origin}/#tab=accounts&status=success');document.body.appendChild(f);f.submit();}catch(e){alert('Gagal mengirim sesi: '+e.message);}})();`;
+  // Compute dynamic origin/domain
+  const origin =
+    typeof window !== "undefined" &&
+    window.location.origin &&
+    window.location.origin !== "null" &&
+    !window.location.origin.startsWith("file:")
+      ? window.location.origin
+      : "http://localhost:3080";
 
-  const appleBookmarklet = `javascript:(function(){try{const m=localStorage.getItem('media-user-token')||(document.cookie.match(/media-user-token=([^;]+)/)||[])[1]||(window.MusicKit&&window.MusicKit.getInstance&&window.MusicKit.getInstance().musicUserToken);if(!m){alert('Sesi Apple Music belum terdeteksi! Pastikan Anda sudah login di music.apple.com terlebih dahulu.');return;}const f=document.createElement('form');f.method='POST';f.action='${origin}/api/auth/web-catch';f.style.display='none';const a=(n,v)=>{const i=document.createElement('input');i.type='hidden';i.name=n;i.value=v;f.appendChild(i);};a('platform','apple');a('musicUserToken',m);a('alias',${JSON.stringify(safeAlias)});a('returnUrl','${origin}/#tab=accounts&status=success');document.body.appendChild(f);f.submit();}catch(e){alert('Gagal mengirim sesi: '+e.message);}})();`;
+  const isDomain =
+    typeof window !== "undefined" &&
+    window.location.hostname &&
+    !["localhost", "127.0.0.1", "0.0.0.0"].includes(window.location.hostname);
 
-  const activeBookmarklet = platform === "youtube" ? ytBookmarklet : appleBookmarklet;
+  const trimmedAlias = alias.trim();
+  const isDuplicate = existingAccounts.some(
+    (acc) =>
+      acc.platform === platform &&
+      acc.localAlias.trim().toLowerCase() === trimmedAlias.toLowerCase()
+  );
+
+  const canProceedToConnect = trimmedAlias.length > 0 && !isDuplicate;
+
+  // Anti-Mixed-Content & In-Page Mobile Sync Script (Customized to validated alias & dynamic origin)
+  const ytScript = generateYouTubeMobileSyncScript(origin, trimmedAlias);
+  const appleScript = generateAppleMobileSyncScript(origin, trimmedAlias);
+
+  const activeRawScript = platform === "youtube" ? ytScript : appleScript;
+  const bookmarkletCode = `javascript:${activeRawScript}`;
+  const consoleCode = activeRawScript;
+  const activeScript = scriptFormat === "bookmarklet" ? bookmarkletCode : consoleCode;
+
   const targetSiteUrl = platform === "youtube" ? "https://music.youtube.com" : "https://music.apple.com";
 
-  // CLI Command for Host Machine with isolated profile support
+  // CLI Command dynamically embeds the verified alias and dynamic server domain
   const cliCommand =
     platform === "youtube"
-      ? `npm run auth:yt -- --alias "${safeAlias}"`
-      : `npm run auth:apple -- --alias "${safeAlias}"`;
+      ? `npm run auth:yt -- --alias "${trimmedAlias}" --server "${origin}"`
+      : `npm run auth:apple -- --alias "${trimmedAlias}" --server "${origin}"`;
 
-  const handleCopyBookmarklet = async () => {
-    const success = await copyToClipboard(activeBookmarklet);
+  const handleCopyScript = async () => {
+    const success = await copyToClipboard(activeScript);
     if (success) {
       setBookmarkletCopied("copied");
       setTimeout(() => setBookmarkletCopied("idle"), 2500);
     } else {
-      // Fallback on iPhone when WebKit rejects programmatic clipboard write over HTTP:
-      // Programmatically select all text in the textarea so iOS displays native Copy callout
       handleSelectBookmarklet();
     }
   };
@@ -75,7 +123,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     if (bookmarkletRef.current) {
       bookmarkletRef.current.focus();
       bookmarkletRef.current.select();
-      bookmarkletRef.current.setSelectionRange(0, activeBookmarklet.length);
+      bookmarkletRef.current.setSelectionRange(0, activeScript.length);
       setBookmarkletCopied("selected");
       setTimeout(() => setBookmarkletCopied("idle"), 4000);
     }
@@ -89,15 +137,20 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitManual = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canProceedToConnect) {
+      setError("Nama akun wajib diisi dan belum pernah digunakan.");
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
     try {
       const payload: any = {
         platform,
-        alias: alias.trim() || undefined,
+        alias: trimmedAlias,
       };
 
       if (platform === "youtube") {
@@ -135,26 +188,38 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     }
   };
 
+  const nameSuggestions =
+    platform === "youtube"
+      ? ["Koleksi Utama", "Akun Kedua", "Koleksi Kantor", "Keluarga"]
+      : ["Koleksi Apple", "Mobil (CarPlay)", "iPad / Rumah", "Keluarga"];
+
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4">
       <div className="fixed inset-0 -z-10" onClick={onClose} />
 
-      <div className="bg-surface border-t md:border border-border rounded-t-3xl md:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden p-4 md:p-6 space-y-4 max-h-[90dvh] overflow-y-auto animate-sheet-up md:animate-dialog-in pb-safe">
+      <div className="bg-surface border-t md:border border-border rounded-t-3xl md:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden p-4 md:p-6 space-y-4 max-h-[92dvh] overflow-y-auto animate-sheet-up md:animate-dialog-in pb-safe">
         {/* iOS Drag Handle */}
         <div className="md:hidden w-10 h-1 bg-white/20 rounded-full mx-auto -mt-1 mb-1" />
 
-        {/* Header */}
+        {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
               <KeyRound className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-xs md:text-sm font-semibold text-text-primary">
-                Tambah Koneksi Akun
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs md:text-sm font-semibold text-text-primary">
+                  Tambah Koneksi Akun
+                </h3>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-elevated border border-border text-text-secondary font-mono">
+                  {step === "name" ? "Langkah 1/2" : "Langkah 2/2"}
+                </span>
+              </div>
               <p className="text-[11px] text-text-secondary">
-                Hubungkan akun ke-2, ke-3, atau akun keluarga tanpa bentrok sesi
+                {step === "name"
+                  ? "Tentukan layanan dan nama akun terlebih dahulu"
+                  : "Salin script yang telah disesuaikan dengan akun Anda"}
               </p>
             </div>
           </div>
@@ -173,321 +238,505 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           </div>
         )}
 
-        {/* Platform Selector Segmented Control */}
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-text-secondary">Layanan Musik</label>
-          <div className="grid grid-cols-2 p-1 bg-surface-elevated rounded-lg border border-border text-xs">
-            <button
-              type="button"
-              onClick={() => setPlatform("youtube")}
-              className={`py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1.5 btn-press ${
-                platform === "youtube"
-                  ? "bg-red-500/20 text-red-400 border border-red-500/30 shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-red-500" />
-              <span>YouTube Music</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPlatform("apple")}
-              className={`py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1.5 btn-press ${
-                platform === "apple"
-                  ? "bg-accent/20 text-accent border border-accent/30 shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-accent" />
-              <span>Apple Music</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Account Alias Input */}
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-text-secondary">
-            Nama / Label Akun
-          </label>
-          <input
-            type="text"
-            placeholder={
-              platform === "youtube"
-                ? "Contoh: Koleksi Orang B, Akun Pasangan, Koleksi Kantor"
-                : "Contoh: Mobil (Apple Music), Head Unit, iPad"
-            }
-            value={alias}
-            onChange={(e) => setAlias(e.target.value)}
-            className="w-full px-3 py-2 bg-surface-elevated border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:border-accent placeholder:text-text-secondary/40"
-          />
-        </div>
-
-        {/* Connection Method Segmented Tabs */}
-        <div className="space-y-2 pt-1">
-          <label className="text-[11px] font-medium text-text-secondary">
-            Pilih Cara Menghubungkan
-          </label>
-          <div className="grid grid-cols-3 p-1 bg-surface-elevated rounded-lg border border-border text-[11px]">
-            <button
-              type="button"
-              onClick={() => setConnectMethod("bookmarklet")}
-              className={`py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 btn-press ${
-                connectMethod === "bookmarklet"
-                  ? "bg-accent/20 text-accent border border-accent/30 shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>HP / Browser</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setConnectMethod("cli")}
-              className={`py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 btn-press ${
-                connectMethod === "cli"
-                  ? "bg-accent/20 text-accent border border-accent/30 shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              <Terminal className="w-3.5 h-3.5" />
-              <span>Terminal CLI</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setConnectMethod("manual")}
-              className={`py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 btn-press ${
-                connectMethod === "manual"
-                  ? "bg-accent/20 text-accent border border-accent/30 shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Manual</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Method 1: Bookmarklet (Ideal for Remote Clients, Mobile Phones, Tablets on LAN) */}
-        {connectMethod === "bookmarklet" && (
-          <div className="p-3.5 bg-surface-elevated rounded-xl border border-border space-y-3">
-            <div className="flex items-center gap-2">
-              <Smartphone className="w-4 h-4 text-accent" />
-              <h4 className="text-xs font-semibold text-text-primary">
-                1-Click Bookmarklet (Bisa dari HP & Client Lain)
-              </h4>
-            </div>
-            <p className="text-[11px] text-text-secondary leading-relaxed">
-              Mendukung koneksi langsung dari browser HP atau komputer lain di jaringan LAN. Buka tab baru di{" "}
-              <span className="text-text-primary font-mono">{platform === "youtube" ? "music.youtube.com" : "music.apple.com"}</span>, pastikan sudah login, lalu jalankan bookmarklet ini. Browser otomatis mengirim sesi ke TuneBridge tanpa hambatan Mixed-Content HTTPS.
-            </p>
-
-            {platform === "youtube" && (
-              <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-300 text-[11px] space-y-1">
-                <div className="flex items-center gap-1.5 font-medium">
-                  <Info className="w-3.5 h-3.5 flex-shrink-0 text-amber-400" />
-                  <span>Catatan Khusus YouTube Music</span>
-                </div>
-                <p className="text-amber-300/80 leading-relaxed">
-                  Google memproteksi sesi YouTube dengan cookie HttpOnly (<code className="font-mono text-amber-200">__Secure-1PSID</code>) yang tidak dapat dibaca oleh script bookmarklet di browser HP.
-                </p>
-                <p className="text-amber-300/80 leading-relaxed">
-                  Untuk YouTube Music, gunakan opsi <strong>Terminal CLI</strong> pada komputer host (<code className="font-mono text-amber-200">npm run auth:yt -- -a &quot;Nama Akun&quot;</code>) atau salin Cookie lengkap dari DevTools browser di opsi <strong>Manual</strong>.
-                </p>
-              </div>
-            )}
-
-            {/* Copy / Open Action Buttons */}
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={handleCopyBookmarklet}
-                className="flex-1 py-2 px-3 rounded-lg bg-surface-hover hover:bg-border border border-border text-xs text-text-primary font-medium flex items-center justify-center gap-1.5 btn-press transition-colors"
-              >
-                {bookmarkletCopied === "copied" ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-status-success" />
-                    <span className="text-status-success font-semibold">Tersalin ke Clipboard!</span>
-                  </>
-                ) : bookmarkletCopied === "selected" ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-accent" />
-                    <span className="text-accent font-semibold">Teks Terpilih (Tap Salin)</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 text-text-secondary" />
-                    <span>Salin Kode Bookmarklet</span>
-                  </>
-                )}
-              </button>
-              <a
-                href={activeBookmarklet}
-                onClick={(e) => {
-                  if (!e.metaKey && !e.ctrlKey) e.preventDefault();
-                }}
-                className="hidden md:flex py-2 px-3 rounded-lg bg-surface-elevated hover:bg-surface-hover text-text-primary text-xs font-medium border border-border items-center gap-1.5 cursor-grab active:cursor-grabbing"
-                title="Tarik tombol ini ke Bookmarks Bar browser laptop/PC Anda"
-              >
-                <span>Tarik ke Bookmark Bar</span>
-              </a>
-              <a
-                href={targetSiteUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="py-2 px-3 rounded-lg bg-accent/15 hover:bg-accent/25 text-accent text-xs font-medium border border-accent/20 flex items-center gap-1.5 btn-press transition-colors"
-              >
-                <span>Buka Web</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-
-            {/* Direct Tap-to-Select Script Box (Guaranteed 100% on iOS WebKit without HTTPS) */}
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between text-[11px] text-text-secondary">
-                <span>Kode Script Bookmarklet:</span>
+        {/* ============================================================== */}
+        {/* STEP 1: NAMA AKUN & PLATFORM (User WAJIB isi sebelum ada script) */}
+        {/* ============================================================== */}
+        {step === "name" ? (
+          <div className="space-y-4 py-1">
+            {/* Platform Selector Segmented Control */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-medium text-text-secondary">Layanan Musik</label>
+              <div className="grid grid-cols-2 p-1 bg-surface-elevated rounded-lg border border-border text-xs">
                 <button
                   type="button"
-                  onClick={handleSelectBookmarklet}
-                  className="text-accent hover:underline text-[10px] font-medium"
+                  onClick={() => setPlatform("youtube")}
+                  className={`py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1.5 btn-press ${
+                    platform === "youtube"
+                      ? "bg-red-500/20 text-red-400 border border-red-500/30 shadow-sm"
+                      : "text-text-secondary hover:text-text-primary"
+                  }`}
                 >
-                  Pilih Semua Teks
+                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                  <span>YouTube Music</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlatform("apple")}
+                  className={`py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1.5 btn-press ${
+                    platform === "apple"
+                      ? "bg-accent/20 text-accent border border-accent/30 shadow-sm"
+                      : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-accent" />
+                  <span>Apple Music</span>
                 </button>
               </div>
-              <textarea
-                ref={bookmarkletRef}
-                readOnly
-                rows={3}
-                value={activeBookmarklet}
-                onClick={handleSelectBookmarklet}
-                onTouchStart={handleSelectBookmarklet}
-                className="w-full p-2.5 bg-background border border-border rounded-lg font-mono text-[11px] text-text-secondary focus:text-text-primary focus:border-accent focus:outline-none select-all break-all cursor-pointer leading-relaxed resize-none"
+            </div>
+
+            {/* Account Alias Input */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-medium text-text-secondary">
+                  Nama / Label Akun <span className="text-accent">*</span>
+                </label>
+                <span className="text-[10px] text-text-secondary/70">Wajib diisi & unik</span>
+              </div>
+              <input
+                type="text"
+                autoFocus
+                placeholder={
+                  platform === "youtube"
+                    ? "Misal: Akun Utama, Koleksi Orang B, Akun Kantor"
+                    : "Misal: Koleksi Apple, Mobil (CarPlay), iPad Rumah"
+                }
+                value={alias}
+                onChange={(e) => {
+                  setAlias(e.target.value);
+                  setAliasTouched(true);
+                  if (error) setError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && canProceedToConnect) {
+                    setStep("connect");
+                  }
+                }}
+                className={`w-full px-3 py-2.5 bg-surface-elevated border rounded-lg text-xs text-text-primary focus:outline-none transition-colors placeholder:text-text-secondary/40 ${
+                  isDuplicate
+                    ? "border-status-danger focus:border-status-danger"
+                    : canProceedToConnect
+                    ? "border-status-success/60 focus:border-status-success"
+                    : "border-border focus:border-accent"
+                }`}
               />
 
-              {/* Explaining Browser Self-XSS Address Bar Protection */}
-              <div className="p-2.5 rounded-lg bg-surface border border-border text-[11px] text-text-secondary space-y-1.5">
-                <div className="font-semibold text-text-primary flex items-center gap-1.5 text-xs">
-                  <AlertCircle className="w-3.5 h-3.5 text-status-warning flex-shrink-0" />
-                  <span>Kenapa browser menolak kode saat di-paste ke Address Bar?</span>
+              {/* Realtime Validation Feedback */}
+              {isDuplicate ? (
+                <div className="flex items-center gap-1.5 text-[11px] text-status-danger font-medium pt-0.5 animate-fadeIn">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>
+                    Nama &quot;{trimmedAlias}&quot; sudah digunakan di{" "}
+                    {platform === "youtube" ? "YouTube Music" : "Apple Music"}. Pilih nama lain agar
+                    tidak bertabrakan.
+                  </span>
                 </div>
-                <p className="text-[10px] text-text-secondary leading-relaxed">
-                  Semua browser modern (Chrome, Safari, Edge) memiliki proteksi keamanan (*Self-XSS*). Browser akan <strong>secara otomatis memotong kata <code className="text-accent font-mono">javascript:</code></strong> jika Anda menempelkannya langsung ke kolom URL/Address Bar.
-                </p>
-                <div className="text-[10px] space-y-1 pt-0.5 text-text-secondary">
-                  <p><strong>Cara Menjalankannya di HP:</strong></p>
-                  <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
-                    <li>
-                      <strong>Trik 1 (Cepat):</strong> Tempel script ke address bar di <code className="text-text-primary font-mono">{platform === "youtube" ? "music.youtube.com" : "music.apple.com"}</code>, lalu geser kursor ke paling depan dan ketik manual <code className="text-accent font-semibold font-mono">javascript:</code> sebelum menekan Go/Enter.
-                    </li>
-                    <li>
-                      <strong>Trik 2 (Bookmark):</strong> Simpan halaman apa saja sebagai Bookmark di HP, lalu edit alamat bookmark tersebut dan tempel kode script ini. Saat membuka YouTube/Apple Music, cukup ketuk Bookmark tersebut.
-                    </li>
-                  </ul>
+              ) : canProceedToConnect ? (
+                <div className="flex items-center gap-1.5 text-[11px] text-status-success font-medium pt-0.5 animate-fadeIn">
+                  <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Nama akun siap digunakan untuk generate script.</span>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Method 2: Terminal CLI (Host Computer) */}
-        {connectMethod === "cli" && (
-          <div className="p-3.5 bg-surface-elevated rounded-xl border border-border space-y-3">
-            <div className="flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-accent" />
-              <h4 className="text-xs font-semibold text-text-primary">
-                Perintah Terminal Host (Multi-Akun Otomatis)
-              </h4>
-            </div>
-            <p className="text-[11px] text-text-secondary leading-relaxed">
-              Jalankan perintah ini di terminal komputer host yang menjalankan TuneBridge. Chrome akan otomatis membuka profil terisolasi baru sehingga akun ke-2 atau ke-3 Anda tidak akan menimpa akun utama.
-            </p>
-            <div
-              ref={cliRef}
-              onClick={() => {
-                const selection = window.getSelection();
-                const range = document.createRange();
-                if (cliRef.current && selection) {
-                  range.selectNodeContents(cliRef.current);
-                  selection.removeAllRanges();
-                  selection.addRange(range);
-                }
-              }}
-              className="p-2.5 bg-background rounded-lg border border-border/80 font-mono text-[11px] text-text-primary break-all select-all cursor-pointer"
-            >
-              {cliCommand}
-            </div>
-            <button
-              type="button"
-              onClick={handleCopyCli}
-              className="w-full py-2 px-3 rounded-lg bg-surface-hover hover:bg-border border border-border text-xs text-text-primary font-medium flex items-center justify-center gap-1.5 btn-press transition-colors"
-            >
-              {copiedCli ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-status-success" />
-                  <span>Perintah Berhasil Disalin!</span>
-                </>
+              ) : aliasTouched && trimmedAlias.length === 0 ? (
+                <div className="flex items-center gap-1.5 text-[11px] text-text-secondary pt-0.5">
+                  <Info className="w-3.5 h-3.5 flex-shrink-0 text-text-secondary/80" />
+                  <span>Tulis nama untuk akun ini sebelum melihat script koneksi.</span>
+                </div>
               ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 text-text-secondary" />
-                  <span>Salin Perintah Terminal</span>
-                </>
+                <p className="text-[11px] text-text-secondary/80">
+                  Nama ini akan dicantumkan otomatis ke dalam script agar tidak tertukar dengan akun lain.
+                </p>
               )}
-            </button>
-          </div>
-        )}
 
-        {/* Method 3: Manual Token / Cookie Form */}
-        {connectMethod === "manual" && (
-          <form onSubmit={handleSubmit} className="space-y-3">
-            {platform === "youtube" ? (
-              <div className="space-y-1">
-                <label className="text-[11px] font-medium text-text-secondary">
-                  YouTube Cookie Header
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Tempel header Cookie dari DevTools Network (harus mengandung SAPISID atau __Secure-3PAPISID)"
-                  value={cookieString}
-                  onChange={(e) => setCookieString(e.target.value)}
-                  className="w-full p-2.5 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
-                />
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-text-secondary">
-                    Apple Music-User-Token
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="Tempel media-user-token dari cookie atau localStorage music.apple.com"
-                    value={musicUserToken}
-                    onChange={(e) => setMusicUserToken(e.target.value)}
-                    className="w-full p-2.5 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
-                  />
+              {/* Quick Suggestions Chips */}
+              <div className="pt-2">
+                <span className="text-[10px] text-text-secondary/70 block mb-1.5">
+                  Inspirasi nama cepat:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {nameSuggestions.map((suggestion) => {
+                    const isTaken = existingAccounts.some(
+                      (acc) =>
+                        acc.platform === platform &&
+                        acc.localAlias.trim().toLowerCase() === suggestion.toLowerCase()
+                    );
+                    return (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        disabled={isTaken}
+                        onClick={() => {
+                          setAlias(suggestion);
+                          setAliasTouched(true);
+                        }}
+                        className={`text-[10px] px-2 py-1 rounded-md border transition-colors btn-press ${
+                          isTaken
+                            ? "bg-surface-elevated/40 text-text-secondary/40 border-border/40 cursor-not-allowed line-through"
+                            : alias === suggestion
+                            ? "bg-accent/20 border-accent/40 text-accent font-medium"
+                            : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary hover:bg-surface-hover"
+                        }`}
+                      >
+                        {suggestion}
+                      </button>
+                    );
+                  })}
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-text-secondary">
-                    Developer Token (Opsional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Gunakan token internal jika dikosongkan"
-                    value={developerToken}
-                    onChange={(e) => setDeveloperToken(e.target.value)}
-                    className="w-full p-2 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
+              </div>
+            </div>
+
+            {/* Target Domain Confirmation Indicator */}
+            <div className="p-2.5 rounded-lg bg-surface-elevated/60 border border-border/70 flex items-center justify-between text-[11px]">
+              <div className="flex items-center gap-1.5 text-text-secondary">
+                <Globe className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                <span>Target Pengiriman:</span>
+              </div>
+              <span className="font-mono text-text-primary font-medium truncate max-w-[220px]">
+                {origin}
+              </span>
+            </div>
+
+            {/* Proceed Action Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                disabled={!canProceedToConnect}
+                onClick={() => setStep("connect")}
+                className="w-full py-2.5 rounded-lg bg-accent text-background text-xs font-semibold hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed btn-press flex items-center justify-center gap-2 shadow-sm transition-opacity"
+              >
+                <span>Lanjutkan & Siapkan Script</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* ============================================================== */
+          /* STEP 2: TAMPILKAN SCRIPT TERPERSONALISASI SESUAI NAMA TERBUAT */
+          /* ============================================================== */
+          <div className="space-y-4 animate-fadeIn">
+            {/* Account Confirmation Banner */}
+            <div className="p-3 bg-surface-elevated rounded-xl border border-border flex items-center justify-between">
+              <div className="min-w-0 pr-2">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      platform === "youtube" ? "bg-red-500" : "bg-accent"
+                    }`}
+                  />
+                  <span className="text-[11px] text-text-secondary font-medium">
+                    {platform === "youtube" ? "YouTube Music" : "Apple Music"}
+                  </span>
+                </div>
+                <div className="text-xs font-semibold text-text-primary truncate mt-0.5">
+                  &quot;{trimmedAlias}&quot;
+                </div>
+                <div className="text-[10px] text-text-secondary font-mono mt-0.5 truncate">
+                  Tujuan: <span className="text-accent">{origin}</span>{" "}
+                  {isDomain ? "(Domain Aktif)" : "(Host Aktif)"}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStep("name")}
+                className="px-2.5 py-1.5 rounded-lg bg-surface hover:bg-surface-hover border border-border text-[11px] text-text-secondary hover:text-text-primary flex items-center gap-1 btn-press transition-colors flex-shrink-0"
+              >
+                <Edit2 className="w-3 h-3 text-accent" />
+                <span>Ubah Nama</span>
+              </button>
+            </div>
+
+            {/* Connection Method Segmented Tabs */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-medium text-text-secondary">
+                Pilih Cara Menghubungkan
+              </label>
+              <div className="grid grid-cols-3 p-1 bg-surface-elevated rounded-lg border border-border text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setConnectMethod("bookmarklet")}
+                  className={`py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 btn-press ${
+                    connectMethod === "bookmarklet"
+                      ? "bg-accent/20 text-accent border border-accent/30 shadow-sm"
+                      : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>HP / Browser</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConnectMethod("cli")}
+                  className={`py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 btn-press ${
+                    connectMethod === "cli"
+                      ? "bg-accent/20 text-accent border border-accent/30 shadow-sm"
+                      : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <Terminal className="w-3.5 h-3.5" />
+                  <span>Terminal CLI</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConnectMethod("manual")}
+                  className={`py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1 btn-press ${
+                    connectMethod === "manual"
+                      ? "bg-accent/20 text-accent border border-accent/30 shadow-sm"
+                      : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Manual</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Method 1: JavaScript (Bookmarklet / Console DevTools) */}
+            {connectMethod === "bookmarklet" && (
+              <div className="p-3.5 bg-surface-elevated rounded-xl border border-border space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-accent" />
+                    <h4 className="text-xs font-semibold text-text-primary">
+                      Script JavaScript Browser
+                    </h4>
+                  </div>
+                  {/* Format Toggle: Bookmarklet vs Console */}
+                  <div className="flex items-center p-0.5 bg-surface rounded-md border border-border text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setScriptFormat("bookmarklet")}
+                      className={`px-2 py-0.5 rounded transition-colors ${
+                        scriptFormat === "bookmarklet"
+                          ? "bg-accent/20 text-accent font-medium"
+                          : "text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      Bookmarklet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScriptFormat("console")}
+                      className={`px-2 py-0.5 rounded transition-colors ${
+                        scriptFormat === "console"
+                          ? "bg-accent/20 text-accent font-medium"
+                          : "text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      Console DevTools
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-text-secondary leading-relaxed">
+                  Buka tab baru di{" "}
+                  <span className="text-text-primary font-mono">
+                    {platform === "youtube" ? "music.youtube.com" : "music.apple.com"}
+                  </span>
+                  , pastikan sudah login akun, lalu jalankan script ini di Safari iPhone / Chrome HP.
+                  {platform === "youtube"
+                    ? " Modal interaktif akan muncul langsung di layar HP untuk memilih playlist yang ingin dikirim ke TuneBridge."
+                    : ` Sesi akan otomatis dikirim sebagai akun "${trimmedAlias}".`}
+                </p>
+
+                {platform === "youtube" && (
+                  <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-lg text-[11px] space-y-1">
+                    <div className="flex items-center gap-1.5 font-medium text-accent">
+                      <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>Smart Mobile Sync (Bisa Langsung dari iPhone & HP)</span>
+                    </div>
+                    <p className="text-text-secondary leading-relaxed">
+                      Script ini berjalan langsung di dalam tab YouTube Music HP Anda, menggunakan sesi terautentikasi browser untuk mengambil playlist dan lagu pilihan secara otomatis tanpa kendala HttpOnly.
+                    </p>
+                  </div>
+                )}
+
+                {/* Copy / Open Action Buttons */}
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleCopyScript}
+                    className="flex-1 py-2 px-3 rounded-lg bg-surface-hover hover:bg-border border border-border text-xs text-text-primary font-medium flex items-center justify-center gap-1.5 btn-press transition-colors"
+                  >
+                    {bookmarkletCopied === "copied" ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-status-success" />
+                        <span className="text-status-success font-semibold">Tersalin ke Clipboard!</span>
+                      </>
+                    ) : bookmarkletCopied === "selected" ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-accent" />
+                        <span className="text-accent font-semibold">Teks Terpilih (Tap Salin)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-text-secondary" />
+                        <span>
+                          {scriptFormat === "bookmarklet"
+                            ? "Salin Kode Bookmarklet"
+                            : "Salin Script Console"}
+                        </span>
+                      </>
+                    )}
+                  </button>
+                  {scriptFormat === "bookmarklet" && (
+                    <a
+                      href={bookmarkletCode}
+                      onClick={(e) => {
+                        if (!e.metaKey && !e.ctrlKey) e.preventDefault();
+                      }}
+                      className="hidden md:flex py-2 px-3 rounded-lg bg-surface-elevated hover:bg-surface-hover text-text-primary text-xs font-medium border border-border items-center gap-1.5 cursor-grab active:cursor-grabbing"
+                      title="Tarik tombol ini ke Bookmarks Bar browser laptop/PC Anda"
+                    >
+                      <span>Tarik ke Bookmark Bar</span>
+                    </a>
+                  )}
+                  <a
+                    href={targetSiteUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="py-2 px-3 rounded-lg bg-accent/15 hover:bg-accent/25 text-accent text-xs font-medium border border-accent/20 flex items-center gap-1.5 btn-press transition-colors"
+                  >
+                    <span>Buka Web</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+
+                {/* Direct Tap-to-Select Script Box */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-[11px] text-text-secondary">
+                    <span>
+                      {scriptFormat === "bookmarklet"
+                        ? "Kode Bookmarklet (URL):"
+                        : "Kode Console DevTools (F12):"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSelectBookmarklet}
+                      className="text-accent hover:underline text-[10px] font-medium"
+                    >
+                      Pilih Semua Teks
+                    </button>
+                  </div>
+                  <textarea
+                    ref={bookmarkletRef}
+                    readOnly
+                    rows={3}
+                    value={activeScript}
+                    onClick={handleSelectBookmarklet}
+                    onTouchStart={handleSelectBookmarklet}
+                    className="w-full p-2.5 bg-background border border-border rounded-lg font-mono text-[11px] text-text-secondary focus:text-text-primary focus:border-accent focus:outline-none select-all break-all cursor-pointer leading-relaxed resize-none"
                   />
                 </div>
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-2 rounded-lg bg-accent text-background font-medium text-xs hover:bg-accent/90 disabled:opacity-50 btn-press"
-            >
-              {isSubmitting ? "Menyimpan Koneksi..." : "Simpan Koneksi Akun"}
-            </button>
-          </form>
+            {/* Method 2: Terminal CLI (Host/Remote Computer) */}
+            {connectMethod === "cli" && (
+              <div className="p-3.5 bg-surface-elevated rounded-xl border border-border space-y-3">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-accent" />
+                  <h4 className="text-xs font-semibold text-text-primary">
+                    Perintah Terminal NPM (Multi-Akun Otomatis)
+                  </h4>
+                </div>
+                <p className="text-[11px] text-text-secondary leading-relaxed">
+                  Jalankan perintah ini di terminal. Profil Chrome terisolasi akan dibuka otomatis
+                  dan sesi login langsung didaftarkan sebagai akun{" "}
+                  <strong>&quot;{trimmedAlias}&quot;</strong> ke domain{" "}
+                  <code className="text-text-primary font-mono">{origin}</code>.
+                </p>
+                <div
+                  ref={cliRef}
+                  onClick={() => {
+                    const selection = window.getSelection();
+                    const range = document.createRange();
+                    if (cliRef.current && selection) {
+                      range.selectNodeContents(cliRef.current);
+                      selection.removeAllRanges();
+                      selection.addRange(range);
+                    }
+                  }}
+                  className="p-2.5 bg-background rounded-lg border border-border/80 font-mono text-[11px] text-text-primary break-all select-all cursor-pointer"
+                >
+                  {cliCommand}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyCli}
+                  className="w-full py-2 px-3 rounded-lg bg-surface-hover hover:bg-border border border-border text-xs text-text-primary font-medium flex items-center justify-center gap-1.5 btn-press transition-colors"
+                >
+                  {copiedCli ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-status-success" />
+                      <span>Perintah Berhasil Disalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-text-secondary" />
+                      <span>Salin Perintah Terminal</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Method 3: Manual Token / Cookie Form */}
+            {connectMethod === "manual" && (
+              <form onSubmit={handleSubmitManual} className="space-y-3">
+                {platform === "youtube" ? (
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-text-secondary">
+                      YouTube Cookie Header
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Tempel header Cookie dari DevTools Network (harus mengandung SAPISID atau __Secure-3PAPISID)"
+                      value={cookieString}
+                      onChange={(e) => setCookieString(e.target.value)}
+                      className="w-full p-2.5 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-text-secondary">
+                        Apple Music-User-Token
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="Tempel media-user-token dari cookie atau localStorage music.apple.com"
+                        value={musicUserToken}
+                        onChange={(e) => setMusicUserToken(e.target.value)}
+                        className="w-full p-2.5 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-text-secondary">
+                        Developer Token (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Gunakan token internal jika dikosongkan"
+                        value={developerToken}
+                        onChange={(e) => setDeveloperToken(e.target.value)}
+                        className="w-full p-2 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-2 rounded-lg bg-accent text-background font-medium text-xs hover:bg-accent/90 disabled:opacity-50 btn-press"
+                >
+                  {isSubmitting
+                    ? "Menyimpan Koneksi..."
+                    : `Simpan Akun "${trimmedAlias}"`}
+                </button>
+              </form>
+            )}
+
+            {/* Back Button */}
+            <div className="pt-1 flex justify-start">
+              <button
+                type="button"
+                onClick={() => setStep("name")}
+                className="text-xs text-text-secondary hover:text-text-primary flex items-center gap-1.5 btn-press transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Kembali ke Ganti Nama</span>
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Privacy Note */}

@@ -119,9 +119,14 @@ export const AccountsView: React.FC<AccountsViewProps> = ({
                   </button>
                 </div>
               )}
-              <div className="text-[11px] text-text-secondary mt-0.5">
-                {acc.playlistCount !== undefined ? `${acc.playlistCount} playlist` : "Memuat..."}
-                {acc.storefront ? ` · Storefront: ${acc.storefront.toUpperCase()}` : ""}
+              <div className="text-[11px] text-text-secondary mt-0.5 flex items-center gap-1.5 flex-wrap">
+                <span>{acc.playlistCount !== undefined ? `${acc.playlistCount} playlist` : "Memuat..."}</span>
+                {acc.syncType === "snapshot" && (
+                  <span className="px-1.5 py-0.5 text-[9px] rounded bg-accent/15 text-accent border border-accent/25 font-mono">
+                    Mobile Sync
+                  </span>
+                )}
+                {acc.storefront ? <span>· Storefront: {acc.storefront.toUpperCase()}</span> : ""}
               </div>
             </div>
           </div>

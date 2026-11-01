@@ -6,7 +6,7 @@ services:
     container_name: music2anywhere-app
     restart: unless-stopped
     ports:
-      - "0.0.0.0:${APP_PORT:-3080}:${APP_PORT:-3080}"
+      - "${APP_PORT:-3080}:${APP_PORT:-3080}"
     environment:
       - APP_PORT=${APP_PORT:-3080}
       - NODE_ENV=production

@@ -54,4 +54,21 @@ describe("UI Match Helpers", () => {
     // Should return a boolean without crashing
     expect(typeof result).toBe("boolean");
   });
+
+  it("detects duplicate account aliases case-insensitively per platform", () => {
+    const accounts = [
+      { id: "1", platform: "youtube", localAlias: "Koleksi Utama" },
+      { id: "2", platform: "apple", localAlias: "Koleksi Mobil" },
+    ];
+    const isDuplicate = (platform: string, alias: string) =>
+      accounts.some(
+        (a) => a.platform === platform && a.localAlias.trim().toLowerCase() === alias.trim().toLowerCase()
+      );
+
+    expect(isDuplicate("youtube", "koleksi utama")).toBe(true);
+    expect(isDuplicate("youtube", "  KOLEKSI UTAMA  ")).toBe(true);
+    expect(isDuplicate("youtube", "Koleksi Baru")).toBe(false);
+    expect(isDuplicate("apple", "Koleksi Utama")).toBe(false);
+    expect(isDuplicate("apple", "koleksi mobil")).toBe(true);
+  });
 });

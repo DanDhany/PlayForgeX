@@ -119,6 +119,7 @@ export interface AccountConnection {
   playlistCount?: number;
   storefront?: string;
   errorMessage?: string;
+  syncType?: "live" | "snapshot";
 }
 
 export type MergeStrategy = "preserve" | "merge_one" | "append_existing";

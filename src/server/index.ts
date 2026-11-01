@@ -55,14 +55,19 @@ app.post("/api/accounts", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "platform must be 'youtube' or 'apple'" });
   }
 
+  const cleanAlias = typeof alias === "string" ? alias.trim() : "";
+  if (!cleanAlias) {
+    return res.status(400).json({ error: "Nama akun (label) wajib diisi terlebih dahulu." });
+  }
+
   try {
     if (platform === "youtube") {
       if (!cookieString) return res.status(400).json({ error: "cookieString is required for YouTube Music" });
-      const acc = await accountManager.addYouTubeAccount(cookieString, alias);
+      const acc = await accountManager.addYouTubeAccount(cookieString, cleanAlias);
       return res.json({ success: true, account: acc });
     } else {
       if (!musicUserToken) return res.status(400).json({ error: "musicUserToken is required for Apple Music" });
-      const acc = await accountManager.addAppleAccount(musicUserToken, developerToken, alias);
+      const acc = await accountManager.addAppleAccount(musicUserToken, developerToken, cleanAlias);
       return res.json({ success: true, account: acc });
     }
   } catch (err: any) {
@@ -109,6 +114,20 @@ app.get("/api/accounts/:id/playlists", async (req: Request, res: Response) => {
   try {
     const playlists = await accountManager.getPlaylists(accountId);
     res.json(playlists);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/accounts/import-snapshot - Direct JSON snapshot import
+app.post("/api/accounts/import-snapshot", (req: Request, res: Response) => {
+  const { alias, playlists } = req.body;
+  if (!playlists || !Array.isArray(playlists)) {
+    return res.status(400).json({ error: "playlists array is required" });
+  }
+  try {
+    const acc = accountManager.importSnapshotAccount(alias, playlists);
+    res.json({ success: true, account: acc, playlistCount: acc.playlistCount });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -189,20 +208,40 @@ app.post("/api/auth/web-catch", async (req: Request, res: Response) => {
     `);
   }
 
+  const cleanAlias = typeof alias === "string" ? alias.trim() : "";
+  if (!cleanAlias) {
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Nama Akun Diperlukan</title></head>
+        <body style="background:#0B0C0F;color:#F5F5F7;font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;padding:32px;text-align:center;">
+          <h2 style="color:#FF777F;">Nama Akun Diperlukan</h2>
+          <p style="color:#A3A8B5;">Nama akun wajib ditentukan terlebih dahulu di aplikasi sebelum menghubungkan sesi.</p>
+          <a href="/#tab=accounts" style="display:inline-block;margin-top:16px;padding:10px 24px;background:#A99BFF;color:#0B0C0F;text-decoration:none;border-radius:12px;font-weight:600;">Kembali ke TuneBridge</a>
+        </body>
+      </html>
+    `);
+  }
+
   try {
     let addedAcc;
     if (platform === "youtube") {
-      if (!cookieString) throw new Error("Cookie string YouTube kosong atau tidak valid");
-      addedAcc = await accountManager.addYouTubeAccount(
-        cookieString,
-        alias || `YouTube Music (${new Date().toLocaleDateString("id-ID")})`
-      );
+      if (req.body.payload || req.body.playlists) {
+        const raw = req.body.payload || req.body.playlists;
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+        const plList = parsed.playlists || parsed;
+        addedAcc = accountManager.importSnapshotAccount(cleanAlias, plList);
+      } else if (cookieString) {
+        addedAcc = await accountManager.addYouTubeAccount(cookieString, cleanAlias);
+      } else {
+        throw new Error("Data playlist atau cookie string YouTube tidak ditemukan");
+      }
     } else {
       if (!musicUserToken) throw new Error("Token Apple Music kosong");
       addedAcc = await accountManager.addAppleAccount(
         musicUserToken,
         developerToken,
-        alias || `Apple Music (${new Date().toLocaleDateString("id-ID")})`
+        cleanAlias
       );
     }
 
@@ -283,6 +322,11 @@ app.get("/api/playlists/:id/tracks", async (req: Request, res: Response) => {
   }
 
   try {
+    if (accountManager.hasSnapshotTracks(targetAcc.id, playlistId)) {
+      const tracks = accountManager.getPlaylistTracks(targetAcc.id, playlistId);
+      return res.json(tracks);
+    }
+
     if (targetAcc.platform === "apple") {
       const client = accountManager.getAppleClient(targetAcc.id);
       if (!client) return res.status(401).json({ error: "Apple client not active" });
@@ -462,6 +506,11 @@ app.post("/api/matching/start", async (req: Request, res: Response) => {
       ? accountManager.getAppleClient(sourceAcc?.id || "")
       : accountManager.getAppleClient(targetAcc?.id || "");
 
+  let presetTracks: TrackMetadata[] | undefined = undefined;
+  if (sourceAcc && accountManager.hasSnapshotTracks(sourceAcc.id, playlist.id)) {
+    presetTracks = accountManager.getPlaylistTracks(sourceAcc.id, playlist.id);
+  }
+
   try {
     const draft = await startBackgroundMatching(
       sourcePlatform,
@@ -469,7 +518,8 @@ app.post("/api/matching/start", async (req: Request, res: Response) => {
       playlist,
       ytClient,
       appleClient,
-      force
+      force,
+      presetTracks
     );
     res.json({ success: true, draft, isRunning: isJobRunning(sourcePlatform, playlist.id) });
   } catch (err: any) {
@@ -625,13 +675,28 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
         currentProgress = { current: initialBatch.length, total, success, failed: 0 };
 
         if (remaining.length > 0) {
-          const resChunk = await ytClient.addTracksToPlaylist(destinationId, remaining);
-          success += resChunk.added;
-          failed += resChunk.failed;
-          currentProgress = { current: total, total, success, failed };
+          for (let i = 0; i < remaining.length; i += 25) {
+            const chunk = remaining.slice(i, i + 25);
+            const resChunk = await ytClient.addTracksToPlaylist(destinationId, chunk);
+            success += resChunk.added;
+            failed += resChunk.failed;
+            currentProgress = {
+              current: Math.min(initialBatch.length + i + chunk.length, total),
+              total,
+              success,
+              failed,
+            };
+          }
         }
       }
     }
+
+    currentProgress = {
+      current: total,
+      total,
+      success,
+      failed,
+    };
 
     // Mark draft transferred if applicable
     if (sourcePlaylistId) {
@@ -662,6 +727,7 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
       createdPlaylistId: destinationId,
       added: success,
       failed,
+      progress: currentProgress,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

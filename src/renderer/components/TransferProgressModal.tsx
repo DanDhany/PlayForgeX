@@ -11,8 +11,19 @@ export const TransferProgressModal: React.FC<TransferProgressModalProps> = ({ jo
   if (!job) return null;
 
   const { playlistTitle, progress, status } = job;
-  const percent = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
-  const isFinished = status === "completed" || status === "failed";
+  const isCompleted = status === "completed";
+  const isFinished = isCompleted || status === "failed";
+
+  const displayCurrent = isCompleted ? progress.total : Math.min(progress.current, progress.total);
+  const percent = isCompleted
+    ? 100
+    : progress.total > 0
+    ? Math.round((displayCurrent / progress.total) * 100)
+    : 0;
+  const displaySuccess =
+    isCompleted && progress.success + progress.failed < displayCurrent
+      ? displayCurrent - progress.failed
+      : progress.success;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4">
@@ -64,10 +75,10 @@ export const TransferProgressModal: React.FC<TransferProgressModalProps> = ({ jo
 
           <div className="flex items-center justify-between text-[11px] text-text-secondary font-mono tabular-nums">
             <span>
-              {progress.current} / {progress.total} lagu diproses
+              {displayCurrent} / {progress.total} lagu diproses
             </span>
             <span className="text-text-primary">
-              {progress.success} berhasil · {progress.failed} gagal
+              {displaySuccess} berhasil · {progress.failed} gagal
             </span>
           </div>
         </div>
@@ -95,8 +106,14 @@ export const TransferProgressModal: React.FC<TransferProgressModalProps> = ({ jo
             <>
               <AlertCircle className="w-5 h-5 text-status-danger flex-shrink-0" />
               <div className="space-y-0.5">
-                <p className="text-status-danger font-semibold">Transfer Selesai Sebagian</p>
-                <p className="text-[11px] text-text-secondary">Beberapa lagu mungkin tidak tersedia di katalog.</p>
+                <p className="text-status-danger font-semibold">
+                  {progress.success > 0 ? "Transfer Selesai Sebagian" : "Transfer Belum Berhasil"}
+                </p>
+                <p className="text-[11px] text-text-secondary">
+                  {progress.success > 0
+                    ? "Beberapa lagu tidak dapat ditemukan di katalog tujuan."
+                    : "Terjadi kendala saat menghubungkan atau memproses lagu."}
+                </p>
               </div>
             </>
           )}
