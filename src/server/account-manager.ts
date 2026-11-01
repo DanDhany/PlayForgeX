@@ -186,11 +186,18 @@ export class AccountManager {
 
     // Verify by fetching playlists if possible
     let playlistCount = 0;
+    let initialStatus: "connected" | "reauth_required" = "connected";
+    let initialError: string | undefined = undefined;
+
     try {
       const playlists = await client.fetchPlaylists();
       playlistCount = playlists.length;
     } catch (err: any) {
       console.warn("[AccountManager] Playlist fetch check warning:", err?.message);
+      if (err?.message?.includes("Sign-in required")) {
+        initialStatus = "reauth_required";
+        initialError = err.message;
+      }
     }
 
     // Reuse existing account if matching alias already exists, otherwise generate unique id
@@ -207,7 +214,8 @@ export class AccountManager {
       id,
       platform: "youtube",
       localAlias,
-      status: "connected",
+      status: initialStatus,
+      errorMessage: initialError,
       createdAt: existing ? existing.createdAt : Date.now(),
       lastVerifiedAt: Date.now(),
       playlistCount,
@@ -316,7 +324,7 @@ export class AccountManager {
         }
       }
     } catch (err: any) {
-      acc.status = "error";
+      acc.status = err?.message?.includes("Sign-in required") ? "reauth_required" : "error";
       acc.errorMessage = err.message || "Failed verifying connection";
     }
 

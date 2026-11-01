@@ -281,6 +281,21 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               <span className="text-text-primary font-mono">{platform === "youtube" ? "music.youtube.com" : "music.apple.com"}</span>, pastikan sudah login, lalu jalankan bookmarklet ini. Browser otomatis mengirim sesi ke TuneBridge tanpa hambatan Mixed-Content HTTPS.
             </p>
 
+            {platform === "youtube" && (
+              <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-300 text-[11px] space-y-1">
+                <div className="flex items-center gap-1.5 font-medium">
+                  <Info className="w-3.5 h-3.5 flex-shrink-0 text-amber-400" />
+                  <span>Catatan Khusus YouTube Music</span>
+                </div>
+                <p className="text-amber-300/80 leading-relaxed">
+                  Google memproteksi sesi YouTube dengan cookie HttpOnly (<code className="font-mono text-amber-200">__Secure-1PSID</code>) yang tidak dapat dibaca oleh script bookmarklet di browser HP.
+                </p>
+                <p className="text-amber-300/80 leading-relaxed">
+                  Untuk YouTube Music, gunakan opsi <strong>Terminal CLI</strong> pada komputer host (<code className="font-mono text-amber-200">npm run auth:yt -- -a &quot;Nama Akun&quot;</code>) atau salin Cookie lengkap dari DevTools browser di opsi <strong>Manual</strong>.
+                </p>
+              </div>
+            )}
+
             {/* Copy / Open Action Buttons */}
             <div className="flex items-center gap-2 pt-1">
               <button

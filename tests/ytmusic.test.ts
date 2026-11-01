@@ -260,4 +260,56 @@ describe("YouTube Music Client Helpers", () => {
     expect(tracks[0].artist).toBe("Artist B");
     expect(tracks[0].durationSeconds).toBe(210);
   });
+
+  it("detects unauthenticated sign-in response in fetchPlaylists and throws", async () => {
+    const { YouTubeMusicClient } = await import("../src/core/ytmusic");
+    const client = new YouTubeMusicClient("SAPISID=test_sapisid");
+
+    const originalFetch = global.fetch;
+    global.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          contents: {
+            singleColumnBrowseResultsRenderer: {
+              tabs: [
+                {
+                  tabRenderer: {
+                    content: {
+                      sectionListRenderer: {
+                        contents: [
+                          {
+                            itemSectionRenderer: {
+                              contents: [
+                                {
+                                  messageRenderer: {
+                                    text: { runs: [{ text: "Looking for what you’ve liked?" }] },
+                                    button: {
+                                      buttonRenderer: {
+                                        text: { runs: [{ text: "Sign in" }] },
+                                        navigationEndpoint: { signInEndpoint: { hack: true } }
+                                      }
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }),
+        { status: 200 }
+      );
+
+    try {
+      await expect(client.fetchPlaylists()).rejects.toThrow("Sign-in required");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });

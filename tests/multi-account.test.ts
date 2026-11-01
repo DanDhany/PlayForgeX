@@ -118,17 +118,60 @@ describe("AccountManager Multi-Account Storage & Migration", () => {
     expect(secretsRaw).toContain("tok_c");
   });
 
-  it("adds YouTube accounts with SAPISID cookie string", async () => {
+  it("adds YouTube accounts and verifies status", async () => {
     const mgr = new AccountManager(tmpDir);
     const ytCookie = "SAPISID=fake_sapisid_xyz; __Secure-3PAPISID=fake_3p; LOGIN_INFO=fake_info;";
 
-    const acc = await mgr.addYouTubeAccount(ytCookie, "Koleksi Orang D (YouTube)");
-    expect(acc.platform).toBe("youtube");
-    expect(acc.localAlias).toBe("Koleksi Orang D (YouTube)");
-    expect(acc.status).toBe("connected");
+    // Mock fetch to simulate valid YouTube browse response
+    const origFetch = global.fetch;
+    global.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          contents: {
+            singleColumnBrowseResultsRenderer: {
+              tabs: [
+                {
+                  tabRenderer: {
+                    content: {
+                      sectionListRenderer: {
+                        contents: [
+                          {
+                            gridRenderer: {
+                              items: [
+                                {
+                                  musicTwoRowItemRenderer: {
+                                    title: { runs: [{ text: "Favorites" }] },
+                                    navigationEndpoint: { browseEndpoint: { browseId: "VLPL123" } },
+                                    subtitle: { runs: [{ text: "Playlist • 10 songs" }] },
+                                  },
+                                },
+                              ],
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        }),
+        { status: 200 }
+      );
 
-    const retrieved = mgr.getAccount(acc.id);
-    expect(retrieved).toBeDefined();
-    expect(retrieved?.localAlias).toBe("Koleksi Orang D (YouTube)");
+    try {
+      const acc = await mgr.addYouTubeAccount(ytCookie, "Koleksi Orang D (YouTube)");
+      expect(acc.platform).toBe("youtube");
+      expect(acc.localAlias).toBe("Koleksi Orang D (YouTube)");
+      expect(acc.status).toBe("connected");
+      expect(acc.playlistCount).toBe(1);
+
+      const retrieved = mgr.getAccount(acc.id);
+      expect(retrieved).toBeDefined();
+      expect(retrieved?.localAlias).toBe("Koleksi Orang D (YouTube)");
+    } finally {
+      global.fetch = origFetch;
+    }
   });
 });

@@ -336,6 +336,15 @@ export class YouTubeMusicClient {
 
         if (res.ok) {
           const json = await res.json();
+
+          // Check if YouTube Music prompts for sign-in (unauthenticated / missing __Secure-1PSID)
+          const jsonStr = JSON.stringify(json);
+          if (jsonStr.includes("signInEndpoint") && jsonStr.includes("Sign in")) {
+            throw new Error(
+              "Sesi YouTube Music tidak valid atau belum login penuh (Sign-in required). Cookie __Secure-1PSID diperlukan."
+            );
+          }
+
           const list = parseYouTubeMusicPlaylists(json);
           for (const p of list) {
             if (!seenIds.has(p.id)) {
@@ -344,7 +353,11 @@ export class YouTubeMusicClient {
             }
           }
         }
-      } catch {}
+      } catch (err: any) {
+        if (err?.message?.includes("Sign-in required")) {
+          throw err;
+        }
+      }
       if (allPlaylists.length > 0) break;
     }
 
