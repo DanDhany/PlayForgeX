@@ -352,7 +352,13 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
 
       {/* 5. Floating Bottom Bar on Mobile */}
       {selectedPlaylist && stats.activeForImport > 0 && (
-        <div className="md:hidden fixed bottom-16 inset-x-3 z-30 pb-safe">
+        <div
+          className={`md:hidden fixed inset-x-3 z-30 transition-all duration-300 ease-out ${
+            currentTrack
+              ? "bottom-[calc(170px+env(safe-area-inset-bottom,0px))]"
+              : "bottom-[calc(78px+env(safe-area-inset-bottom,0px))]"
+          }`}
+        >
           <div className="bg-surface-elevated/95 border border-border backdrop-blur-xl p-2.5 rounded-2xl shadow-2xl flex items-center justify-between gap-3">
             <div className="min-w-0 pl-1">
               <p className="text-[11px] font-medium text-text-primary truncate">
