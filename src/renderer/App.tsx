@@ -4,6 +4,7 @@ import { PlaylistSidebar } from "./components/PlaylistSidebar";
 import { ReviewStudio } from "./components/ReviewStudio";
 import { AlternativePickerModal } from "./components/AlternativePickerModal";
 import { TransferProgressModal } from "./components/TransferProgressModal";
+import { AuthModalWeb } from "./components/AuthModalWeb";
 import {
   ServiceAuthStatus,
   PlaylistSummary,
@@ -29,6 +30,7 @@ export const App: React.FC = () => {
 
   const [editingItem, setEditingItem] = useState<TransferTrackItem | null>(null);
   const [transferJob, setTransferJob] = useState<TransferJob | null>(null);
+  const [webAuthService, setWebAuthService] = useState<"youtube" | "apple" | null>(null);
 
   // Check if running in Electron environment
   const isElectron = typeof window !== "undefined" && !!window.api;
@@ -39,12 +41,18 @@ export const App: React.FC = () => {
 
   const refreshStatus = async () => {
     if (!isElectron) {
-      // Demo / Browser Mock for development
-      setAuthStatus({
-        youtube: { connected: true, playlistCount: 3 },
-        apple: { connected: true, storefront: "JP" },
-      });
-      loadMockPlaylists();
+      try {
+        const res = await fetch("/api/status");
+        if (res.ok) {
+          const status = await res.json();
+          setAuthStatus(status);
+          if (status.youtube.connected) {
+            loadPlaylistsWeb();
+          }
+        }
+      } catch (err) {
+        console.warn("Web API not available, loading mock data:", err);
+      }
       return;
     }
 
@@ -52,15 +60,14 @@ export const App: React.FC = () => {
       const status = await window.api.getStatus();
       setAuthStatus(status);
       if (status.youtube.connected) {
-        loadPlaylists();
+        loadPlaylistsElectron();
       }
     } catch (err) {
       console.error("Error getting status:", err);
     }
   };
 
-  const loadPlaylists = async () => {
-    if (!isElectron) return;
+  const loadPlaylistsElectron = async () => {
     setIsLoadingPlaylists(true);
     try {
       const list = await window.api.fetchPlaylists();
@@ -72,27 +79,24 @@ export const App: React.FC = () => {
     }
   };
 
-  const loadMockPlaylists = () => {
-    const mock: PlaylistSummary[] = [
-      {
-        id: "VLPL_jpop_heavy",
-        title: "Japanese Anime & J-Pop Hits",
-        trackCount: 4,
-        thumbnailUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&h=200&fit=crop",
-      },
-      {
-        id: "VLPL_chill_vibes",
-        title: "Midnight City Pop & Covers",
-        trackCount: 3,
-        thumbnailUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&h=200&fit=crop",
-      },
-    ];
-    setPlaylists(mock);
+  const loadPlaylistsWeb = async () => {
+    setIsLoadingPlaylists(true);
+    try {
+      const res = await fetch("/api/playlists");
+      if (res.ok) {
+        const list = await res.json();
+        setPlaylists(list);
+      }
+    } catch (err) {
+      console.error("Failed to load playlists via web API:", err);
+    } finally {
+      setIsLoadingPlaylists(false);
+    }
   };
 
   const handleLoginYouTube = async () => {
     if (!isElectron) {
-      alert("Modal login runs in the native Electron app.");
+      setWebAuthService("youtube");
       return;
     }
     setIsLoadingYt(true);
@@ -112,7 +116,7 @@ export const App: React.FC = () => {
 
   const handleLoginApple = async () => {
     if (!isElectron) {
-      alert("Modal login runs in the native Electron app.");
+      setWebAuthService("apple");
       return;
     }
     setIsLoadingApple(true);
@@ -130,9 +134,37 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleSubmitWebYouTube = async (cookieString: string) => {
+    const res = await fetch("/api/auth/youtube", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cookieString }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to save YouTube cookie");
+    await refreshStatus();
+  };
+
+  const handleSubmitWebApple = async (musicUserToken: string, developerToken?: string) => {
+    const res = await fetch("/api/auth/apple", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ musicUserToken, developerToken }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to save Apple Music token");
+    await refreshStatus();
+  };
+
   const handleLogout = async (service: "youtube" | "apple") => {
     if (isElectron) {
       await window.api.logout(service);
+    } else {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ service }),
+      });
     }
     await refreshStatus();
   };
@@ -142,95 +174,24 @@ export const App: React.FC = () => {
     setIsMatching(true);
 
     if (!isElectron) {
-      // Demo mock match for browser testing
-      setTimeout(() => {
-        setTrackItems([
-          {
-            source: {
-              title: "夜に駆ける (Racing into the Night) [Official Music Video]",
-              artist: "YOASOBI",
-              album: "THE BOOK",
-            },
-            sanitizedTitle: {
-              rawTitle: "夜に駆ける (Racing into the Night) [Official Music Video]",
-              originalTitle: "夜に駆ける",
-              cleanTitle: "夜に駆ける",
-              subtitle: "Racing into the Night",
-              hasNonLatin: true,
-            },
-            match: {
-              status: "EXACT_MATCH",
-              totalScore: 0.96,
-              titleScore: 1.0,
-              artistScore: 1.0,
-              albumScore: 0.8,
-              reason: "Exact match on title and artist",
-            },
-            selectedCandidate: {
-              id: "apple_track_1",
-              name: "夜に駆ける",
-              artistName: "YOASOBI",
-              albumName: "THE BOOK",
-              durationInMillis: 261000,
-              artworkUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150&h=150&fit=crop",
-              previewUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview116/v4/7e/3c/6f/7e3c6f84-f254-bca5-523e-8c3da87b089c/mzaf_10526723223689408272.plus.aac.p.m4a",
-            },
-            excluded: false,
-          },
-          {
-            source: {
-              title: "廻廻奇譚 / Eve (Cover by VTuber) [Audio]",
-              artist: "Hoshimachi Suisei",
-              album: "Hololive Covers",
-            },
-            sanitizedTitle: {
-              rawTitle: "廻廻奇譚 / Eve (Cover by VTuber) [Audio]",
-              originalTitle: "廻廻奇譚",
-              cleanTitle: "廻廻奇譚",
-              hasNonLatin: true,
-            },
-            match: {
-              status: "COVER_OR_ALT",
-              totalScore: 0.68,
-              titleScore: 1.0,
-              artistScore: 0.15,
-              albumScore: 0.1,
-              reason: "Cover version: Title matched, artist differs",
-            },
-            selectedCandidate: {
-              id: "apple_track_2",
-              name: "廻廻奇譚",
-              artistName: "Eve",
-              albumName: "Kaizin",
-              durationInMillis: 220000,
-              artworkUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=150&h=150&fit=crop",
-            },
-            excluded: false,
-          },
-          {
-            source: {
-              title: "Unknown Doujin Track (Unavailable on major stores)",
-              artist: "Indie Circle",
-            },
-            sanitizedTitle: {
-              rawTitle: "Unknown Doujin Track",
-              originalTitle: "Unknown Doujin Track",
-              cleanTitle: "Unknown Doujin Track",
-              hasNonLatin: false,
-            },
-            match: {
-              status: "NOT_FOUND",
-              totalScore: 0.05,
-              titleScore: 0.0,
-              artistScore: 0.0,
-              albumScore: 0.0,
-              reason: "No matches found in catalog",
-            },
-            excluded: true,
-          },
-        ]);
+      try {
+        const tracksRes = await fetch(`/api/playlists/${playlist.id}/tracks`);
+        if (!tracksRes.ok) throw new Error("Failed to fetch tracks");
+        const tracks = await tracksRes.json();
+
+        const matchRes = await fetch("/api/tracks/match", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tracks }),
+        });
+        if (!matchRes.ok) throw new Error("Failed to match tracks");
+        const matched = await matchRes.json();
+        setTrackItems(matched);
+      } catch (err) {
+        console.error("Web match error:", err);
+      } finally {
         setIsMatching(false);
-      }, 700);
+      }
       return;
     }
 
@@ -274,16 +235,17 @@ export const App: React.FC = () => {
 
   const handleSearchAppleCatalog = async (query: string): Promise<AppleMusicTrack[]> => {
     if (!isElectron) {
-      return [
-        {
-          id: "alt_mock_1",
-          name: query,
-          artistName: "Official Artist",
-          albumName: "Greatest Hits",
-          durationInMillis: 215000,
-          artworkUrl: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=120&h=120&fit=crop",
-        },
-      ];
+      try {
+        const res = await fetch("/api/search/apple", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query }),
+        });
+        if (res.ok) return await res.json();
+      } catch (err) {
+        console.error("Web catalog search error:", err);
+      }
+      return [];
     }
     return window.api.searchAppleCatalog(query);
   };
@@ -306,28 +268,45 @@ export const App: React.FC = () => {
     setTransferJob(job);
 
     if (!isElectron) {
-      // Demo simulate progress in browser
-      setTimeout(() => {
+      // Poll progress in web mode
+      const interval = setInterval(async () => {
+        try {
+          const pRes = await fetch("/api/transfer/progress");
+          if (pRes.ok) {
+            const p = await pRes.json();
+            setTransferJob((prev) => (prev ? { ...prev, progress: p } : null));
+          }
+        } catch {}
+      }, 1000);
+
+      try {
+        const res = await fetch("/api/transfer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            playlistTitle: selectedPlaylist.title,
+            items: trackItems,
+          }),
+        });
+        const data = await res.json();
         setTransferJob((prev) =>
           prev
             ? {
                 ...prev,
-                status: "completed",
-                appleMusicPlaylistId: "pl.u-demo123",
-                progress: {
-                  current: prev.progress.total,
-                  total: prev.progress.total,
-                  success: prev.progress.total,
-                  failed: 0,
-                },
+                status: res.ok ? "completed" : "failed",
+                appleMusicPlaylistId: data.createdPlaylistId,
               }
             : null
         );
-      }, 2000);
+      } catch (err: any) {
+        setTransferJob((prev) => (prev ? { ...prev, status: "failed" } : null));
+      } finally {
+        clearInterval(interval);
+      }
       return;
     }
 
-    // Subscribe to progress
+    // Electron mode
     const unsubscribe = window.api.onTransferProgress((p) => {
       setTransferJob((prev) => (prev ? { ...prev, progress: p } : null));
     });
@@ -368,7 +347,7 @@ export const App: React.FC = () => {
           selectedPlaylistId={selectedPlaylist?.id || null}
           onSelectPlaylist={handleSelectPlaylist}
           isLoading={isLoadingPlaylists}
-          onRefreshPlaylists={loadPlaylists}
+          onRefreshPlaylists={isElectron ? loadPlaylistsElectron : loadPlaylistsWeb}
         />
 
         <ReviewStudio
@@ -395,6 +374,14 @@ export const App: React.FC = () => {
       <TransferProgressModal
         job={transferJob}
         onClose={() => setTransferJob(null)}
+      />
+
+      {/* Web / Docker Mode Connect Modal */}
+      <AuthModalWeb
+        service={webAuthService}
+        onClose={() => setWebAuthService(null)}
+        onSubmitYouTube={handleSubmitWebYouTube}
+        onSubmitApple={handleSubmitWebApple}
       />
     </div>
   );

@@ -5,3 +5,7 @@ release/
 .superpowers/
 .DS_Store
 *.log
+data/*.json
+!data/.gitkeep
+.env
+
