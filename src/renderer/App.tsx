@@ -524,6 +524,7 @@ export const App: React.FC = () => {
         defaultTitle={selectedPlaylist?.title || "Playlist"}
         targetPlatform={playlistSource === "youtube" ? "apple" : "youtube"}
         trackCount={trackItems.filter((t) => !t.excluded && t.selectedCandidate).length}
+        isMatching={isMatching}
       />
 
       {/* Alternative Song Picker Modal */}

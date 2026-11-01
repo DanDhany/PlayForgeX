@@ -267,7 +267,7 @@ export async function startBackgroundMatching(
         saveDraft(draft!);
 
         // Pace to avoid rate limits
-        await new Promise((r) => setTimeout(r, 150));
+        await new Promise((r) => setTimeout(r, 350));
       }
 
       draft!.status = "ready";

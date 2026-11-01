@@ -24,6 +24,7 @@ interface ExportModalProps {
   defaultTitle: string;
   targetPlatform: "apple" | "youtube";
   trackCount: number;
+  isMatching?: boolean;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -33,6 +34,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   defaultTitle,
   targetPlatform,
   trackCount,
+  isMatching = false,
 }) => {
   if (!isOpen) return null;
 
@@ -128,6 +130,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
         {/* Body */}
         <div className="p-5 overflow-y-auto space-y-4 flex-1">
+          {/* Note if matching is still running */}
+          {isMatching && (
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-200 flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0 text-amber-400" />
+              <span>
+                Pencocokan masih berjalan di background. Anda akan mentransfer {trackCount} lagu yang sudah siap saat ini.
+              </span>
+            </div>
+          )}
+
           {/* Mode Selector Tabs */}
           <div className="grid grid-cols-2 gap-2.5 p-1 bg-surface rounded-xl border border-white/[0.06]">
             <button

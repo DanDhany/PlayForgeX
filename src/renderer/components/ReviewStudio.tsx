@@ -171,7 +171,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
 
             <button
               onClick={onStartTransfer}
-              disabled={isMatching || isTransferring || stats.activeForImport === 0}
+              disabled={isTransferring || stats.activeForImport === 0}
               className="flex-1 sm:flex-none px-4 py-2 bg-primary hover:bg-primary-hover disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 btn-press transition"
             >
               <ArrowRight className="w-4 h-4" />
@@ -375,8 +375,8 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
         <div className="md:hidden fixed bottom-4 inset-x-4 z-30">
           <button
             onClick={onStartTransfer}
-            disabled={isMatching || isTransferring}
-            className="w-full py-3 px-4 bg-primary hover:bg-primary-hover text-white rounded-2xl text-xs font-bold shadow-2xl shadow-primary/40 flex items-center justify-between btn-press transition"
+            disabled={isTransferring || stats.activeForImport === 0}
+            className="w-full py-3 px-4 bg-primary hover:bg-primary-hover disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-2xl text-xs font-bold shadow-2xl shadow-primary/40 flex items-center justify-between btn-press transition"
           >
             <div className="flex items-center space-x-2">
               <CheckCheck className="w-4 h-4" />

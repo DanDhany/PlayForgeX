@@ -177,30 +177,35 @@ export class AppleMusicClient {
     });
   }
 
-  public async searchCatalog(query: string, storefront?: string): Promise<AppleMusicTrack[]> {
+  public async searchCatalog(query: string, storefront?: string, retryCount = 0): Promise<AppleMusicTrack[]> {
     const sf = storefront || (await this.getUserStorefront());
     const url = formatCatalogSearchUrl(sf, query, 15);
 
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${this.developerToken}`,
-        Origin: "https://apple.com",
-        Referer: "https://apple.com/",
-      },
-    });
+    try {
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${this.developerToken}`,
+          Origin: "https://apple.com",
+          Referer: "https://apple.com/",
+        },
+      });
 
-    if (!res.ok) {
-      if (res.status === 429) {
-        console.warn("Apple Music API 429 rate limit reached, backing off...");
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        return this.searchCatalog(query, storefront);
+      if (!res.ok) {
+        if (res.status === 429 && retryCount < 2) {
+          console.warn(`Apple Music API 429 rate limit reached for "${query}", backing off (retry ${retryCount + 1}/2)...`);
+          await new Promise((resolve) => setTimeout(resolve, 2500 * (retryCount + 1)));
+          return this.searchCatalog(query, storefront, retryCount + 1);
+        }
+        return [];
       }
+
+      const json = await res.json();
+      const songResources = json?.results?.songs?.data || [];
+      return songResources.map(mapAppleMusicSong);
+    } catch (err) {
+      console.error(`Apple Music searchCatalog error for "${query}":`, err);
       return [];
     }
-
-    const json = await res.json();
-    const songResources = json?.results?.songs?.data || [];
-    return songResources.map(mapAppleMusicSong);
   }
 
   /**
