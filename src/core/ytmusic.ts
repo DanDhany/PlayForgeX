@@ -249,12 +249,46 @@ export function parseYouTubeMusicTracks(response: any): TrackMetadata[] {
         rawItems = section.musicPlaylistShelfRenderer.contents;
         break;
       }
+      if (section?.musicShelfRenderer?.contents) {
+        rawItems = section.musicShelfRenderer.contents;
+        break;
+      }
     }
 
     if (rawItems.length === 0 && response?.contents?.twoColumnBrowseResultsRenderer) {
       // Alternate desktop layout
       const secondary = response.contents.twoColumnBrowseResultsRenderer.secondaryContents;
-      rawItems = secondary?.sectionListRenderer?.contents?.[0]?.musicPlaylistShelfRenderer?.contents || [];
+      const secSections = secondary?.sectionListRenderer?.contents || [];
+      for (const s of secSections) {
+        if (s?.musicPlaylistShelfRenderer?.contents) {
+          rawItems = s.musicPlaylistShelfRenderer.contents;
+          break;
+        }
+        if (s?.musicShelfRenderer?.contents) {
+          rawItems = s.musicShelfRenderer.contents;
+          break;
+        }
+      }
+    }
+
+    // Deep search fallback: find all musicResponsiveListItemRenderer anywhere in response
+    if (rawItems.length === 0) {
+      function findItems(node: any, out: any[] = []): any[] {
+        if (!node || typeof node !== "object") return out;
+        if (node.musicResponsiveListItemRenderer) {
+          out.push(node);
+          return out;
+        }
+        if (Array.isArray(node)) {
+          for (const item of node) findItems(item, out);
+        } else {
+          for (const k of Object.keys(node)) {
+            findItems(node[k], out);
+          }
+        }
+        return out;
+      }
+      rawItems = findItems(response);
     }
 
     return parseRawYTMTrackItems(rawItems);
@@ -369,8 +403,17 @@ export class YouTubeMusicClient {
       throw new Error("Missing YouTube Music SAPISID session cookie");
     }
 
-    // Ensure browseId has VL prefix for playlist endpoint if needed
-    const normalizedBrowseId = browseId.startsWith("PL") ? `VL${browseId}` : browseId;
+    let cleanBrowseId = browseId.trim();
+    const urlMatch = cleanBrowseId.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+    if (urlMatch) {
+      cleanBrowseId = urlMatch[1];
+    }
+
+    // Ensure browseId has VL prefix for playlist endpoint if needed (except for album MPREb/OLAK IDs)
+    const normalizedBrowseId =
+      cleanBrowseId.startsWith("PL") || cleanBrowseId.startsWith("RD")
+        ? `VL${cleanBrowseId}`
+        : cleanBrowseId;
 
     const payload = {
       context: {

@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   sanitizeVideoTitle,
   YouTubeVideoAdapter,
+  parseYouTubeInput,
+  extractYtInitialData,
 } from "../src/core/adapters/youtube-video-adapter.js";
+import { parseYouTubeMusicTracks } from "../src/core/ytmusic.js";
 import { SpotifyAdapter } from "../src/core/adapters/spotify-adapter.js";
 import { SoundCloudAdapter } from "../src/core/adapters/soundcloud-adapter.js";
 import { DeezerAdapter } from "../src/core/adapters/deezer-adapter.js";
@@ -56,6 +59,121 @@ describe("Platform Adapters & Parsers Suite (TDD)", () => {
 
       expect(adapter.normalizePlaylistId("VLPL987654321")).toBe("PL987654321");
       expect(adapter.normalizePlaylistId("PL987654321")).toBe("PL987654321");
+
+      // Mix & Watch URLs
+      const mixInput = parseYouTubeInput("https://www.youtube.com/watch?v=kffacxfA7G4&list=RDkffacxfA7G4&start_radio=1");
+      expect(mixInput.playlistId).toBe("RDkffacxfA7G4");
+      expect(mixInput.videoId).toBe("kffacxfA7G4");
+
+      // Music Album URLs
+      const albumInput = parseYouTubeInput("https://music.youtube.com/playlist?list=OLAK5uy_k12345");
+      expect(albumInput.playlistId).toBe("OLAK5uy_k12345");
+    });
+
+    it("extracts ytInitialData reliably across diverse HTML formatting and edge cases", () => {
+      // 1. Standard with semicolon
+      const html1 = '<script>var ytInitialData = {"foo":"bar1"};</script>';
+      expect(extractYtInitialData(html1)).toEqual({ foo: "bar1" });
+
+      // 2. With window["ytInitialData"] assignment and newline before </script>
+      const html2 = '<script>window["ytInitialData"] = {"foo":"bar2"};\n</script>';
+      expect(extractYtInitialData(html2)).toEqual({ foo: "bar2" });
+
+      // 3. Without semicolon before </script>
+      const html3 = '<script>ytInitialData = {"foo":"bar3"}</script>';
+      expect(extractYtInitialData(html3)).toEqual({ foo: "bar3" });
+
+      // 4. Invalid or missing returns null
+      expect(extractYtInitialData("<html><body>No data</body></html>")).toBeNull();
+    });
+
+    it("parses playlistPanelVideoRenderer items from YouTube watch/mix queues", () => {
+      const adapter = new YouTubeVideoAdapter();
+      const mockWatchQueue = {
+        contents: {
+          twoColumnWatchNextResults: {
+            playlist: {
+              playlist: {
+                contents: [
+                  {
+                    playlistPanelVideoRenderer: {
+                      videoId: "vid_mix_1",
+                      title: { simpleText: "Queen - Bohemian Rhapsody (Official Video Remastered)" },
+                      longBylineText: { runs: [{ text: "Queen Official" }] },
+                      thumbnail: { thumbnails: [{ url: "https://i.ytimg.com/vi/vid_mix_1/hqdefault.jpg" }] },
+                    },
+                  },
+                  {
+                    playlistPanelVideoRenderer: {
+                      videoId: "vid_mix_2",
+                      title: { runs: [{ text: "Queen - Don't Stop Me Now" }] },
+                      shortBylineText: { runs: [{ text: "Queen Official" }] },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+
+      const tracks = adapter.parseInnertubeResponse(mockWatchQueue);
+      expect(tracks.length).toBe(2);
+      expect(tracks[0].videoId).toBe("vid_mix_1");
+      expect(tracks[0].title).toBe("Bohemian Rhapsody");
+      expect(tracks[0].artist).toBe("Queen");
+      expect(tracks[1].videoId).toBe("vid_mix_2");
+      expect(tracks[1].title).toBe("Don't Stop Me Now");
+    });
+
+    it("parses musicResponsiveListItemRenderer and fallback formats in YouTubeMusic parser", () => {
+      const mockMusicAlbum = {
+        contents: {
+          singleColumnBrowseResultsRenderer: {
+            tabs: [
+              {
+                tabRenderer: {
+                  content: {
+                    sectionListRenderer: {
+                      contents: [
+                        {
+                          musicShelfRenderer: {
+                            contents: [
+                              {
+                                musicResponsiveListItemRenderer: {
+                                  playlistItemData: { videoId: "ytm_trk_1" },
+                                  flexColumns: [
+                                    {
+                                      musicResponsiveListItemFlexColumnRenderer: {
+                                        text: { runs: [{ text: "Starboy" }] },
+                                      },
+                                    },
+                                    {
+                                      musicResponsiveListItemFlexColumnRenderer: {
+                                        text: { runs: [{ text: "The Weeknd feat. Daft Punk" }] },
+                                      },
+                                    },
+                                  ],
+                                },
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      const tracks = parseYouTubeMusicTracks(mockMusicAlbum);
+      expect(tracks.length).toBe(1);
+      expect(tracks[0].videoId).toBe("ytm_trk_1");
+      expect(tracks[0].title).toBe("Starboy");
+      expect(tracks[0].artist).toBe("The Weeknd feat. Daft Punk");
     });
 
     it("parses modern YouTube desktop lockupViewModel items correctly", () => {

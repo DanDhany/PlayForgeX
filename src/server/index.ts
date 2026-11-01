@@ -660,6 +660,19 @@ app.get("/api/playlists/:id/tracks", async (req: Request, res: Response) => {
     : accountManager.getPrimaryAccount(source);
 
   if (!targetAcc) {
+    for (const acc of accountManager.getAccounts()) {
+      if (accountManager.hasSnapshotTracks(acc.id, playlistId)) {
+        targetAcc = acc;
+        break;
+      }
+    }
+  }
+
+  if (!targetAcc && source === "youtube") {
+    targetAcc = accountManager.getPrimaryAccount("youtube_video");
+  }
+
+  if (!targetAcc) {
     return res.status(401).json({ error: `No connected ${source} account available` });
   }
 

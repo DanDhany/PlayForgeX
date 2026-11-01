@@ -4,6 +4,7 @@ export const IS_PAGES_OR_STATIC =
   typeof window !== "undefined" &&
   (window.location.hostname.includes("github.io") ||
     window.location.hostname.includes("pages.dev") ||
+    window.location.hostname.includes("is-a.dev") ||
     (window.location.protocol === "file:" && !window.location.port));
 
 export const DEMO_ACCOUNTS: AccountConnection[] = [
