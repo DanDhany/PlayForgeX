@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Search, RefreshCw, X, ChevronRight, Disc3 } from "lucide-react";
-import { PlaylistSummary } from "../../shared/types";
+import { PlaylistSummary, PlatformType } from "../../shared/types";
 import { useLanguage } from "../context/LanguageContext";
 
 interface PlaylistSidebarProps {
@@ -11,8 +11,8 @@ interface PlaylistSidebarProps {
   onRefreshPlaylists: () => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
-  activeSource?: "youtube" | "apple";
-  onChangeSource?: (source: "youtube" | "apple") => void;
+  activeSource?: PlatformType | string;
+  onChangeSource?: (source: PlatformType | string) => void;
   youtubeCount?: number;
   appleCount?: number;
   isMobileInline?: boolean; // When true, renders as full view on mobile

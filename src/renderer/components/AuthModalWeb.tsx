@@ -13,9 +13,10 @@ import {
 } from "lucide-react";
 import { copyToClipboard } from "../utils/ui-helpers";
 import { generateDirectLoginScript } from "../utils/bookmarklet-generator";
+import { PlatformType } from "../../shared/types";
 
 interface AuthModalWebProps {
-  service: "youtube" | "apple" | null;
+  service: PlatformType | null;
   onClose: () => void;
   onSubmitYouTube: (cookieString: string) => Promise<void>;
   onSubmitApple: (userToken: string, devToken?: string) => Promise<void>;

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Disc3, LogIn, LogOut, RefreshCw, Layers, ListMusic, ChevronDown, X, Sparkles } from "lucide-react";
-import { ServiceAuthStatus, User } from "../../shared/types";
+import { ServiceAuthStatus, User, PlatformType } from "../../shared/types";
 import { UserProfileMenu } from "./auth/UserProfileMenu";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -10,7 +10,7 @@ interface HeaderProps {
   isLoadingApple: boolean;
   onLoginYouTube: () => void;
   onLoginApple: () => void;
-  onLogout: (service: "youtube" | "apple") => void;
+  onLogout: (service: PlatformType | "all") => void;
   onRefresh: () => void;
   onOpenLanding?: () => void;
   onToggleMobileDrawer?: () => void;

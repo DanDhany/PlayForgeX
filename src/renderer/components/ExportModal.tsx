@@ -10,7 +10,7 @@ import {
   Loader2,
   ListPlus,
 } from "lucide-react";
-import { PlaylistSummary } from "../../shared/types";
+import { PlaylistSummary, PlatformType } from "../../shared/types";
 import { useLanguage } from "../context/LanguageContext";
 import { getPlatformMeta } from "../utils/platform-meta";
 
@@ -24,7 +24,7 @@ interface ExportModalProps {
     existingPlaylistTitle?: string;
   }) => void;
   defaultTitle: string;
-  targetPlatform: "apple" | "youtube";
+  targetPlatform: PlatformType | string;
   trackCount: number;
   isMatching?: boolean;
 }

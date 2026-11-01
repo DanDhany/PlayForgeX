@@ -5,6 +5,7 @@ import {
   AppleMusicTrack,
   TransferTrackItem,
   TransferJob,
+  PlatformType,
 } from "./types";
 
 export const IPC_CHANNELS = {
@@ -24,7 +25,7 @@ export interface IpcApi {
   getStatus: () => Promise<ServiceAuthStatus>;
   loginYouTube: () => Promise<{ success: boolean; user?: string; error?: string }>;
   loginApple: () => Promise<{ success: boolean; storefront?: string; error?: string }>;
-  logout: (service: "youtube" | "apple" | "all") => Promise<void>;
+  logout: (service: PlatformType | "all") => Promise<void>;
   fetchPlaylists: () => Promise<PlaylistSummary[]>;
   fetchTracks: (playlistId: string) => Promise<TrackMetadata[]>;
   matchTracks: (tracks: TrackMetadata[]) => Promise<TransferTrackItem[]>;

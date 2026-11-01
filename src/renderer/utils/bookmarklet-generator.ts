@@ -8,7 +8,7 @@
 
 export function generateDirectLoginScript(
   origin: string,
-  service: "youtube" | "apple",
+  service: "youtube" | "apple" | string,
   alias?: string,
   userToken?: string | null
 ): string {

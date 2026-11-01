@@ -73,7 +73,7 @@ export interface TransferTrackItem {
 export interface TransferJob {
   playlistId: string;
   playlistTitle: string;
-  targetPlatform?: "apple" | "youtube";
+  targetPlatform?: PlatformType | string;
   mode?: "create" | "existing";
   existingPlaylistTitle?: string;
   tracks: TransferTrackItem[];
@@ -91,8 +91,8 @@ export interface TransferJob {
 export interface PlaylistDraft {
   playlistId: string;
   playlistTitle: string;
-  sourcePlatform: "youtube" | "apple";
-  targetPlatform: "apple" | "youtube";
+  sourcePlatform: PlatformType | string;
+  targetPlatform: PlatformType | string;
   items: TransferTrackItem[];
   status: "idle" | "matching" | "ready" | "transferring" | "transferred";
   totalTracks: number;
@@ -104,7 +104,7 @@ export interface ExportOptions {
   mode: "create" | "existing";
   playlistTitle: string;
   existingPlaylistId?: string;
-  targetPlatform: "apple" | "youtube";
+  targetPlatform: PlatformType | string;
 }
 
 export interface ServiceAuthStatus {

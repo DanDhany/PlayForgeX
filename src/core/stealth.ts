@@ -1,3 +1,5 @@
+import { PlatformType } from "../shared/types.js";
+
 /**
  * Anti-Ban & Stealth Throttling Utilities
  * Protects user accounts from automated bot detection, IP rate-limits, and session invalidation.
@@ -12,7 +14,7 @@ export function humanDelay(minMs = 500, maxMs = 1200): Promise<void> {
 class ServiceCircuitBreaker {
   private cooldowns = new Map<string, number>();
 
-  public isCoolingDown(service: "youtube" | "apple"): boolean {
+  public isCoolingDown(service: PlatformType | string): boolean {
     const until = this.cooldowns.get(service);
     if (!until) return false;
     if (Date.now() < until) return true;
@@ -20,13 +22,13 @@ class ServiceCircuitBreaker {
     return false;
   }
 
-  public getRemainingCooldownMs(service: "youtube" | "apple"): number {
+  public getRemainingCooldownMs(service: PlatformType | string): number {
     const until = this.cooldowns.get(service);
     if (!until) return 0;
     return Math.max(0, until - Date.now());
   }
 
-  public triggerCooldown(service: "youtube" | "apple", durationMs = 20000): void {
+  public triggerCooldown(service: PlatformType | string, durationMs = 20000): void {
     const until = Date.now() + durationMs;
     this.cooldowns.set(service, until);
     console.warn(
@@ -34,7 +36,7 @@ class ServiceCircuitBreaker {
     );
   }
 
-  public async waitIfCoolingDown(service: "youtube" | "apple"): Promise<void> {
+  public async waitIfCoolingDown(service: PlatformType | string): Promise<void> {
     const remaining = this.getRemainingCooldownMs(service);
     if (remaining > 0) {
       console.log(`[Anti-Ban Guard] Pausing request for ${service} during active cooldown (${Math.round(remaining / 1000)}s remaining)...`);

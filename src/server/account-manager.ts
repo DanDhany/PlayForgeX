@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { YouTubeMusicClient } from "../core/ytmusic.js";
 import { AppleMusicClient } from "../core/applemusic.js";
 import { PlatformRegistry, PlatformId } from "../core/platform-registry.js";
-import { AccountConnection, PlaylistSummary, TrackMetadata } from "../shared/types.js";
+import { AccountConnection, PlaylistSummary, TrackMetadata, PlatformType } from "../shared/types.js";
 import { query, isDbConnected } from "./db.js";
 
 interface AccountSecret {
@@ -405,7 +405,7 @@ export class AccountManager {
     return this.accounts.get(id);
   }
 
-  public getPrimaryAccount(platform: "youtube" | "apple", userId?: string): AccountConnection | undefined {
+  public getPrimaryAccount(platform: PlatformType | string, userId?: string): AccountConnection | undefined {
     const targetUser = userId || this.userId;
     for (const acc of this.accounts.values()) {
       if (acc.platform === platform && acc.status === "connected") {

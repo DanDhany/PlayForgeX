@@ -1,4 +1,4 @@
-import { AccountConnection, PlaylistSummary, ActivityLogItem } from "../shared/types";
+import { AccountConnection, PlaylistSummary, ActivityLogItem, PlatformType } from "../shared/types";
 
 export const IS_PAGES_OR_STATIC =
   typeof window !== "undefined" &&
@@ -18,16 +18,6 @@ export const DEMO_ACCOUNTS: AccountConnection[] = [
     playlistCount: 3,
   },
   {
-    id: "demo_ytm_pribadi",
-    userId: "demo_admin",
-    platform: "youtube",
-    localAlias: "YouTube Pribadi (Indo Pop 2000s)",
-    status: "connected",
-    createdAt: Date.now() - 86400000 * 14,
-    lastVerifiedAt: Date.now() - 3600000 * 12,
-    playlistCount: 5,
-  },
-  {
     id: "demo_apple_main",
     userId: "demo_admin",
     platform: "apple",
@@ -37,12 +27,42 @@ export const DEMO_ACCOUNTS: AccountConnection[] = [
     lastVerifiedAt: Date.now() - 1800000,
     playlistCount: 8,
   },
+  {
+    id: "demo_spotify_daily",
+    userId: "demo_admin",
+    platform: "spotify",
+    localAlias: "Spotify Liked & Discover",
+    status: "connected",
+    createdAt: Date.now() - 86400000 * 5,
+    lastVerifiedAt: Date.now() - 3600000,
+    playlistCount: 4,
+  },
+  {
+    id: "demo_ytv_curated",
+    userId: "demo_admin",
+    platform: "youtube_video",
+    localAlias: "YouTube Video Clips (MV & Live)",
+    status: "connected",
+    createdAt: Date.now() - 86400000 * 3,
+    lastVerifiedAt: Date.now() - 7200000,
+    playlistCount: 2,
+  },
+  {
+    id: "demo_sc_mixes",
+    userId: "demo_admin",
+    platform: "soundcloud",
+    localAlias: "SoundCloud Underground Sets",
+    status: "connected",
+    createdAt: Date.now() - 86400000 * 1,
+    lastVerifiedAt: Date.now() - 10800000,
+    playlistCount: 3,
+  },
 ];
 
 export const DEMO_PLAYLISTS: (PlaylistSummary & {
   accountId: string;
   accountAlias: string;
-  platform: "youtube" | "apple";
+  platform: PlatformType | string;
 })[] = [
   {
     id: "pl_focus_lofi",
@@ -53,28 +73,36 @@ export const DEMO_PLAYLISTS: (PlaylistSummary & {
     accountAlias: "YouTube Kantor (Lo-Fi & Work)",
   },
   {
-    id: "pl_indo_nostalgia",
-    title: "Nostalgia Pop Indonesia 2000-an",
-    trackCount: 45,
-    platform: "youtube",
-    accountId: "demo_ytm_pribadi",
-    accountAlias: "YouTube Pribadi (Indo Pop 2000s)",
-  },
-  {
-    id: "pl_roadtrip_vibes",
-    title: "Weekend Roadtrip Mix",
-    trackCount: 24,
-    platform: "youtube",
-    accountId: "demo_ytm_pribadi",
-    accountAlias: "YouTube Pribadi (Indo Pop 2000s)",
-  },
-  {
     id: "pl_apple_carplay",
     title: "CarPlay Heavy Rotation",
     trackCount: 60,
     platform: "apple",
     accountId: "demo_apple_main",
     accountAlias: "Apple Music Utama",
+  },
+  {
+    id: "pl_spotify_hits",
+    title: "Today's Top Hits & Pop",
+    trackCount: 50,
+    platform: "spotify",
+    accountId: "demo_spotify_daily",
+    accountAlias: "Spotify Liked & Discover",
+  },
+  {
+    id: "pl_ytv_live",
+    title: "Acoustic & Live Concert Videos",
+    trackCount: 18,
+    platform: "youtube_video",
+    accountId: "demo_ytv_curated",
+    accountAlias: "YouTube Video Clips (MV & Live)",
+  },
+  {
+    id: "pl_sc_sunset",
+    title: "Sunset Chillout DJ Mix",
+    trackCount: 12,
+    platform: "soundcloud",
+    accountId: "demo_sc_mixes",
+    accountAlias: "SoundCloud Underground Sets",
   },
 ];
 

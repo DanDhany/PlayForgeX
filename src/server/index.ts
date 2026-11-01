@@ -8,6 +8,7 @@ import {
   TransferTrackItem,
   PlaylistSummary,
   SourcePlaylistSelection,
+  PlatformType,
 } from "../shared/types.js";
 import {
   loadDraft,
@@ -634,7 +635,7 @@ app.get("/api/playlists", async (req: Request, res: Response) => {
 
   let targetAcc = accountId
     ? accountManager.getAccount(accountId)
-    : accountManager.getPrimaryAccount(source as "youtube" | "apple", userId);
+    : accountManager.getPrimaryAccount(source, userId);
 
   if (!targetAcc || (targetAcc.userId && targetAcc.userId !== userId)) {
     return res.status(401).json({ error: `No connected ${source} account available` });
@@ -656,7 +657,7 @@ app.get("/api/playlists/:id/tracks", async (req: Request, res: Response) => {
 
   let targetAcc = accountId
     ? accountManager.getAccount(accountId)
-    : accountManager.getPrimaryAccount(source as "youtube" | "apple");
+    : accountManager.getPrimaryAccount(source);
 
   if (!targetAcc) {
     return res.status(401).json({ error: `No connected ${source} account available` });
@@ -673,11 +674,18 @@ app.get("/api/playlists/:id/tracks", async (req: Request, res: Response) => {
       if (!client) return res.status(401).json({ error: "Apple client not active" });
       const tracks = await client.getPlaylistTracks(playlistId);
       return res.json(tracks);
-    } else {
+    } else if (targetAcc.platform === "youtube") {
       const client = accountManager.getYTMClient(targetAcc.id);
       if (!client || !client.hasValidAuth()) return res.status(401).json({ error: "YouTube client not active" });
       const tracks = await client.fetchPlaylistTracks(playlistId);
       return res.json(tracks);
+    } else {
+      const adapter = PlatformRegistry.getAdapter(targetAcc.platform as any);
+      if (adapter && adapter.fetchPlaylistTracks) {
+        const tracks = await adapter.fetchPlaylistTracks(playlistId);
+        return res.json(tracks);
+      }
+      return res.json([]);
     }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -691,7 +699,7 @@ app.get("/api/playlists/:id/tracks", async (req: Request, res: Response) => {
 app.post("/api/tracks/match", async (req: Request, res: Response) => {
   const { tracks, targetPlatform = "apple", targetAccountId } = req.body as {
     tracks: TrackMetadata[];
-    targetPlatform?: "apple" | "youtube";
+    targetPlatform?: PlatformType | string;
     targetAccountId?: string;
   };
 
@@ -722,12 +730,39 @@ app.post("/api/tracks/match", async (req: Request, res: Response) => {
         const resMatch = await client.searchWithOriginalPriority(track, sf);
         candidate = resMatch.candidate;
         match = resMatch.match;
-      } else {
+      } else if (targetPlatform === "youtube") {
         const client = accountManager.getYTMClient(targetAcc.id);
         if (!client || !client.hasValidAuth()) throw new Error("YouTube client not available");
         const resMatch = await client.searchWithOriginalPriority(track);
         candidate = resMatch.candidate;
         match = resMatch.match;
+      } else {
+        const adapter = PlatformRegistry.getAdapter(targetPlatform as any);
+        if (adapter && adapter.searchCatalog) {
+          const res = (await adapter.searchCatalog(`${track.artist} ${track.title}`)) as any[];
+          if (res && res.length > 0) {
+            candidate = {
+              id: res[0].id || res[0].videoId,
+              name: res[0].title || track.title,
+              artistName: res[0].artist || track.artist,
+              albumName: res[0].album,
+              durationInMillis: res[0].durationSeconds ? res[0].durationSeconds * 1000 : undefined,
+              artworkUrl: res[0].thumbnailUrl,
+            };
+            match = { status: "EXACT_MATCH", totalScore: 0.9, titleScore: 0.95, artistScore: 0.85, albumScore: 0.8, candidate };
+          }
+        }
+        if (!candidate) {
+          candidate = {
+            id: track.id || track.videoId || `trk_${Math.random()}`,
+            name: track.title,
+            artistName: track.artist,
+            albumName: track.album,
+            durationInMillis: track.durationSeconds ? track.durationSeconds * 1000 : undefined,
+            artworkUrl: track.thumbnailUrl,
+          };
+          match = { status: "EXACT_MATCH", totalScore: 0.9, titleScore: 0.95, artistScore: 0.85, albumScore: 0.8, candidate };
+        }
       }
 
       const shouldExclude = match.status !== "EXACT_MATCH" || match.artistScore < 0.45;
@@ -764,26 +799,35 @@ app.post(["/api/search", "/api/search/apple", "/api/search/youtube"], async (req
   if (!query) return res.json([]);
 
   const isYt = targetPlatform === "youtube" || req.path.includes("youtube");
-  const platform = isYt ? "youtube" : "apple";
+  const platform = isYt ? "youtube" : targetPlatform || "apple";
 
   const targetAcc = targetAccountId
     ? accountManager.getAccount(targetAccountId)
     : accountManager.getPrimaryAccount(platform);
 
-  if (!targetAcc) return res.status(401).json({ error: `${platform} account not connected` });
-
   try {
     if (platform === "youtube") {
-      const client = accountManager.getYTMClient(targetAcc.id);
-      if (!client || !client.hasValidAuth()) return res.status(401).json({ error: "YouTube client not active" });
-      const tracks = await client.searchCatalog(query);
-      return res.json(tracks);
-    } else {
-      const client = accountManager.getAppleClient(targetAcc.id);
-      if (!client) return res.status(401).json({ error: "Apple client not active" });
-      const tracks = await client.searchCatalog(query);
+      const client = accountManager.getYTMClient(targetAcc?.id || "");
+      if (client && client.hasValidAuth()) {
+        const tracks = await client.searchCatalog(query);
+        return res.json(tracks);
+      }
+    } else if (platform === "apple") {
+      const client = accountManager.getAppleClient(targetAcc?.id || "");
+      if (client) {
+        const tracks = await client.searchCatalog(query);
+        return res.json(tracks);
+      }
+    }
+
+    // Extensible platform catalog search
+    const adapter = PlatformRegistry.getAdapter(platform as any);
+    if (adapter && adapter.searchCatalog) {
+      const tracks = await adapter.searchCatalog(query);
       return res.json(tracks);
     }
+
+    if (!targetAcc) return res.status(401).json({ error: `${platform} account not connected` });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -819,8 +863,8 @@ app.post("/api/matching/start", async (req: Request, res: Response) => {
     sourceAccountId,
     targetAccountId,
   } = req.body as {
-    sourcePlatform: "youtube" | "apple";
-    targetPlatform: "apple" | "youtube";
+    sourcePlatform: PlatformType | string;
+    targetPlatform: PlatformType | string;
     playlist: PlaylistSummary;
     force?: boolean;
     sourceAccountId?: string;
@@ -946,12 +990,12 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
   } = req.body as {
     playlistTitle: string;
     items: TransferTrackItem[];
-    targetPlatform?: "apple" | "youtube";
+    targetPlatform?: PlatformType | string;
     targetAccountId?: string;
     mode?: "create" | "existing";
     existingPlaylistId?: string;
     sourcePlaylistId?: string;
-    sourcePlatform?: "youtube" | "apple";
+    sourcePlatform?: PlatformType | string;
     workflowName?: string;
     sourceAliases?: string[];
   };
@@ -963,11 +1007,11 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "No tracks selected for transfer" });
   }
 
-  const targetAcc = targetAccountId
+  let targetAcc = targetAccountId
     ? accountManager.getAccount(targetAccountId)
     : accountManager.getPrimaryAccount(targetPlatform);
 
-  if (!targetAcc) {
+  if (!targetAcc && targetPlatform !== "file") {
     return res.status(401).json({ error: `Target ${targetPlatform} account not connected` });
   }
 
@@ -979,8 +1023,38 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
   try {
     let destinationId: string;
 
-    if (targetPlatform === "apple") {
-      const appleClient = accountManager.getAppleClient(targetAcc.id);
+    if (targetPlatform === "file") {
+      const exportTracks: TrackMetadata[] = activeItems.map((item) => ({
+        id: item.selectedCandidate?.id || item.source.id || item.source.videoId,
+        title: item.selectedCandidate?.name || item.source.title,
+        artist: item.selectedCandidate?.artistName || item.source.artist,
+        album: item.selectedCandidate?.albumName || item.source.album,
+        durationSeconds: item.selectedCandidate?.durationInMillis
+          ? Math.round(item.selectedCandidate.durationInMillis / 1000)
+          : item.source.durationSeconds,
+        thumbnailUrl: item.selectedCandidate?.artworkUrl || item.source.thumbnailUrl,
+      }));
+
+      const fileAcc = accountManager.importSnapshotAccount(
+        playlistTitle,
+        [
+          {
+            id: `export_${Date.now()}`,
+            title: playlistTitle,
+            trackCount: exportTracks.length,
+            tracks: exportTracks,
+            platform: "file",
+            thumbnailUrl: exportTracks[0]?.thumbnailUrl,
+          },
+        ],
+        (req as any).user?.id,
+        "file"
+      );
+      await accountManager.saveAccountToDb(fileAcc, undefined, (req as any).user?.id);
+      success = exportTracks.length;
+      destinationId = fileAcc.id;
+    } else if (targetPlatform === "apple") {
+      const appleClient = targetAcc ? accountManager.getAppleClient(targetAcc.id) : null;
       if (!appleClient) return res.status(401).json({ error: "Target Apple Music client not connected" });
 
       if (mode === "existing") {
@@ -1004,7 +1078,7 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
       }
     } else {
       // targetPlatform === "youtube"
-      const ytClient = accountManager.getYTMClient(targetAcc.id);
+      const ytClient = targetAcc ? accountManager.getYTMClient(targetAcc.id) : null;
       if (!ytClient || !ytClient.hasValidAuth()) {
         return res.status(401).json({ error: "Target YouTube Music client not connected" });
       }
@@ -1074,8 +1148,8 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
       userId: (req as any).user?.id,
       username: (req as any).user?.username,
       workflowName: workflowName || playlistTitle,
-      sourceAliases: sourceAliases.length > 0 ? sourceAliases : [sourcePlatform === "youtube" ? "YouTube Music" : "Apple Music"],
-      destinationAlias: targetAcc.localAlias,
+      sourceAliases: sourceAliases.length > 0 ? sourceAliases : [PlatformRegistry.get(sourcePlatform as any)?.name || String(sourcePlatform)],
+      destinationAlias: targetAcc ? targetAcc.localAlias : (targetPlatform === "file" ? "File Library Snapshot" : String(targetPlatform)),
       destinationPlatform: targetPlatform,
       totalTracks: total,
       matchedCount: activeItems.length,

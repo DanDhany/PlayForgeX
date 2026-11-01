@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Search, Disc, Play, Pause, Check, RefreshCw } from "lucide-react";
-import { TransferTrackItem, AppleMusicTrack } from "../../shared/types";
+import { TransferTrackItem, AppleMusicTrack, PlatformType } from "../../shared/types";
 import { formatMillis } from "../utils/ui-helpers";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -11,7 +11,7 @@ interface AlternativePickerModalProps {
   onClose: () => void;
   onSelectAlternative: (item: TransferTrackItem, candidate: AppleMusicTrack) => void;
   onSearchCatalog: (query: string) => Promise<AppleMusicTrack[]>;
-  targetPlatform?: "apple" | "youtube";
+  targetPlatform?: PlatformType | string;
 }
 
 export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
