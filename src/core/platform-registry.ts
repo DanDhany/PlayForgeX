@@ -1,11 +1,13 @@
 import { PlatformAdapter, PlatformId, PlatformProvider } from "./adapters/types";
 import { youtubeAdapter, youtubeProvider } from "./adapters/youtube-adapter";
+import { youtubeVideoAdapter, youtubeVideoProvider } from "./adapters/youtube-video-adapter";
 import { appleAdapter, appleProvider } from "./adapters/apple-adapter";
 import { spotifyAdapter, spotifyProvider } from "./adapters/spotify-adapter";
 import { tidalAdapter, tidalProvider } from "./adapters/tidal-adapter";
 import { deezerAdapter, deezerProvider } from "./adapters/deezer-adapter";
 import { soundCloudAdapter, soundCloudProvider } from "./adapters/soundcloud-adapter";
 import { subsonicAdapter, subsonicProvider } from "./adapters/subsonic-adapter";
+import { fileAdapter, fileProvider } from "./adapters/file-adapter";
 
 export class PlatformRegistry {
   private static providers = new Map<PlatformId, PlatformProvider>();
@@ -21,11 +23,13 @@ export class PlatformRegistry {
 
     const builtInAdapters: PlatformAdapter[] = [
       youtubeAdapter,
+      youtubeVideoAdapter,
       appleAdapter,
       spotifyAdapter,
-      tidalAdapter,
       deezerAdapter,
       soundCloudAdapter,
+      fileAdapter,
+      tidalAdapter,
       subsonicAdapter,
     ];
 
@@ -72,6 +76,8 @@ export * from "./adapters/types";
 export {
   youtubeProvider,
   youtubeAdapter,
+  youtubeVideoProvider,
+  youtubeVideoAdapter,
   appleProvider,
   appleAdapter,
   spotifyProvider,
@@ -84,4 +90,6 @@ export {
   soundCloudAdapter,
   subsonicProvider,
   subsonicAdapter,
+  fileProvider,
+  fileAdapter,
 };

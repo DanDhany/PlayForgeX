@@ -31,6 +31,27 @@ export const PlatformMatrixSection: React.FC = () => {
           ],
     },
     {
+      id: "youtube_video",
+      name: "YouTube Video Playlists",
+      brandColor: "#FF4500",
+      status: "active",
+      category: isEn ? "Video Playlists" : "Playlist Video Biasa",
+      summary: isEn
+        ? "Import standard YouTube video playlists with smart title sanitization, video ID preservation, and studio recording mapping."
+        : "Impor playlist video YouTube biasa dengan pembersihan judul otomatis, penyimpanan video ID, dan pencocokan ke rekaman studio resmi.",
+      capabilities: isEn
+        ? [
+            "Standard Video Playlist Parser",
+            "Noise Stripping (MV, 4K, Lyrics)",
+            "Video ID Retention & Linking",
+          ]
+        : [
+            "Parser Playlist Video Standar",
+            "Pembersihan Noise (MV, 4K, Lirik)",
+            "Penyimpanan Video ID & Tautan Asli",
+          ],
+    },
+    {
       id: "applemusic",
       name: "Apple Music",
       brandColor: "#FC3C44",
@@ -55,21 +76,84 @@ export const PlatformMatrixSection: React.FC = () => {
       id: "spotify",
       name: "Spotify",
       brandColor: "#1DB954",
-      status: "planned",
+      status: "active",
       category: isEn ? "Streaming" : "Streaming",
       summary: isEn
-        ? "Seamless import of Spotify curated playlists, Liked Songs library synchronization, and cross-platform artist mapping."
-        : "Impor playlist kurasi Spotify, sinkronisasi koleksi Liked Songs, dan pemetaan artis lintas platform.",
+        ? "Extract playlists via public link, embed parser, or Spotify Web API with ISRC-first matching and bidirectional migration."
+        : "Ekstrak playlist via tautan publik, parser embed, atau Spotify Web API dengan pencocokan ISRC dan migrasi dua arah.",
       capabilities: isEn
         ? [
-            "OAuth 2.0 PKCE Sync",
-            "Curated Playlist Extraction",
-            "Collaborative Library Bridge",
+            "Public URL & Embed Ingestion",
+            "Web API Token Integration",
+            "ISRC & Title Deduplication",
           ]
         : [
-            "Koneksi OAuth 2.0 Aman",
-            "Ekstraksi Playlist Kurasi",
-            "Jembatan Koleksi Kolaboratif",
+            "Impor Tautan Publik & Embed",
+            "Integrasi Token Web API",
+            "Deduplikasi ISRC & Judul Lagu",
+          ],
+    },
+    {
+      id: "soundcloud",
+      name: "SoundCloud",
+      brandColor: "#FF5500",
+      status: "active",
+      category: isEn ? "Indie & DJ Sets" : "Indie & DJ Set",
+      summary: isEn
+        ? "Bridge indie tracks, underground DJ sets, bootlegs, and live mixes from SoundCloud sets directly into your library."
+        : "Menjembatani lagu indie unik, set DJ, bootleg remix, dan rilisan independen dari set SoundCloud ke perpustakaan Anda.",
+      capabilities: isEn
+        ? [
+            "SoundCloud Sets / Playlist Parser",
+            "DJ Mix & Track Identification",
+            "Direct Stream Audio Resolver",
+          ]
+        : [
+            "Parser Set / Playlist SoundCloud",
+            "Identifikasi Track & Live Mix",
+            "Pencocokan Audio Langsung",
+          ],
+    },
+    {
+      id: "deezer",
+      name: "Deezer",
+      brandColor: "#A238FF",
+      status: "active",
+      category: isEn ? "Open Global Catalog" : "Katalog Global Terbuka",
+      summary: isEn
+        ? "Synchronize Deezer playlists and tracklists using open public REST APIs without requiring proprietary developer tokens."
+        : "Sinkronisasi playlist Deezer menggunakan REST API publik yang terbuka tanpa memerlukan registrasi developer berbayar.",
+      capabilities: isEn
+        ? [
+            "Open REST API Integration",
+            "Instant Playlist Ingestion",
+            "Lossless Metadata Extraction",
+          ]
+        : [
+            "Integrasi REST API Terbuka",
+            "Impor Playlist Seketika",
+            "Ekstraksi Metadata Lengkap",
+          ],
+    },
+    {
+      id: "file",
+      name: "File / Text Ingestion",
+      brandColor: "#64748B",
+      status: "active",
+      category: isEn ? "Universal Ingest" : "Impor Berkas & Teks",
+      summary: isEn
+        ? "Directly import playlists from M3U, M3U8, CSV, plain text track lists, or Soundiiz/PlayForgeX JSON exports."
+        : "Impor langsung playlist dari file M3U, M3U8, CSV, baris teks biasa (Artis - Judul), atau ekspor JSON Soundiiz/PlayForgeX.",
+      capabilities: isEn
+        ? [
+            "M3U / M3U8 & CSV Parser",
+            "Plain Text Song List Ingestion",
+            "Soundiiz / Snapshot JSON Format",
+          ]
+        : [
+            "Parser M3U / M3U8 & CSV",
+            "Impor Daftar Teks Baris Per Baris",
+            "Format JSON Soundiiz / Snapshot",
           ],
     },
     {
@@ -91,48 +175,6 @@ export const PlatformMatrixSection: React.FC = () => {
             "Preservasi Metadata Hi-Res",
             "Pencocokan Edisi Master Audio",
             "Katalog Lossless Terpadu",
-          ],
-    },
-    {
-      id: "deezer",
-      name: "Deezer",
-      brandColor: "#A238FF",
-      status: "planned",
-      category: isEn ? "Global Catalog" : "Katalog Global",
-      summary: isEn
-        ? "Synchronize Deezer flow collections, custom playlists, and regional international releases."
-        : "Sinkronisasi pustaka Deezer, koleksi Flow, dan pencocokan katalog FLAC global.",
-      capabilities: isEn
-        ? [
-            "FLAC Quality Mapping",
-            "Flow Playlist Migration",
-            "Global Regional Catalog",
-          ]
-        : [
-            "Pemetaan Kualitas FLAC",
-            "Migrasi Playlist Flow",
-            "Katalog Regional Global",
-          ],
-    },
-    {
-      id: "soundcloud",
-      name: "SoundCloud",
-      brandColor: "#FF5500",
-      status: "planned",
-      category: isEn ? "Indie & DJ Mixes" : "Indie & DJ Mix",
-      summary: isEn
-        ? "Bridge rare indie tracks, live DJ sets, bootleg remixes, and independent releases unavailable on commercial streaming."
-        : "Menjembatani lagu indie unik, set DJ, bootleg remix, dan rilisan independen yang tidak tersedia di layanan komersial.",
-      capabilities: isEn
-        ? [
-            "Live DJ Mix Support",
-            "Independent Artist Matching",
-            "Bootleg & Remix Resolver",
-          ]
-        : [
-            "Dukungan Set DJ & Live Mix",
-            "Pencocokan Rilisan Independen",
-            "Deteksi Versi Remix & Bootleg",
           ],
     },
     {
@@ -262,8 +304,8 @@ export const PlatformMatrixSection: React.FC = () => {
               </h3>
               <p className="mt-2 text-xs sm:text-sm text-text-secondary leading-relaxed">
                 {isEn
-                  ? "Your music curation shouldn't be locked inside closed ecosystems. TuneBridge maintains lossless song metadata and preserves curated track orders, allowing you to move freely between streaming platforms whenever you choose."
-                  : "Daftar putar lagu yang telah Anda kurasi bertahun-tahun tidak boleh terkunci di satu layanan saja. TuneBridge menjaga metadata lagu secara utuh dan teratur, memberi Anda kebebasan berpindah platform kapan pun Anda inginkan."}
+                  ? "Your music curation shouldn't be locked inside closed ecosystems. PlayForgeX maintains lossless song metadata and preserves curated track orders, allowing you to move freely between streaming platforms whenever you choose."
+                  : "Daftar putar lagu yang telah Anda kurasi bertahun-tahun tidak boleh terkunci di satu layanan saja. PlayForgeX menjaga metadata lagu secara utuh dan teratur, memberi Anda kebebasan berpindah platform kapan pun Anda inginkan."}
               </p>
             </div>
 

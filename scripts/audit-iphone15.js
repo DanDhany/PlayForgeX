@@ -35,7 +35,7 @@ async function run() {
 
   await page.goto("http://localhost:3080", { waitUntil: "networkidle0" });
 
-  const outDir = "/tmp/tunebridge-audit";
+  const outDir = "/tmp/playforgex-audit";
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
   // 1. Navigate to Transfer Studio

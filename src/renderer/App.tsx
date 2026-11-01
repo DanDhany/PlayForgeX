@@ -33,6 +33,20 @@ import {
   DEMO_ACTIVITY,
 } from "./demoData";
 
+function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("playforgex_token");
+}
+
+function setStoredToken(token: string | null): void {
+  if (typeof window === "undefined") return;
+  if (token) {
+    localStorage.setItem("playforgex_token", token);
+  } else {
+    localStorage.removeItem("playforgex_token");
+  }
+}
+
 export const App: React.FC = () => {
   const { t, lang } = useLanguage();
   const isEn = lang === "en";
@@ -42,13 +56,13 @@ export const App: React.FC = () => {
         return "auth";
       }
       if (window.location.hash.startsWith("#studio")) {
-        const token = localStorage.getItem("tunebridge_token");
+        const token = getStoredToken();
         return token ? "studio" : "auth";
       }
       if (window.location.hash.startsWith("#landing") || IS_PAGES_OR_STATIC) {
         return "landing";
       }
-      const token = localStorage.getItem("tunebridge_token");
+      const token = getStoredToken();
       if (!token) {
         return "landing";
       }
@@ -59,7 +73,7 @@ export const App: React.FC = () => {
   const [accounts, setAccounts] = useState<AccountConnection[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>([]);
   const [allPlaylists, setAllPlaylists] = useState<
-    (PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: "youtube" | "apple" })[]
+    (PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: string })[]
   >([]);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
 
@@ -125,7 +139,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
-      const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+      const token = getStoredToken();
       if (hash.startsWith("#landing")) {
         setViewMode("landing");
       } else if (hash.startsWith("#auth")) {
@@ -141,7 +155,7 @@ export const App: React.FC = () => {
   }, []);
 
   const handleOpenStudio = () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    const token = getStoredToken();
     if (token) {
       setViewMode("studio");
       window.location.hash = "#studio";
@@ -157,7 +171,7 @@ export const App: React.FC = () => {
   };
 
   const getAuthHeaders = (extra: Record<string, string> = {}) => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    const token = getStoredToken();
     return {
       ...extra,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -165,7 +179,7 @@ export const App: React.FC = () => {
   };
 
   const checkUserSession = async () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    const token = getStoredToken();
     try {
       const res = await fetch("/api/auth/me", {
         headers: getAuthHeaders(),
@@ -175,7 +189,7 @@ export const App: React.FC = () => {
         if (data.user) {
           setCurrentUser(data.user);
         } else if (token) {
-          localStorage.removeItem("tunebridge_token");
+          setStoredToken(null);
           setCurrentUser(null);
         }
       }
@@ -185,9 +199,7 @@ export const App: React.FC = () => {
   };
 
   const handleAuthSuccess = (user: User, token: string) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("tunebridge_token", token);
-    }
+    setStoredToken(token);
     setCurrentUser(user);
     setIsAuthModalOpen(false);
     setViewMode("studio");
@@ -201,7 +213,7 @@ export const App: React.FC = () => {
   };
 
   const handleLogoutUser = async () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    const token = getStoredToken();
     if (token) {
       try {
         await fetch("/api/auth/logout", {
@@ -212,7 +224,7 @@ export const App: React.FC = () => {
       } catch (err) {
         console.warn("Logout error:", err);
       }
-      localStorage.removeItem("tunebridge_token");
+      setStoredToken(null);
     }
     setCurrentUser(null);
     setAccounts([]);
@@ -225,7 +237,7 @@ export const App: React.FC = () => {
   };
 
   const loadAccounts = async () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    const token = getStoredToken();
     if (!token && !IS_PAGES_OR_STATIC) {
       setAccounts([]);
       setAllPlaylists([]);
@@ -255,7 +267,7 @@ export const App: React.FC = () => {
   };
 
   const loadActivity = async () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    const token = getStoredToken();
     if (!token && !IS_PAGES_OR_STATIC) {
       setActivityLogs([]);
       return;
@@ -280,13 +292,13 @@ export const App: React.FC = () => {
   };
 
   const loadAllPlaylists = async (accList = accounts) => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    const token = getStoredToken();
     if (!token && !IS_PAGES_OR_STATIC) {
       setAllPlaylists([]);
       return;
     }
     setIsLoadingPlaylists(true);
-    const combined: (PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: "youtube" | "apple" })[] = [];
+    const combined: (PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: string })[] = [];
 
     for (const acc of accList) {
       try {

@@ -31,7 +31,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenStudio }) =>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-base font-bold tracking-tight text-text-primary">
-                TuneBridge
+                PlayForgeX
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25 font-mono">
                 v1.2
@@ -114,8 +114,8 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenStudio }) =>
       <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-text-muted">
         <p>
           {isEn
-            ? "© 2026 TuneBridge Project. Built for music privacy and personal data sovereignty."
-            : "© 2026 TuneBridge Project. Dibuat untuk privasi dan kepemilikan data musik mandiri."}
+            ? "© 2026 PlayForgeX Project. Built for music privacy and personal data sovereignty."
+            : "© 2026 PlayForgeX Project. Dibuat untuk privasi dan kepemilikan data musik mandiri."}
         </p>
         <p>
           {isEn

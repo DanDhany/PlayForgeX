@@ -8,7 +8,7 @@ describe("AccountManager Multi-Account Storage & Migration", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "tunebridge-test-"));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "playforgex-test-"));
   });
 
   afterEach(() => {

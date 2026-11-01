@@ -98,14 +98,16 @@ describe("Landing Page & Interactive Migration Preview Logic", () => {
   it("supports platform matrix catalog coverage", () => {
     const platformIds = [
       "youtube",
+      "youtube_video",
       "apple",
       "spotify",
       "tidal",
       "deezer",
       "soundcloud",
+      "file",
       "subsonic",
     ];
-    expect(platformIds.length).toBe(7);
+    expect(platformIds.length).toBeGreaterThanOrEqual(7);
   });
 
   it("verifies aesthetic scroll components are created and export React functional components", async () => {

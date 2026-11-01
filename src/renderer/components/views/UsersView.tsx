@@ -36,7 +36,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ currentUser }) => {
     setIsLoading(true);
     setErrorBanner(null);
     try {
-      const token = localStorage.getItem("tunebridge_token");
+      const token = localStorage.getItem("playforgex_token");
       const res = await fetch("/api/admin/users", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -67,7 +67,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ currentUser }) => {
     setErrorBanner(null);
 
     try {
-      const token = localStorage.getItem("tunebridge_token");
+      const token = localStorage.getItem("playforgex_token");
       const res = await fetch(`/api/admin/users/${targetUser.id}/role`, {
         method: "PATCH",
         headers: {
@@ -108,7 +108,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ currentUser }) => {
     setErrorBanner(null);
 
     try {
-      const token = localStorage.getItem("tunebridge_token");
+      const token = localStorage.getItem("playforgex_token");
       const res = await fetch(`/api/admin/users/${targetUser.id}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},

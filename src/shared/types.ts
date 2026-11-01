@@ -122,9 +122,21 @@ export interface ServiceAuthStatus {
 
 export type ConnectionStatus = "connected" | "checking" | "reauth_required" | "unavailable" | "error";
 
+export type PlatformType =
+  | "youtube"
+  | "youtube_video"
+  | "apple"
+  | "spotify"
+  | "soundcloud"
+  | "deezer"
+  | "file"
+  | "tidal"
+  | "subsonic"
+  | "navidrome";
+
 export interface AccountConnection {
   id: string;
-  platform: "youtube" | "apple";
+  platform: PlatformType | string;
   localAlias: string;
   status: ConnectionStatus;
   createdAt: number;
@@ -142,7 +154,7 @@ export type DeduplicationPolicy = "keep_all" | "remove_exact" | "review_possible
 export interface SourcePlaylistSelection {
   accountId: string;
   accountAlias: string;
-  platform: "youtube" | "apple";
+  platform: PlatformType | string;
   playlistId: string;
   playlistTitle: string;
   trackCount: number;
@@ -155,7 +167,7 @@ export interface MergeWorkflowConfig {
   sourceSelections: SourcePlaylistSelection[];
   destinationAccountId: string;
   destinationAccountAlias: string;
-  destinationPlatform: "youtube" | "apple";
+  destinationPlatform: PlatformType | string;
   strategy: MergeStrategy;
   targetPlaylistTitle?: string;
   targetExistingPlaylistId?: string;
@@ -170,7 +182,7 @@ export interface ActivityLogItem {
   workflowName: string;
   sourceAliases: string[];
   destinationAlias: string;
-  destinationPlatform: "youtube" | "apple";
+  destinationPlatform: PlatformType | string;
   totalTracks: number;
   matchedCount: number;
   successCount: number;

@@ -27,4 +27,4 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 
-Sitemap: https://tunebridge.app/sitemap.xml
+Sitemap: https://playforgex.app/sitemap.xml

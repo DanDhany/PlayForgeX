@@ -25,8 +25,8 @@ export const FeaturesSection: React.FC = () => {
       spotlightColor: "rgba(99, 102, 241, 0.14)",
       title: isEn ? "Unlimited Multi-Account Bridge" : "Multi-Akun Tanpa Batas",
       description: isEn
-        ? "Many of us have separate accounts for work focus playlists, personal nostalgic tracks, and collaborative links from friends. In TuneBridge, connect them all concurrently and merge into one Apple Music library without constantly switching logins."
-        : "Banyak dari kita memiliki akun kantor untuk mendengarkan lagu fokus, akun pribadi berisi lagu nostalgia, dan tautan playlist dari teman. Di TuneBridge, Anda dapat menghubungkan semuanya sekaligus dan meleburkannya ke satu playlist Apple Music tanpa repot beralih akun.",
+        ? "Many of us have separate accounts for work focus playlists, personal nostalgic tracks, and collaborative links from friends. In PlayForgeX, connect them all concurrently and merge into one unified library without constantly switching logins."
+        : "Banyak dari kita memiliki akun kantor untuk mendengarkan lagu fokus, akun pribadi berisi lagu nostalgia, dan tautan playlist dari teman. Di PlayForgeX, Anda dapat menghubungkan semuanya sekaligus dan meleburkannya ke satu playlist tanpa repot beralih akun.",
       detailPoints: isEn
         ? [
             "Store multiple YouTube Music account sessions side-by-side",
@@ -46,8 +46,8 @@ export const FeaturesSection: React.FC = () => {
       spotlightColor: "rgba(16, 185, 129, 0.14)",
       title: isEn ? "One-Touch Phone Bookmarklet" : "Sinkronisasi Mudah via Ponsel",
       description: isEn
-        ? "No typing complex cookie strings or manually copying tokens. Open TuneBridge from Safari on iPhone or Chrome on Android, tap the one-touch bookmarklet, and your account securely connects in seconds."
-        : "Anda tidak perlu menyalin token secara manual. Buka antarmuka TuneBridge dari Safari atau Chrome di smartphone, gunakan bookmarklet satu sentuhan, dan sesi akun langsung terhubung dalam hitungan detik.",
+        ? "No typing complex cookie strings or manually copying tokens. Open PlayForgeX from Safari on iPhone or Chrome on Android, tap the one-touch bookmarklet, and your account securely connects in seconds."
+        : "Anda tidak perlu menyalin token secara manual. Buka antarmuka PlayForgeX dari Safari atau Chrome di smartphone, gunakan bookmarklet satu sentuhan, dan sesi akun langsung terhubung dalam hitungan detik.",
       detailPoints: isEn
         ? [
             "Touch-optimized, fluid mobile interface with native iOS feel",
@@ -88,8 +88,8 @@ export const FeaturesSection: React.FC = () => {
       spotlightColor: "rgba(250, 45, 72, 0.14)",
       title: isEn ? "Audio Preview & Smart Deduplication" : "Audio Preview & Pembersih Duplikat",
       description: isEn
-        ? "Never worry about migrating the wrong low-quality remix or acoustic cover. TuneBridge includes a built-in 30-second audio preview player to audition matches directly, paired with an intelligent deduplicator to keep your library lean."
-        : "Tak perlu takut salah mentransfer lagu cover atau remix aneh. TuneBridge dilengkapi pemutar pratinjau audio 30 detik untuk mendengarkan langsung kecocokan lagu, ditambah pembersih duplikat cerdas yang menjaga ukuran playlist Anda tetap ramping.",
+        ? "Never worry about migrating the wrong low-quality remix or acoustic cover. PlayForgeX includes a built-in 30-second audio preview player to audition matches directly, paired with an intelligent deduplicator to keep your library lean."
+        : "Tak perlu takut salah mentransfer lagu cover atau remix aneh. PlayForgeX dilengkapi pemutar pratinjau audio 30 detik untuk mendengarkan langsung kecocokan lagu, ditambah pembersih duplikat cerdas yang menjaga ukuran playlist Anda tetap ramping.",
       detailPoints: isEn
         ? [
             "Listen to real-time audio clips before confirming transfer",

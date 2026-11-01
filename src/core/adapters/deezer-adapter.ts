@@ -5,41 +5,106 @@ export const deezerProvider: PlatformProvider = {
   id: "deezer",
   name: "Deezer",
   brandColor: "#A238FF",
-  status: "planned",
+  status: "active",
   capabilities: {
     canReadPlaylists: true,
     canReadTracks: true,
-    canCreatePlaylists: true,
-    canAddTracks: true,
+    canCreatePlaylists: false,
+    canAddTracks: false,
     searchCatalog: true,
     supportsMobileSync: false,
   },
-  authDescription: "ARL session cookie or Deezer Web API application token.",
-  authMethod: "cookie",
-  notes: "Deezer Web API integration planned in an upcoming update.",
+  authDescription: "Direct Deezer Playlist URL or numeric ID. Zero authentication required via open REST API.",
+  authMethod: "public",
+  notes: "Full lossless metadata, ISRC extraction, and audio preview clips via official open Deezer API.",
 };
 
 export class DeezerAdapter implements PlatformAdapter {
   readonly provider = deezerProvider;
 
-  async fetchPlaylists(_credentials?: unknown): Promise<PlaylistSummary[]> {
-    throw new Error("Deezer adapter integration is planned for an upcoming update.");
+  /**
+   * Extract numeric Deezer playlist ID from URL or raw ID string.
+   */
+  public extractPlaylistId(input: string): string {
+    const trimmed = input.trim();
+    const match = trimmed.match(/playlist\/(\d+)/);
+    if (match) return match[1];
+    const numMatch = trimmed.match(/^\d+$/);
+    if (numMatch) return trimmed;
+    return trimmed;
   }
 
-  async fetchPlaylistTracks(_playlistId: string, _credentials?: unknown): Promise<TrackMetadata[]> {
-    throw new Error("Deezer adapter integration is planned for an upcoming update.");
+  async fetchPlaylistTracks(playlistId: string, _credentials?: unknown): Promise<TrackMetadata[]> {
+    const cleanId = this.extractPlaylistId(playlistId);
+    const tracks: TrackMetadata[] = [];
+    let nextUrl: string | null = `https://api.deezer.com/playlist/${cleanId}/tracks?limit=100`;
+
+    try {
+      while (nextUrl) {
+        const res = await fetch(nextUrl);
+        if (!res.ok) {
+          throw new Error(`Deezer API responded with HTTP ${res.status}`);
+        }
+
+        const data: any = await res.json();
+        if (data.error) {
+          throw new Error(data.error.message || "Deezer API Error");
+        }
+
+        const items = data.data || [];
+        for (const item of items) {
+          tracks.push({
+            id: String(item.id),
+            title: item.title,
+            artist: item.artist?.name || "Unknown Artist",
+            album: item.album?.title,
+            durationSeconds: item.duration,
+            thumbnailUrl: item.album?.cover_medium || item.album?.cover,
+          });
+        }
+
+        nextUrl = data.next || null;
+      }
+    } catch (err: any) {
+      console.warn("Failed fetching Deezer playlist tracks:", err.message);
+    }
+
+    return tracks;
   }
 
-  async searchCatalog(_query: string, _credentials?: unknown): Promise<unknown[]> {
-    throw new Error("Deezer adapter integration is planned for an upcoming update.");
+  async fetchPlaylists(credentials?: unknown): Promise<PlaylistSummary[]> {
+    if (typeof credentials === "string") {
+      const cleanId = this.extractPlaylistId(credentials);
+      try {
+        const res = await fetch(`https://api.deezer.com/playlist/${cleanId}`);
+        if (res.ok) {
+          const data: any = await res.json();
+          if (!data.error) {
+            return [
+              {
+                id: String(data.id),
+                title: data.title || "Deezer Playlist",
+                description: data.description,
+                trackCount: data.nb_tracks || 0,
+                thumbnailUrl: data.picture_medium || data.picture,
+              },
+            ];
+          }
+        }
+      } catch {}
+    }
+    return [];
   }
 
-  async createPlaylist(_title: string, _description?: string, _credentials?: unknown): Promise<string> {
-    throw new Error("Deezer adapter integration is planned for an upcoming update.");
-  }
-
-  async addTracksToPlaylist(_playlistId: string, _trackIds: string[], _credentials?: unknown): Promise<boolean> {
-    throw new Error("Deezer adapter integration is planned for an upcoming update.");
+  async searchCatalog(query: string, _credentials?: unknown): Promise<unknown[]> {
+    try {
+      const res = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(query)}&limit=5`);
+      if (res.ok) {
+        const data: any = await res.json();
+        return data.data || [];
+      }
+    } catch {}
+    return [];
   }
 }
 

@@ -2,17 +2,19 @@ import type { PlaylistSummary, TrackMetadata } from "../../shared/types";
 
 export type PlatformId =
   | "youtube"
+  | "youtube_video"
   | "apple"
   | "spotify"
   | "tidal"
   | "deezer"
   | "soundcloud"
   | "subsonic"
-  | "navidrome";
+  | "navidrome"
+  | "file";
 
 export type PlatformStatus = "active" | "experimental" | "planned";
 
-export type AuthMethod = "cookie" | "token" | "oauth" | "basic";
+export type AuthMethod = "cookie" | "token" | "oauth" | "basic" | "public" | "file";
 
 export interface PlatformCapabilities {
   canReadPlaylists: boolean;

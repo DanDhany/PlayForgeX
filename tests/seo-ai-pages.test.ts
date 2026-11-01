@@ -9,16 +9,16 @@ describe("SEO, AI Search & GitHub Pages Capabilities", () => {
 
   describe("HTML Head Metadata & OpenGraph", () => {
     it("contains comprehensive SEO title and meta description", () => {
-      expect(indexHtml).toContain("<title>TuneBridge — Universal Music Library & Migration Hub</title>");
+      expect(indexHtml).toContain("<title>PlayForgeX — Universal Music Library & Migration Hub</title>");
       expect(indexHtml).toMatch(/<meta\s+name="description"\s+content="[^"]{50,}"/);
-      expect(indexHtml).toMatch(/<meta\s+name="keywords"\s+content="[^"]*tunebridge[^"]*"/);
+      expect(indexHtml).toMatch(/<meta\s+name="keywords"\s+content="[^"]*playforgex[^"]*"/);
       expect(indexHtml).toContain('<meta name="robots" content="index, follow');
-      expect(indexHtml).toContain('<link rel="canonical" href="https://tunebridge.app/"');
+      expect(indexHtml).toContain('<link rel="canonical" href="https://playforgex.app/"');
     });
 
     it("declares OpenGraph and Twitter card metadata with relative/resolvable assets", () => {
       expect(indexHtml).toContain('<meta property="og:type" content="website"');
-      expect(indexHtml).toContain('<meta property="og:title" content="TuneBridge — Universal Music Library & Migration Hub"');
+      expect(indexHtml).toContain('<meta property="og:title" content="PlayForgeX — Universal Music Library & Migration Hub"');
       expect(indexHtml).toContain('<meta property="og:image" content="og-image.svg"');
       expect(indexHtml).toContain('<meta name="twitter:card" content="summary_large_image"');
       expect(indexHtml).toContain('<meta name="twitter:image" content="og-image.svg"');
@@ -26,7 +26,7 @@ describe("SEO, AI Search & GitHub Pages Capabilities", () => {
 
     it("references AI discoverability links (llms.txt and author)", () => {
       expect(indexHtml).toContain('<link rel="help" href="llms.txt"');
-      expect(indexHtml).toContain('<link rel="author" href="https://github.com/ramadhanykrismaliq/TuneBridge"');
+      expect(indexHtml).toContain('<link rel="author" href="https://github.com/DanDhany/PlayForgeX"');
     });
   });
 
@@ -51,7 +51,7 @@ describe("SEO, AI Search & GitHub Pages Capabilities", () => {
 
       const appNode = parsed["@graph"].find((node: any) => node["@type"] === "SoftwareApplication");
       expect(appNode).toBeDefined();
-      expect(appNode.name).toBe("TuneBridge");
+      expect(appNode.name).toBe("PlayForgeX");
       expect(appNode.applicationCategory).toBe("MultimediaApplication");
       expect(appNode.offers.price).toBe("0");
       expect(appNode.featureList.length).toBeGreaterThan(4);
@@ -84,7 +84,7 @@ describe("SEO, AI Search & GitHub Pages Capabilities", () => {
       expect(robots).toContain("GPTBot");
       expect(robots).toContain("ClaudeBot");
       expect(robots).toContain("PerplexityBot");
-      expect(robots).toContain("Sitemap: https://tunebridge.app/sitemap.xml");
+      expect(robots).toContain("Sitemap: https://playforgex.app/sitemap.xml");
     });
 
     it("provides public/sitemap.xml with landing page section anchors", () => {
@@ -92,9 +92,9 @@ describe("SEO, AI Search & GitHub Pages Capabilities", () => {
       expect(fs.existsSync(sitemapPath)).toBe(true);
 
       const sitemap = fs.readFileSync(sitemapPath, "utf-8");
-      expect(sitemap).toContain("<loc>https://tunebridge.app/</loc>");
-      expect(sitemap).toContain("<loc>https://tunebridge.app/#interactive-preview</loc>");
-      expect(sitemap).toContain("<loc>https://tunebridge.app/#faq-section</loc>");
+      expect(sitemap).toContain("<loc>https://playforgex.app/</loc>");
+      expect(sitemap).toContain("<loc>https://playforgex.app/#interactive-preview</loc>");
+      expect(sitemap).toContain("<loc>https://playforgex.app/#faq-section</loc>");
     });
 
     it("provides public/llms.txt and public/llms-full.txt conforming to LLM search specs", () => {
@@ -105,7 +105,7 @@ describe("SEO, AI Search & GitHub Pages Capabilities", () => {
       expect(fs.existsSync(llmsFullPath)).toBe(true);
 
       const llms = fs.readFileSync(llmsPath, "utf-8");
-      expect(llms).toContain("# TuneBridge");
+      expect(llms).toContain("# PlayForgeX");
       expect(llms).toContain("Core Capabilities");
       expect(llms).toContain("Architecture");
 

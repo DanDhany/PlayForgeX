@@ -1,5 +1,5 @@
 import React from "react";
-import { Lock, LogIn, UserPlus, ArrowRight, KeyRound } from "lucide-react";
+import { Lock, LogIn, UserPlus, ArrowRight } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { LanguageSwitcher } from "../LanguageSwitcher";
 
@@ -59,30 +59,9 @@ export const AuthGateCard: React.FC<AuthGateCardProps> = ({
             </button>
           </div>
 
-          {/* Prominent Admin Credentials Box */}
-          <div className="mt-6 p-4 rounded-xl bg-accent/5 border border-accent/20 text-left">
-            <div className="flex items-center gap-2 text-xs font-semibold text-text-primary mb-2">
-              <KeyRound className="w-4 h-4 text-accent" />
-              <span>{t("auth.adminDefault")}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-surface-elevated/80 border border-white/[0.06] font-mono text-xs text-text-secondary">
-              <div>
-                <span className="text-[10px] text-text-muted block">Username</span>
-                <span className="text-accent font-semibold text-xs select-all">admin</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-text-muted block">Password</span>
-                <span className="text-accent font-semibold text-xs select-all">tunebridge2026</span>
-              </div>
-            </div>
-            <p className="mt-2 text-[11px] text-text-secondary leading-tight">
-              {t("auth.adminNotice")}
-            </p>
-          </div>
-
           <button
             onClick={onOpenLanding}
-            className="mt-5 inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors font-medium"
+            className="mt-6 inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors font-medium"
           >
             <span>{t("auth.exploreLanding")}</span>
             <ArrowRight className="w-3.5 h-3.5" />

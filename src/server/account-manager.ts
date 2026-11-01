@@ -3,6 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { YouTubeMusicClient } from "../core/ytmusic.js";
 import { AppleMusicClient } from "../core/applemusic.js";
+import { PlatformRegistry, PlatformId } from "../core/platform-registry.js";
 import { AccountConnection, PlaylistSummary, TrackMetadata } from "../shared/types.js";
 import { query, isDbConnected } from "./db.js";
 
@@ -603,25 +604,26 @@ export class AccountManager {
   public importSnapshotAccount(
     alias: string,
     playlists: SnapshotPlaylist[],
-    targetUserId?: string
+    targetUserId?: string,
+    platform: string = "youtube"
   ): AccountConnection {
     if (!playlists || !Array.isArray(playlists)) {
       throw new Error("playlists array is required for snapshot import");
     }
 
-    const trimmedAlias = alias?.trim() || "YouTube Music (Mobile)";
+    const trimmedAlias = alias?.trim() || `${platform} Library`;
     const existing = Array.from(this.accounts.values()).find(
-      (a) => a.platform === "youtube" && a.localAlias.toLowerCase() === trimmedAlias.toLowerCase()
+      (a) => a.platform === platform && a.localAlias.toLowerCase() === trimmedAlias.toLowerCase()
     );
 
     const id = existing
       ? existing.id
-      : `acc_ytm_snap_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+      : `acc_${platform}_snap_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
     const uid = targetUserId || this.userId;
 
     const acc: AccountConnection = {
       id,
-      platform: "youtube",
+      platform: platform as any,
       localAlias: trimmedAlias,
       status: "connected",
       syncType: "snapshot",
@@ -718,12 +720,19 @@ export class AccountManager {
         throw new Error(`YouTube Music account '${acc.localAlias}' is not authenticated`);
       }
       return client.fetchPlaylists();
-    } else {
+    } else if (acc.platform === "apple") {
       const client = this.appleClients.get(accountId);
       if (!client) {
         throw new Error(`Apple Music account '${acc.localAlias}' is not authenticated`);
       }
       return client.getUserPlaylists();
+    } else {
+      const adapter = PlatformRegistry.getAdapter(acc.platform as PlatformId);
+      if (adapter && adapter.fetchPlaylists) {
+        const sec = this.secrets.get(accountId);
+        return adapter.fetchPlaylists(sec);
+      }
+      return [];
     }
   }
 }

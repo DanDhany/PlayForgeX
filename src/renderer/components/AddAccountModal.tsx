@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   Globe,
   Edit2,
+  Loader2,
   Sparkles,
 } from "lucide-react";
 import { copyToClipboard } from "../utils/ui-helpers";
@@ -44,7 +45,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   if (!isOpen) return null;
 
   const [step, setStep] = useState<"name" | "connect">("name");
-  const [platform, setPlatform] = useState<"youtube" | "apple">("youtube");
+  const [platform, setPlatform] = useState<"youtube" | "youtube_video" | "apple" | "spotify" | "soundcloud" | "deezer" | "file">("youtube");
   const [alias, setAlias] = useState("");
   const [aliasTouched, setAliasTouched] = useState(false);
   const [connectMethod, setConnectMethod] = useState<ConnectMethod>("bookmarklet");
@@ -52,6 +53,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   const [cookieString, setCookieString] = useState("");
   const [musicUserToken, setMusicUserToken] = useState("");
   const [developerToken, setDeveloperToken] = useState("");
+  const [urlInput, setUrlInput] = useState("");
+  const [fileContent, setFileContent] = useState("");
   const [bookmarkletCopied, setBookmarkletCopied] = useState<"idle" | "copied" | "selected">("idle");
   const [copiedCli, setCopiedCli] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,6 +70,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       setAlias("");
       setAliasTouched(false);
       setError(null);
+      setUrlInput("");
+      setFileContent("");
       setBookmarkletCopied("idle");
       setCopiedCli(false);
     }
@@ -161,7 +166,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           throw new Error("Cookie string YouTube tidak boleh kosong");
         }
         payload.cookieString = cookieString.trim();
-      } else {
+      } else if (platform === "apple") {
         if (!musicUserToken.trim()) {
           throw new Error("Music-User-Token Apple Music tidak boleh kosong");
         }
@@ -169,11 +174,43 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
         if (developerToken.trim()) {
           payload.developerToken = developerToken.trim();
         }
+      } else if (platform === "youtube_video") {
+        if (!urlInput.trim()) {
+          throw new Error("Tautan atau ID playlist YouTube video tidak boleh kosong");
+        }
+        payload.playlistUrl = urlInput.trim();
+      } else if (platform === "spotify") {
+        if (!urlInput.trim()) {
+          throw new Error("Tautan atau ID playlist Spotify tidak boleh kosong");
+        }
+        payload.playlistUrl = urlInput.trim();
+      } else if (platform === "soundcloud") {
+        if (!urlInput.trim()) {
+          throw new Error("Tautan set SoundCloud tidak boleh kosong");
+        }
+        payload.setUrl = urlInput.trim();
+      } else if (platform === "deezer") {
+        if (!urlInput.trim()) {
+          throw new Error("Tautan atau ID playlist Deezer tidak boleh kosong");
+        }
+        payload.playlistId = urlInput.trim();
+      } else if (platform === "file") {
+        if (!fileContent.trim()) {
+          throw new Error("Daftar lagu atau konten file tidak boleh kosong");
+        }
+        payload.content = fileContent.trim();
       }
+
+      const token = typeof window !== "undefined"
+        ? localStorage.getItem("playforgex_token")
+        : null;
 
       const res = await fetch("/api/accounts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
@@ -194,7 +231,32 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   const nameSuggestions =
     platform === "youtube"
       ? ["Koleksi Utama", "Akun Kedua", "Koleksi Kantor", "Keluarga"]
-      : ["Koleksi Apple", "Mobil (CarPlay)", "iPad / Rumah", "Keluarga"];
+      : platform === "youtube_video"
+      ? ["Playlist Video Favorit", "Klip Musik Pilihan", "DJ / Set YouTube", "Soundtrack"]
+      : platform === "apple"
+      ? ["Koleksi Apple", "Mobil (CarPlay)", "iPad / Rumah", "Keluarga"]
+      : platform === "spotify"
+      ? ["Spotify Liked", "Koleksi Spotify", "Playlist Mingguan", "Arsip Spotify"]
+      : platform === "soundcloud"
+      ? ["SoundCloud Mix", "DJ Sets", "Indie Tracks", "Live Bootleg"]
+      : platform === "deezer"
+      ? ["Deezer Flow", "Katalog Deezer", "Pustaka Deezer"]
+      : ["Impor M3U", "Daftar Teks Manual", "Cadangan Soundiiz", "Snapshot JSON"];
+
+  const platformDisplayName =
+    platform === "youtube"
+      ? "YouTube Music"
+      : platform === "youtube_video"
+      ? "YouTube Video Playlists"
+      : platform === "apple"
+      ? "Apple Music"
+      : platform === "spotify"
+      ? "Spotify"
+      : platform === "soundcloud"
+      ? "SoundCloud"
+      : platform === "deezer"
+      ? "Deezer"
+      : "File / Teks";
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4">
@@ -248,32 +310,31 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           <div className="space-y-4 py-1">
             {/* Platform Selector Segmented Control */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-text-secondary">Layanan Musik</label>
-              <div className="grid grid-cols-2 p-1 bg-surface-elevated rounded-lg border border-border text-xs">
-                <button
-                  type="button"
-                  onClick={() => setPlatform("youtube")}
-                  className={`py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1.5 btn-press ${
-                    platform === "youtube"
-                      ? "bg-red-500/20 text-red-400 border border-red-500/30 shadow-sm"
-                      : "text-text-secondary hover:text-text-primary"
-                  }`}
-                >
-                  <span className="w-2 h-2 rounded-full bg-red-500" />
-                  <span>YouTube Music</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPlatform("apple")}
-                  className={`py-1.5 rounded-md font-medium transition-colors flex items-center justify-center gap-1.5 btn-press ${
-                    platform === "apple"
-                      ? "bg-accent/20 text-accent border border-accent/30 shadow-sm"
-                      : "text-text-secondary hover:text-text-primary"
-                  }`}
-                >
-                  <span className="w-2 h-2 rounded-full bg-accent" />
-                  <span>Apple Music</span>
-                </button>
+              <label className="text-[11px] font-medium text-text-secondary">Layanan Musik & Media</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 p-1 bg-surface-elevated rounded-xl border border-border text-xs">
+                {[
+                  { id: "youtube", label: "YouTube Music", color: "bg-red-500", activeClass: "bg-red-500/20 text-red-400 border-red-500/30" },
+                  { id: "youtube_video", label: "YouTube Video", color: "bg-orange-500", activeClass: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
+                  { id: "apple", label: "Apple Music", color: "bg-accent", activeClass: "bg-accent/20 text-accent border-accent/30" },
+                  { id: "spotify", label: "Spotify", color: "bg-emerald-500", activeClass: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" },
+                  { id: "soundcloud", label: "SoundCloud", color: "bg-amber-500", activeClass: "bg-amber-500/20 text-amber-400 border-amber-500/30" },
+                  { id: "deezer", label: "Deezer", color: "bg-purple-500", activeClass: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
+                  { id: "file", label: "File / Teks", color: "bg-slate-400", activeClass: "bg-slate-500/20 text-slate-300 border-slate-500/30" },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setPlatform(item.id as any)}
+                    className={`py-1.5 px-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-1.5 btn-press border ${
+                      platform === item.id
+                        ? `${item.activeClass} shadow-sm`
+                        : "border-transparent text-text-secondary hover:text-text-primary hover:bg-surface-hover"
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${item.color}`} />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -413,11 +474,23 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                 <div className="flex items-center gap-1.5">
                   <span
                     className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      platform === "youtube" ? "bg-red-500" : "bg-accent"
+                      platform === "youtube"
+                        ? "bg-red-500"
+                        : platform === "youtube_video"
+                        ? "bg-orange-500"
+                        : platform === "apple"
+                        ? "bg-accent"
+                        : platform === "spotify"
+                        ? "bg-emerald-500"
+                        : platform === "soundcloud"
+                        ? "bg-amber-500"
+                        : platform === "deezer"
+                        ? "bg-purple-500"
+                        : "bg-slate-400"
                     }`}
                   />
                   <span className="text-[11px] text-text-secondary font-medium">
-                    {platform === "youtube" ? "YouTube Music" : "Apple Music"}
+                    {platformDisplayName}
                   </span>
                 </div>
                 <div className="text-xs font-semibold text-text-primary truncate mt-0.5">
@@ -438,6 +511,110 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
               </button>
             </div>
 
+            {platform !== "youtube" && platform !== "apple" ? (
+              <form onSubmit={handleSubmitManual} className="space-y-4">
+                {platform === "file" ? (
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-medium text-text-secondary">
+                      {isEn ? "Paste Playlist Text / Content" : "Tempel Teks Daftar Lagu / Konten Playlist"}
+                    </label>
+                    <textarea
+                      rows={6}
+                      placeholder={
+                        isEn
+                          ? "Format:\nArtist - Title\nArtist - Song 2\n\nOr paste M3U, CSV, or PlayForgeX JSON content."
+                          : "Format:\nArtis - Judul Lagu\nArtis - Lagu 2\n\nAtau tempel isi file M3U, CSV, atau JSON PlayForgeX."
+                      }
+                      value={fileContent}
+                      onChange={(e) => setFileContent(e.target.value)}
+                      className="w-full p-2.5 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
+                    />
+                    <div className="flex items-center justify-between text-[11px] text-text-secondary">
+                      <span>{isEn ? "Supports: .m3u, .csv, plain text, and JSON" : "Mendukung: .m3u, .csv, teks biasa, dan JSON"}</span>
+                      <label className="cursor-pointer text-accent hover:underline font-medium">
+                        <span>{isEn ? "Upload File" : "Pilih File"}</span>
+                        <input
+                          type="file"
+                          accept=".txt,.csv,.m3u,.m3u8,.json"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (evt) => {
+                                const text = evt.target?.result as string;
+                                if (text) setFileContent(text);
+                              };
+                              reader.readAsText(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-medium text-text-secondary">
+                      {platform === "youtube_video"
+                        ? isEn ? "YouTube Video Playlist Link or ID" : "Tautan Playlist Video YouTube atau ID"
+                        : platform === "spotify"
+                        ? isEn ? "Spotify Playlist Link or Access Token" : "Tautan Playlist Spotify atau Token Akses"
+                        : platform === "soundcloud"
+                        ? isEn ? "SoundCloud Set or Track URL" : "Tautan Set atau Playlist SoundCloud"
+                        : isEn ? "Deezer Playlist URL or ID" : "Tautan Playlist Deezer atau ID"}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={
+                        platform === "youtube_video"
+                          ? "https://www.youtube.com/playlist?list=PL..."
+                          : platform === "spotify"
+                          ? "https://open.spotify.com/playlist/... atau Token"
+                          : platform === "soundcloud"
+                          ? "https://soundcloud.com/artist/sets/..."
+                          : "https://www.deezer.com/playlist/... atau ID"
+                      }
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
+                    />
+                    <p className="text-[11px] text-text-secondary">
+                      {platform === "youtube_video"
+                        ? (isEn
+                          ? "PlayForgeX automatically scrubs video noise ('Official Video', '4K', 'Lyrics') to recover authentic recording metadata."
+                          : "PlayForgeX otomatis membersihkan embel-embel judul video ('Official Video', '4K', 'Lyrics') dan mengekstrak rekaman studio aslinya.")
+                        : platform === "spotify"
+                        ? (isEn
+                          ? "Ingests public Spotify playlists with track title, artist, and album without requiring developer account setup."
+                          : "Membaca playlist publik Spotify lengkap dengan judul lagu, artis, dan album tanpa perlu akun developer.")
+                        : platform === "soundcloud"
+                        ? (isEn
+                          ? "Ingests indie releases, underground live sets, and custom SoundCloud collections directly into your migration queue."
+                          : "Mengimpor set SoundCloud, lagu indie, dan live mix langsung ke antrean migrasi Anda.")
+                        : (isEn
+                          ? "Leverages Deezer's open REST API for instantaneous playlist fetching with lossless metadata."
+                          : "Memanfaatkan REST API terbuka Deezer untuk membaca playlist secara seketika dengan metadata lossless.")}
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-2.5 rounded-lg bg-accent text-background font-semibold text-xs hover:bg-accent/90 disabled:opacity-50 btn-press flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{t("modal.saving")}</span>
+                    </>
+                  ) : (
+                    <span>{isEn ? `Import & Connect ${platformDisplayName}` : `Impor & Hubungkan ${platformDisplayName}`}</span>
+                  )}
+                </button>
+              </form>
+            ) : (
+              <>
             {/* Connection Method Segmented Tabs */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-medium text-text-secondary">
@@ -527,7 +704,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   </span>
                   , pastikan sudah login akun, lalu jalankan script ini di Safari iPhone / Chrome HP.
                   {platform === "youtube"
-                    ? " Modal interaktif akan muncul langsung di layar HP untuk memilih playlist yang ingin dikirim ke TuneBridge."
+                    ? " Modal interaktif akan muncul langsung di layar HP untuk memilih playlist yang ingin dikirim ke PlayForgeX."
                     : ` Sesi akan otomatis dikirim sebagai akun "${trimmedAlias}".`}
                 </p>
 
@@ -731,6 +908,8 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                     : t("modal.saveAccount", { alias: trimmedAlias })}
                 </button>
               </form>
+            )}
+            </>
             )}
 
             {/* Back Button */}

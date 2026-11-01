@@ -120,7 +120,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             <Disc3 className="w-4 h-4 animate-spin-slow" />
           </div>
           <span className="text-sm font-bold tracking-tight text-text-primary">
-            TuneBridge
+            PlayForgeX
           </span>
         </div>
 
@@ -313,7 +313,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
       {/* Footer copyright */}
       <footer className="w-full py-4 text-center text-[11px] text-text-muted border-t border-white/[0.04]">
-        TuneBridge &copy; 2026 &middot; {lang === "en" ? "Universal Music Migration" : "Jembatan Perpustakaan Musik"}
+        PlayForgeX &copy; 2026 &middot; {lang === "en" ? "Universal Music Migration" : "Jembatan Perpustakaan Musik"}
       </footer>
     </div>
   );

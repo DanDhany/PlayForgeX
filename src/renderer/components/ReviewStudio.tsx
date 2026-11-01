@@ -32,8 +32,8 @@ interface ReviewStudioProps {
   onStartTransfer: () => void;
   onReMatch: () => void;
   onOpenMobileSidebar?: () => void;
-  sourcePlatform?: "youtube" | "apple";
-  targetPlatform?: "apple" | "youtube";
+  sourcePlatform?: string;
+  targetPlatform?: string;
 }
 
 export const ReviewStudio: React.FC<ReviewStudioProps> = ({

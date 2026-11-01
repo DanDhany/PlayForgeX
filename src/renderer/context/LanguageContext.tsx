@@ -11,13 +11,13 @@ interface LanguageContextType {
 const translations: Record<Language, Record<string, string>> = {
   en: {
     // Brand & Meta
-    "app.name": "TuneBridge",
-    "app.tagline": "Your Music, Woven Together",
-    "app.subtitle": "Self-Hosted Music Migration & Library Synchronization",
+    "app.name": "PlayForgeX",
+    "app.tagline": "Your Music, Forged Together",
+    "app.subtitle": "Self-Hosted Music Migration, Merging & Mix-and-Match Hub",
     "app.selfHosted": "Self-Hosted",
     "app.openStudio": "Open Studio",
     "app.backToLanding": "Back to Landing Page",
-    "app.about": "About TuneBridge",
+    "app.about": "About PlayForgeX",
     "app.pagesDemoNotice": "GitHub Pages Demo Mode: Showing interactive simulation. Download local Docker release for real transfers.",
 
     // Navigation
@@ -48,7 +48,7 @@ const translations: Record<Language, Record<string, string>> = {
     "auth.sessionClosed": "Your session has ended.",
     "auth.welcomeBack": "Welcome back, {username}!",
     "auth.backHome": "Back to Home",
-    "auth.welcomeTitle": "Welcome to TuneBridge",
+    "auth.welcomeTitle": "Welcome to PlayForgeX",
     "auth.welcomeSubtitle": "Sign in to access your self-hosted music library, playlists, and transfers.",
     "auth.confirmPassword": "Confirm Password",
     "auth.passwordMismatch": "Passwords do not match.",
@@ -136,7 +136,7 @@ const translations: Record<Language, Record<string, string>> = {
     "transfer.matchingInProgress": "Matching tracks in background ({current} / {total})...",
     "transfer.autoSaved": "Saved to local draft",
     "transfer.mergeTitle": "Merge Multi-Account Playlists into One Destination",
-    "transfer.mergeDesc": "Select playlists from different source accounts (e.g., Personal + Work + Friends). TuneBridge intelligently eliminates duplicates while preserving unique live/remix editions.",
+    "transfer.mergeDesc": "Select playlists from different source accounts (e.g., Personal + Work + Friends). PlayForgeX intelligently eliminates duplicates while preserving unique live/remix editions.",
     "transfer.step1": "Step 1: Select Source Playlists",
     "transfer.step2": "Step 2: Destination Account & Options",
     "transfer.generateMerge": "Analyze & Generate Merged Draft",
@@ -160,7 +160,7 @@ const translations: Record<Language, Record<string, string>> = {
     "settings.matchingSection": "Smart Song Matching Engine",
     "settings.matchingDesc": "Multi-stage sanitization, non-Latin script transliteration (Kanji/Hangul/Arabic), and Levenshtein similarity scoring.",
     "settings.networkSection": "Mobile & Local Network Access",
-    "settings.networkDesc": "Access TuneBridge on iPhone and Android browsers via your local network. Use bookmarklet to connect accounts in seconds.",
+    "settings.networkDesc": "Access PlayForgeX on iPhone and Android browsers via your local network. Use bookmarklet to connect accounts in seconds.",
     "settings.copyUrl": "Copy Local URL",
     "settings.copied": "Copied!",
 
@@ -172,9 +172,9 @@ const translations: Record<Language, Record<string, string>> = {
     "player.unmute": "Unmute",
 
     // Landing Page (Strictly No Raw Tech Stacks / Jargon)
-    "landing.badge": "TuneBridge v1.2 • Private Cross-Platform Music Bridge",
-    "landing.heroTitle": "Your Music Library. Connected, Clean, and Truly Yours.",
-    "landing.heroDesc": "Transfer and merge playlists between YouTube Music and Apple Music directly from your laptop or phone browser. 100% private, self-hosted, with zero cloud tracking.",
+    "landing.badge": "PlayForgeX v1.3 • The Cross-Platform Music Migration & Mix-and-Match Hub",
+    "landing.heroTitle": "Your Entire Music Universe. Migrated, Merged, and Truly Yours.",
+    "landing.heroDesc": "Migrate, merge, and mix-and-match playlists across YouTube Music, YouTube Video, Apple Music, Spotify, SoundCloud, and Deezer. 100% self-hosted, private, and unlimited.",
     "landing.ctaOpenStudio": "Open Studio",
     "landing.ctaLearnMore": "Explore Features",
     "landing.pillZeroCloud": "Zero Cloud Data Retention",
@@ -185,7 +185,7 @@ const translations: Record<Language, Record<string, string>> = {
     "landing.featuresHeading": "Built for True Music Collectors",
     "landing.featuresSubheading": "Enterprise-grade precision matching with complete privacy and zero monthly fees.",
     "landing.feature1Title": "Cross-Platform Playlist Bridge",
-    "landing.feature1Desc": "Move dozens of playlists between YouTube Music and Apple Music without losing your curated order or favorite album versions.",
+    "landing.feature1Desc": "Move dozens of playlists between YouTube Music, Apple Music, Spotify, SoundCloud, and more without losing your curated order or favorite album versions.",
     "landing.feature2Title": "Non-Latin Script Transliteration",
     "landing.feature2Desc": "Intelligently resolves Japanese Kanji, Korean Hangul, and Cyrillic titles to verified official international catalog releases.",
     "landing.feature3Title": "One-Touch Mobile Sync",
@@ -200,7 +200,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Landing How it works
     "landing.howHeading": "Three Simple Steps to Flawless Sync",
     "landing.howStep1": "1. Connect Your Accounts",
-    "landing.howStep1Desc": "Link YouTube Music and Apple Music safely using one-tap browser bookmarklets.",
+    "landing.howStep1Desc": "Link your streaming accounts safely using one-tap browser bookmarklets or tokens.",
     "landing.howStep2": "2. Precision Track Matching",
     "landing.howStep2Desc": "Preview every song match with confidence scores, audio snippets, and alternate versions.",
     "landing.howStep3": "3. Seamless Library Export",
@@ -213,26 +213,26 @@ const translations: Record<Language, Record<string, string>> = {
     "landing.statusComingSoon": "Roadmap / Coming Soon",
 
     // Landing Comparison
-    "landing.compHeading": "Why Choose TuneBridge?",
-    "landing.compSubheading": "See how TuneBridge compares to traditional cloud-based subscription services.",
+    "landing.compHeading": "Why Choose PlayForgeX?",
+    "landing.compSubheading": "See how PlayForgeX compares to traditional cloud-based subscription services.",
     "landing.compPrivacy": "Data Privacy",
-    "landing.compPrivacyTuneBridge": "100% Private. Credentials stay exclusively on your own computer.",
+    "landing.compPrivacyPlayForgeX": "100% Private. Credentials stay exclusively on your own computer.",
     "landing.compPrivacyOthers": "Cloud servers store your sensitive account session credentials.",
     "landing.compPricing": "Cost",
-    "landing.compPricingTuneBridge": "Completely free, open-source, with no subscription tiers or track quotas.",
+    "landing.compPricingPlayForgeX": "Completely free, open-source, with no subscription tiers or track quotas.",
     "landing.compPricingOthers": "$4 - $10/month subscription or strict 500-track limits on free plans.",
     "landing.compMatching": "Title Matching",
-    "landing.compMatchingTuneBridge": "Deep sanitization with specialized non-Latin script & live edition protection.",
+    "landing.compMatchingPlayForgeX": "Deep sanitization with specialized non-Latin script & live edition protection.",
     "landing.compMatchingOthers": "Generic title string matching often mismatches live & remix recordings.",
 
     // Landing FAQ
     "landing.faqHeading": "Frequently Asked Questions",
-    "landing.faqQ1": "Is TuneBridge safe to use with my music accounts?",
-    "landing.faqA1": "Yes. TuneBridge runs entirely as a private local application on your machine. Your credentials and playlists never pass through any cloud intermediary.",
+    "landing.faqQ1": "Is PlayForgeX safe to use with my music accounts?",
+    "landing.faqA1": "Yes. PlayForgeX runs entirely as a private local application on your machine. Your credentials and playlists never pass through any cloud intermediary.",
     "landing.faqQ2": "Can I transfer large playlists with thousands of tracks?",
-    "landing.faqA2": "Absolutely. TuneBridge includes built-in rate-limiting and anti-ban safeguards designed specifically to handle large libraries smoothly.",
-    "landing.faqQ3": "Does TuneBridge support phones like iPhone and Android?",
-    "landing.faqA3": "Yes. You can access your local TuneBridge Studio from mobile Safari or Chrome and use the one-tap mobile bookmarklet to connect seamlessly.",
+    "landing.faqA2": "Absolutely. PlayForgeX includes built-in rate-limiting and anti-ban safeguards designed specifically to handle large libraries smoothly.",
+    "landing.faqQ3": "Does PlayForgeX support phones like iPhone and Android?",
+    "landing.faqA3": "Yes. You can access your local PlayForgeX Studio from mobile Safari or Chrome and use the one-tap mobile bookmarklet to connect seamlessly.",
 
     // Modals & Common UI
     "common.save": "Save",
@@ -302,13 +302,13 @@ const translations: Record<Language, Record<string, string>> = {
   },
   id: {
     // Brand & Meta
-    "app.name": "TuneBridge",
-    "app.tagline": "Your Music, Woven Together",
-    "app.subtitle": "Migrasi & Sinkronisasi Perpustakaan Musik Mandiri",
+    "app.name": "PlayForgeX",
+    "app.tagline": "Your Music, Forged Together",
+    "app.subtitle": "Pusat Migrasi, Merge & Mix-and-Match Perpustakaan Musik Mandiri",
     "app.selfHosted": "Self-Hosted",
     "app.openStudio": "Buka Studio",
     "app.backToLanding": "Kembali ke Landing Page",
-    "app.about": "Tentang TuneBridge",
+    "app.about": "Tentang PlayForgeX",
     "app.pagesDemoNotice": "Mode Demonstrasi GitHub Pages: Menampilkan simulasi studio interaktif. Unduh rilis Docker lokal untuk transfer riil.",
 
     // Navigation
@@ -334,12 +334,12 @@ const translations: Record<Language, Record<string, string>> = {
     "auth.adminNotice": "Seluruh data akun dan playlist lama Anda telah dimigrasikan ke akun admin ini. Masuk dengan akun di atas untuk mengakses Studio.",
     "auth.protectedTitle": "Akses Terproteksi",
     "auth.protectedDesc": "Perpustakaan musik, token multi-akun, dan riwayat migrasi Anda tersimpan aman dan terisolasi di database lokal Anda. Masuk untuk membuka akses ke Studio.",
-    "auth.exploreLanding": "Jelajahi Fitur TuneBridge",
+    "auth.exploreLanding": "Jelajahi Fitur PlayForgeX",
     "auth.signedInAs": "Masuk sebagai",
     "auth.sessionClosed": "Sesi akun Anda telah ditutup.",
     "auth.welcomeBack": "Selamat datang kembali, {username}!",
     "auth.backHome": "Kembali ke Beranda",
-    "auth.welcomeTitle": "Selamat Datang di TuneBridge",
+    "auth.welcomeTitle": "Selamat Datang di PlayForgeX",
     "auth.welcomeSubtitle": "Masuk untuk mengakses perpustakaan musik lokal, playlist, dan studio transfer Anda.",
     "auth.confirmPassword": "Konfirmasi Kata Sandi",
     "auth.passwordMismatch": "Kata sandi tidak cocok.",
@@ -451,7 +451,7 @@ const translations: Record<Language, Record<string, string>> = {
     "settings.matchingSection": "Algoritma Pencocokan Lagu (Matching Engine)",
     "settings.matchingDesc": "Pembersihan sanitasi judul ganda, transliterasi huruf kanji/hangul/arab, dan evaluasi kesamaan berbasis Levenshtein.",
     "settings.networkSection": "Akses Jaringan Lokal & Smartphone",
-    "settings.networkDesc": "Akses TuneBridge dari browser iPhone dan Android di jaringan Wi-Fi lokal Anda. Gunakan bookmarklet untuk menghubungkan akun.",
+    "settings.networkDesc": "Akses PlayForgeX dari browser iPhone dan Android di jaringan Wi-Fi lokal Anda. Gunakan bookmarklet untuk menghubungkan akun.",
     "settings.copyUrl": "Salin URL Lokal",
     "settings.copied": "Tersalin!",
 
@@ -463,9 +463,9 @@ const translations: Record<Language, Record<string, string>> = {
     "player.unmute": "Aktifkan Suara",
 
     // Landing Page
-    "landing.badge": "TuneBridge v1.2 • Jembatan Playlist Musik Multi-Platform Pribadi",
-    "landing.heroTitle": "Perpustakaan Musik Anda. Tersambung, Bersih, dan Utuh.",
-    "landing.heroDesc": "Pindahkan dan gabungkan playlist dari banyak akun YouTube Music ke Apple Music langsung dari browser laptop atau HP Anda. 100% mandiri, aman, dan tanpa biaya langganan pihak ketiga.",
+    "landing.badge": "PlayForgeX v1.3 • Pusat Migrasi, Merge & Mix-and-Match Playlist Musik",
+    "landing.heroTitle": "Perpustakaan Musik Anda. Dipindahkan, Digabungkan, dan Utuh.",
+    "landing.heroDesc": "Pindahkan, gabungkan, dan kelola playlist lintas platform (YouTube Music, YouTube Video, Apple Music, Spotify, SoundCloud, Deezer) langsung dari browser Anda. 100% privat, mandiri, dan tanpa biaya langganan.",
     "landing.ctaOpenStudio": "Buka Studio",
     "landing.ctaLearnMore": "Pelajari Fitur",
     "landing.pillZeroCloud": "100% Bebas Kuota Cloud",
@@ -476,7 +476,7 @@ const translations: Record<Language, Record<string, string>> = {
     "landing.featuresHeading": "Dirancang untuk Penikmat Musik Sejati",
     "landing.featuresSubheading": "Akurasi pencocokan lagu tingkat tinggi dengan privasi penuh dan tanpa biaya langganan bulanan.",
     "landing.feature1Title": "Jembatan Playlist Lintas Platform",
-    "landing.feature1Desc": "Pindahkan puluhan playlist antara YouTube Music dan Apple Music tanpa kehilangan susunan urutan lagu dan rilisan orisinalnya.",
+    "landing.feature1Desc": "Pindahkan puluhan playlist antara YouTube Music, Apple Music, Spotify, SoundCloud, dan layanan lainnya tanpa kehilangan susunan urutan lagu dan rilisan orisinalnya.",
     "landing.feature2Title": "Transliterasi Judul Non-Latin",
     "landing.feature2Desc": "Mendeteksi judul lagu berbahasa Jepang (Kanji), Korea (Hangul), atau Cyrillic ke nama resmi rilisan katalog internasional.",
     "landing.feature3Title": "Sinkronisasi Satu Sentuhan dari HP",
@@ -491,7 +491,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Landing How it works
     "landing.howHeading": "Tiga Langkah Mudah Sinkronisasi",
     "landing.howStep1": "1. Hubungkan Akun Musik Anda",
-    "landing.howStep1Desc": "Tautkan akun YouTube Music dan Apple Music menggunakan bookmarklet browser satu sentuhan yang aman.",
+    "landing.howStep1Desc": "Tautkan akun streaming menggunakan bookmarklet browser satu sentuhan atau token resmi yang aman.",
     "landing.howStep2": "2. Pencocokan Lagu Presisi",
     "landing.howStep2Desc": "Tinjau kecocokan setiap lagu dengan skor akurasi, cuplikan audio, dan pilihan lagu alternatif.",
     "landing.howStep3": "3. Ekspor ke Perpustakaan",
@@ -504,25 +504,25 @@ const translations: Record<Language, Record<string, string>> = {
     "landing.statusComingSoon": "Roadmap / Segera Hadir",
 
     // Landing Comparison
-    "landing.compHeading": "Mengapa Memilih TuneBridge?",
-    "landing.compSubheading": "Bandingkan TuneBridge dengan layanan transfer musik komersial berbasis cloud.",
+    "landing.compHeading": "Mengapa Memilih PlayForgeX?",
+    "landing.compSubheading": "Bandingkan PlayForgeX dengan layanan transfer musik komersial berbasis cloud.",
     "landing.compPrivacy": "Privasi Data",
-    "landing.compPrivacyTuneBridge": "100% Mandiri. Kredensial dan token hanya tersimpan di komputer Anda sendiri.",
+    "landing.compPrivacyPlayForgeX": "100% Mandiri. Kredensial dan token hanya tersimpan di komputer Anda sendiri.",
     "landing.compPrivacyOthers": "Server cloud pihak ketiga menyimpan kredensial sesi akun Anda.",
     "landing.compPricing": "Biaya Penggunaan",
-    "landing.compPricingTuneBridge": "Gratis sepenuhnya, open source, tanpa kuota lagu dan tanpa langganan.",
+    "landing.compPricingPlayForgeX": "Gratis sepenuhnya, open source, tanpa kuota lagu dan tanpa langganan.",
     "landing.compPricingOthers": "Biaya langganan Rp 60.000 - Rp 150.000/bulan atau batasan ketat kuota lagu.",
     "landing.compMatching": "Akurasi Pencocokan",
-    "landing.compMatchingTuneBridge": "Sanitasi judul mendalam dengan proteksi pembeda versi live, remix, dan cover.",
+    "landing.compMatchingPlayForgeX": "Sanitasi judul mendalam dengan proteksi pembeda versi live, remix, dan cover.",
     "landing.compMatchingOthers": "Pencocokan teks sederhana yang sering tertukar antara lagu rekaman studio dan rekaman live.",
 
     // Landing FAQ
     "landing.faqHeading": "Pertanyaan yang Sering Diajukan",
-    "landing.faqQ1": "Apakah TuneBridge aman untuk akun musik saya?",
-    "landing.faqA1": "Sangat aman. TuneBridge beroperasi penuh secara lokal pada perangkat Anda sendiri tanpa server perantara cloud pihak ketiga.",
+    "landing.faqQ1": "Apakah PlayForgeX aman untuk akun musik saya?",
+    "landing.faqA1": "Sangat aman. PlayForgeX beroperasi penuh secara lokal pada perangkat Anda sendiri tanpa server perantara cloud pihak ketiga.",
     "landing.faqQ2": "Apakah bisa mentransfer playlist berukuran ribuan lagu?",
-    "landing.faqA2": "Bisa. TuneBridge dilengkapi algoritma rate-limiting bertahap dan proteksi anti-ban agar transfer library besar berjalan lancar tanpa terblokir.",
-    "landing.faqQ3": "Apakah TuneBridge bisa digunakan langsung dari smartphone?",
+    "landing.faqA2": "Bisa. PlayForgeX dilengkapi algoritma rate-limiting bertahap dan proteksi anti-ban agar transfer library besar berjalan lancar tanpa terblokir.",
+    "landing.faqQ3": "Apakah PlayForgeX bisa digunakan langsung dari smartphone?",
     "landing.faqA3": "Bisa. Anda cukup membuka alamat IP lokal komputer Anda dari browser Safari iPhone atau Chrome Android.",
 
     // Modals & Common UI
@@ -602,7 +602,7 @@ const LanguageContext = createContext<LanguageContextType>({
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lang, setLangState] = useState<Language>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("tunebridge_lang");
+      const saved = localStorage.getItem("playforgex_lang");
       if (saved === "en" || saved === "id") return saved;
     }
     return "en"; // Default English per user instruction
@@ -611,7 +611,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const setLang = (newLang: Language) => {
     setLangState(newLang);
     if (typeof window !== "undefined") {
-      localStorage.setItem("tunebridge_lang", newLang);
+      localStorage.setItem("playforgex_lang", newLang);
       document.documentElement.lang = newLang;
     }
   };

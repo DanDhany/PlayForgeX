@@ -103,7 +103,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
 
       if (data.token) {
-        localStorage.setItem("tunebridge_token", data.token);
+        localStorage.setItem("playforgex_token", data.token);
       }
 
       resetForm();
@@ -148,7 +148,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-semibold text-text-primary tracking-tight">
-                {tab === "login" ? (isEn ? "Sign In to TuneBridge" : "Masuk ke TuneBridge") : (isEn ? "Create TuneBridge Account" : "Buat Akun TuneBridge")}
+                {tab === "login" ? (isEn ? "Sign In to PlayForgeX" : "Masuk ke PlayForgeX") : (isEn ? "Create PlayForgeX Account" : "Buat Akun PlayForgeX")}
               </h3>
               <p className="text-[11px] text-text-secondary">
                 {tab === "login"

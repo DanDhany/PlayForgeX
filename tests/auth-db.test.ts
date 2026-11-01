@@ -193,7 +193,7 @@ describe("MySQL Database Schema, Connection Pool & Auth Service", () => {
       expect(admin.role).toBe("admin");
 
       // Can login with default credentials
-      const adminLogin = await login("admin", "tunebridge2026");
+      const adminLogin = await login("admin", "playforgex2026");
       expect(adminLogin.user.username).toBe("admin");
       expect(adminLogin.user.role).toBe("admin");
 

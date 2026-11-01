@@ -11,7 +11,7 @@ describe("MergeEngine Multi-Source Deduplication & Audit", () => {
   let engine: MergeEngine;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "tunebridge-merge-test-"));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "playforgex-merge-test-"));
     mgr = new AccountManager(tmpDir);
     engine = new MergeEngine(tmpDir, mgr);
   });

@@ -75,9 +75,9 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold tracking-tight text-text-primary">TuneBridge</span>
+                  <span className="text-sm font-semibold tracking-tight text-text-primary">PlayForgeX</span>
                   <span className="text-[10px] px-1.5 py-0.2 bg-accent/15 text-accent font-medium rounded-md border border-accent/20">
-                    v1.2
+                    v1.3
                   </span>
                 </div>
                 <p className="text-[11px] text-text-secondary truncate leading-tight">
@@ -174,7 +174,7 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
             <Disc3 className="w-3.5 h-3.5" />
           </div>
           <h1 className="text-sm font-semibold text-text-primary tracking-tight truncate">
-            TuneBridge
+            PlayForgeX
           </h1>
         </div>
 

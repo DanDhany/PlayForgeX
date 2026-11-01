@@ -8,7 +8,7 @@ describe("AccountManager Snapshot-based Mobile Client Import", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "tunebridge-snapshot-test-"));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "playforgex-snapshot-test-"));
   });
 
   afterEach(() => {

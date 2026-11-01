@@ -50,7 +50,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <span className="w-1 h-4 bg-service-apple rounded-full animate-eq-3" />
           </div>
           <span className="text-xs font-semibold text-text-secondary">
-            {isEn ? "TuneBridge • Your Music Woven Together" : "TuneBridge • Seluruh Musik Anda Menyatu"}
+            {isEn ? "PlayForgeX • Your Music Woven Together" : "PlayForgeX • Seluruh Musik Anda Menyatu"}
           </span>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/20 text-accent font-semibold font-mono">
             LIVE

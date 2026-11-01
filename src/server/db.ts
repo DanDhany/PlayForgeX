@@ -14,7 +14,7 @@ function getDbConfig(): PoolOptions {
     port: Number(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "",
-    database: process.env.DB_NAME || "tunebridge",
+    database: process.env.DB_NAME || "playforgex",
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
@@ -85,7 +85,7 @@ export async function closePool(): Promise<void> {
 }
 
 export async function initDatabase(): Promise<boolean> {
-  const dbName = process.env.DB_NAME || "tunebridge";
+  const dbName = process.env.DB_NAME || "playforgex";
 
   // First verify / create database if needed
   try {

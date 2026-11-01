@@ -99,7 +99,7 @@ function saveSession(data) {
   console.log(`✓ Sesi disimpan di ${SESSION_FILE}`);
 }
 
-async function registerToTuneBridge(payload) {
+async function registerToPlayForgeX(payload) {
   try {
     const res = await fetch(`${API_BASE}/api/accounts`, {
       method: "POST",
@@ -108,7 +108,7 @@ async function registerToTuneBridge(payload) {
     });
     if (res.ok) {
       const data = await res.json();
-      console.log(`\n✓ Sukses terdaftar di TuneBridge Multi-Account!`);
+      console.log(`\n✓ Sukses terdaftar di PlayForgeX Multi-Account!`);
       console.log(`  - Account ID : ${data.account?.id}`);
       console.log(`  - Local Alias: ${data.account?.localAlias}`);
       console.log(`  - Status     : ${data.account?.status}`);
@@ -118,7 +118,7 @@ async function registerToTuneBridge(payload) {
       console.warn(`! Server /api/accounts merespons: ${err}`);
     }
   } catch {
-    console.log(`! Catatan: Server TuneBridge (${API_BASE}) tidak dapat dijangkau. Sesi tetap tersimpan di file lokal.`);
+    console.log(`! Catatan: Server PlayForgeX (${API_BASE}) tidak dapat dijangkau. Sesi tetap tersimpan di file lokal.`);
   }
   return null;
 }
@@ -135,7 +135,7 @@ async function notifyDockerLegacy(endpoint, payload) {
 
 async function main() {
   const executablePath = findChromePath();
-  console.log(`\n🎵 TuneBridge Auto-Catch Multi-Account Launcher`);
+  console.log(`\n🎵 PlayForgeX Auto-Catch Multi-Account Launcher`);
   console.log(`===============================================`);
   console.log(`Target Platform : ${service.toUpperCase()}`);
   console.log(`Account Alias   : ${alias || "(Default / Primary)"}`);
@@ -143,7 +143,7 @@ async function main() {
   console.log(`Server Endpoint : ${API_BASE}/api/accounts`);
   console.log(`Launching Chrome: ${executablePath}\n`);
   console.log(`Silakan login seperti biasa di jendela Chrome yang terbuka.`);
-  console.log(`TuneBridge akan otomatis menangkap sesi login tanpa perlu membuka DevTools!\n`);
+  console.log(`PlayForgeX akan otomatis menangkap sesi login tanpa perlu membuka DevTools!\n`);
 
   const browser = await puppeteer.launch({
     executablePath,
@@ -217,7 +217,7 @@ async function main() {
           console.log(`\n🎉 Berhasil! Akun YouTube Music terverifikasi dan cookie sesi tertangkap!`);
           
           const accountAlias = alias || "Koleksi Utama (YouTube Music)";
-          await registerToTuneBridge({
+          await registerToPlayForgeX({
             platform: "youtube",
             cookieString,
             alias: accountAlias,
@@ -279,7 +279,7 @@ async function main() {
           console.log(`\n🎉 Berhasil! Token Apple Music tertangkap!`);
           
           const accountAlias = alias || "Koleksi Utama (Apple Music)";
-          await registerToTuneBridge({
+          await registerToPlayForgeX({
             platform: "apple",
             musicUserToken: userTok,
             developerToken: devTok || undefined,

@@ -10,51 +10,51 @@ export const FaqSection: React.FC = () => {
   const faqData = [
     {
       question: isEn
-        ? "How does TuneBridge transfer playlists between YouTube Music and Apple Music?"
-        : "Bagaimana TuneBridge memindahkan playlist dari YouTube Music ke Apple Music?",
+        ? "How does PlayForgeX transfer and merge playlists across streaming services?"
+        : "Bagaimana PlayForgeX memindahkan dan menggabungkan playlist antar platform musik?",
       answer: isEn
-        ? "TuneBridge fetches track listings from your source YouTube Music playlists, sanitizes video noise (such as 'Official 4K', 'Lyrics', or remux tags), and matches them to official Apple Music catalog releases. You can audit matches and listen to 30-second audio previews before confirming."
-        : "TuneBridge mengambil daftar lagu dari playlist YouTube Music Anda, lalu mencocokkannya ke katalog Apple Music menggunakan algoritma pencarian cerdas dengan prioritas judul asli dan filter kata kunci non-musik. Anda dapat mereview dan mendengarkan preview sebelum transfer disetujui.",
+        ? "PlayForgeX fetches track listings from your source platforms (YouTube Music, standard YouTube video playlists, Spotify, SoundCloud, Deezer, or local file lists), sanitizes noise tags, and maps them to your target catalog releases. You can audit matches and listen to 30-second audio previews before confirming."
+        : "PlayForgeX mengambil daftar lagu dari platform sumber (YouTube Music, playlist video YouTube biasa, Spotify, SoundCloud, Deezer, atau file lokal), membersihkan judul dari noise video, lalu mencocokkannya ke katalog tujuan. Anda dapat meninjau kecocokan dan mendengarkan preview sebelum transfer disetujui.",
     },
     {
       question: isEn
         ? "Do I need a paid Apple Developer subscription?"
         : "Apakah saya perlu akun Apple Developer yang berbayar?",
       answer: isEn
-        ? "No. TuneBridge connects through standard authenticated browser sessions (music.apple.com), completely removing the need to register for an Apple Developer subscription ($99/year)."
-        : "Tidak. TuneBridge menggunakan token autentikasi web resmi yang dihasilkan saat Anda login di browser (music.apple.com), sehingga tidak memerlukan pendaftaran akun Apple Developer seharga $99/tahun.",
+        ? "No. PlayForgeX connects through standard authenticated browser sessions (music.apple.com), completely removing the need to register for an Apple Developer subscription ($99/year)."
+        : "Tidak. PlayForgeX menggunakan token autentikasi web resmi yang dihasilkan saat Anda login di browser (music.apple.com), sehingga tidak memerlukan pendaftaran akun Apple Developer seharga $99/tahun.",
     },
     {
       question: isEn
         ? "Can I connect multiple accounts and merge their playlists?"
-        : "Apakah saya bisa menghubungkan beberapa akun YouTube Music sekaligus?",
+        : "Apakah saya bisa menghubungkan beberapa akun sekaligus?",
       answer: isEn
-        ? "Yes. Connect work, personal, and friends' accounts concurrently. TuneBridge's deduplication engine automatically detects duplicate recordings across playlists while preserving authentic live and remix versions."
-        : "Ya. Anda bisa menghubungkan akun pribadi, akun kantor, atau akun kiriman teman secara bersamaan. TuneBridge menggabungkan lagu dan membersihkan duplikat secara otomatis.",
+        ? "Yes. Connect work, personal, and friends' accounts concurrently. PlayForgeX's deduplication engine automatically detects duplicate recordings across playlists while preserving authentic live and remix versions."
+        : "Ya. Anda bisa menghubungkan akun pribadi, akun kantor, atau akun kiriman teman secara bersamaan. PlayForgeX menggabungkan lagu dan membersihkan duplikat secara otomatis.",
     },
     {
       question: isEn
         ? "Where are my accounts, tokens, and playlists stored?"
         : "Di mana data akun, token, dan playlist saya disimpan?",
       answer: isEn
-        ? "All credentials and playlists are encrypted strictly inside your private local storage vault on your own computer. TuneBridge operates with zero cloud tracking and zero remote telemetry."
-        : "Semua data tersimpan aman di komputer lokal Anda menggunakan vault terenkripsi pribadi. TuneBridge adalah aplikasi mandiri tanpa tracking pihak ketiga atau server perantara di cloud.",
+        ? "All credentials and playlists are encrypted strictly inside your private local storage vault on your own computer. PlayForgeX operates with zero cloud tracking and zero remote telemetry."
+        : "Semua data tersimpan aman di komputer lokal Anda menggunakan vault terenkripsi pribadi. PlayForgeX adalah aplikasi mandiri tanpa tracking pihak ketiga atau server perantara di cloud.",
     },
     {
       question: isEn
         ? "How do I connect accounts directly from my phone (iPhone or Android)?"
         : "Bagaimana cara menghubungkan akun dari browser HP (iPhone / Android)?",
       answer: isEn
-        ? "Simply open your local TuneBridge address in mobile Safari or Chrome over your home Wi-Fi, then tap the one-touch bookmarklet to securely link your accounts without typing raw cookies."
-        : "Anda dapat membuka antarmuka TuneBridge melalui jaringan Wi-Fi lokal di browser HP Anda, lalu menggunakan bookmarklet satu sentuhan untuk menghubungkan akun dengan praktis.",
+        ? "Simply open your local PlayForgeX address in mobile Safari or Chrome over your home Wi-Fi, then tap the one-touch bookmarklet to securely link your accounts without typing raw cookies."
+        : "Anda dapat membuka antarmuka PlayForgeX melalui jaringan Wi-Fi lokal di browser HP Anda, lalu menggunakan bookmarklet satu sentuhan untuk menghubungkan akun dengan praktis.",
     },
     {
       question: isEn
-        ? "Which music platforms are planned next?"
-        : "Platform musik apa saja yang akan didukung selanjutnya?",
+        ? "Which music platforms are supported in PlayForgeX?"
+        : "Platform musik apa saja yang didukung di PlayForgeX?",
       answer: isEn
-        ? "YouTube Music and Apple Music are fully active today. Extended support for Spotify, Tidal Hi-Fi, Deezer, SoundCloud, and self-hosted media servers (Navidrome/Subsonic/Jellyfin) is actively on the roadmap."
-        : "Saat ini YouTube Music dan Apple Music aktif penuh. Dukungan lanjutan untuk Spotify, Tidal Hi-Fi, Deezer, SoundCloud, dan server musik mandiri (Navidrome/Subsonic) sedang disiapkan di roadmap.",
+        ? "YouTube Music, YouTube Video playlists, Apple Music, Spotify, SoundCloud, Deezer, and File/Text imports (M3U/CSV/JSON) are active. Extended support for Tidal Hi-Fi and self-hosted media servers (Navidrome/Subsonic) is actively in development."
+        : "YouTube Music, playlist video YouTube biasa, Apple Music, Spotify, SoundCloud, Deezer, serta impor File/Teks (M3U/CSV/JSON) sudah aktif. Dukungan lanjutan untuk Tidal Hi-Fi dan server musik mandiri (Navidrome/Subsonic) sedang dalam pengembangan.",
     },
   ];
 
@@ -80,7 +80,7 @@ export const FaqSection: React.FC = () => {
         <p className="mt-2 text-sm text-text-secondary max-w-xl">
           {isEn
             ? "Clear, transparent answers on workflow, data privacy, and supported platforms."
-            : "Jawaban lugas seputar cara kerja, privasi data lokal, dan dukungan platform di TuneBridge."}
+            : "Jawaban lugas seputar cara kerja, privasi data lokal, dan dukungan platform di PlayForgeX."}
         </p>
       </div>
 

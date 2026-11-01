@@ -1,8 +1,8 @@
 {
-  "name": "tunebridge",
+  "name": "playforgex",
   "version": "1.0.0",
   "type": "module",
-  "description": "TuneBridge — Universal Music Library & Migration Hub with original title priority and zero developer account requirement",
+  "description": "PlayForgeX — Universal Music Library & Migration Hub. Cross-platform song migration, multi-account collection merge, and mix-and-match workflows.",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",

@@ -662,7 +662,7 @@ export class YouTubeMusicClient {
 
   public async createPlaylist(
     title: string,
-    description = "Imported from Apple Music via TuneBridge",
+    description = "Imported via PlayForgeX",
     videoIds: string[] = []
   ): Promise<string> {
     if (!this.hasValidAuth()) {

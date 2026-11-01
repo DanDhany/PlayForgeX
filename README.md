@@ -1,58 +1,61 @@
-# TuneBridge 🎵
+# PlayForgeX 🎵
 
 > **Universal Music Library & Migration Hub**  
-> Connect multiple streaming accounts, merge playlists with original-title precision, and manage your music library without third-party fees.
+> The all-in-one platform to migrate, merge, and mix-and-match playlists across YouTube Music, standard YouTube Video playlists, Apple Music, Spotify, SoundCloud, Deezer, and local files (M3U/CSV/JSON)—100% self-hosted, private, and unlimited.
 
 ---
 
 ## 🌟 Highlights
 
-1. **Multi-Account Music Library**
-   - Connect multiple accounts from YouTube Music and Apple Music locally (for example: 3 YouTube accounts merged into a single Apple Music destination).
-   - Merge playlists across accounts with variant-aware deduplication.
-   - Credentials remain local on your machine with zero cloud relay.
+1. **Multi-Source Merge & Mix-and-Match**
+   - Connect multiple accounts and services concurrently (for example: merge 2 YouTube Music accounts, a YouTube video playlist, and a Spotify public playlist into one master Apple Music library).
+   - Flexible deduplication policies: remove exact audio duplicates while preserving authentic live recordings, acoustic covers, and remixes.
+   - All credentials and library snapshots remain private inside your local database with zero remote cloud tracking.
 
-2. **Smart Deduplication & Variant Protection**
-   - Strips exact duplicate tracks across aggregated sources.
-   - Detects and preserves intentional song variants: Live, Acoustic, Remix, and Instrumental versions.
+2. **Standard YouTube Video Playlist Support (`youtube_video`)**
+   - Ingest standard YouTube video playlists (`youtube.com/playlist?list=...`) or video IDs directly.
+   - Smart Title Sanitizer automatically scrubs video noise (`[Official Video]`, `[MV]`, `(Lyrics)`, `4K`, `60fps`, remux tags) to recover clean studio artist and track names.
+   - Video ID retention: preserves original `videoId` and generates direct links back to original videos.
 
-3. **User Authentication & Role-Based Access Control**
-   - Secure login & registration with pure scrypt password hashing and session tokens.
-   - Role-based permissions: `admin`, `editor`, and `viewer` with automatic default admin seeding.
-   - Multi-tenant data isolation for connected accounts, migration drafts, and activity logs.
+3. **Multi-Platform Extensibility Architecture**
+   - **YouTube Music** (`active`): Live bidirectional sync, stealth session support, mobile 1-tap bookmarklet.
+   - **YouTube Video Playlists** (`active`): Standard video playlist ingestion with noise stripping.
+   - **Apple Music** (`active`): Lossless catalog search, 30-second audio previews, and instant playlist creation.
+   - **Spotify** (`active`): Public playlist URL and embed ingestion without developer credentials, plus full Spotify Web API support.
+   - **SoundCloud** (`active`): Ingest indie tracks, underground live sets, and DJ mixes from SoundCloud sets.
+   - **Deezer** (`active`): Open REST API integration with lossless metadata and instant track resolution.
+   - **File / Text Ingestion** (`active`): Import playlists from M3U, M3U8, CSV, plain text lists (`Artist - Title`), and Soundiiz/PlayForgeX JSON snapshots.
+   - **Tidal Hi-Fi & Subsonic / Navidrome** (`planned`): Roadmapped self-hosted and audiophile connectors.
 
-4. **Original-Title-First Matching Engine**
-   - Built to resolve cross-platform matching failures on non-Latin characters (Japanese Kanji, Hiragana, Katakana, Korean Hangul, Arabic).
-   - Cleans video metadata noise tags (`[Official Video]`, `MV`, `【Official MV】`, `(Audio)`) while keeping original song titles intact for catalog search.
+4. **User Authentication & Multi-Tenant Data Isolation**
+   - Secure authentication with scrypt password hashing and stateless token verification.
+   - Role-based permissions (`admin` and `user`).
+   - Tenant isolation: non-admin users only view their own accounts and logs, while administrators have full user management and audit capabilities.
 
-5. **Linear-Style Dark Interface**
-   - Responsive layout designed for desktop and mobile screens with tab navigation and authentication modal.
-   - Emil Kowalski micro-interactions and tactile feedback.
-   - 6 functional modules: Overview, Transfer Studio, Library, Accounts, Activity Audit Log, Settings.
-
-6. **Rate-Limit & Session Protection**
-   - Built-in circuit breaker backoff upon receiving HTTP 429 status codes.
-   - Natural request spacing to keep sessions healthy.
+5. **Linear × Apple Music Interface**
+   - Responsive layout designed for desktop, tablet, and mobile devices (with portrait and landscape support).
+   - Audio preview bar: listen to real 30-second catalog snippets before committing transfers.
+   - Multi-language support: English (default) and Indonesian (`id`) with instant runtime switching.
 
 ---
 
 ## 🔑 Default Administrator Credentials
 
-When starting TuneBridge for the first time, a default administrator account is seeded:
+When starting PlayForgeX for the first time, a default administrator account is seeded:
 
 | Parameter | Value |
 | :--- | :--- |
 | **Username** | `admin` |
-| **Password** | `tunebridge2026` |
+| **Password** | `playforgex2026` |
 | **Role** | `admin` (Full administrative privileges, user management, and cross-user activity audits) |
 
-> 🔒 *Security Note*: Change this password or manage other user accounts via the **Users** management tab once signed in. Regular users registering via the app only have access to their own connected accounts and activity logs.
+> 🔒 *Security Note*: These credentials are for initial local setup. You can update credentials or manage additional users from the **Users** tab inside the application. Regular users registering via the app only access their own connected accounts and activity logs.
 
 ---
 
 ## 🗄️ Database Setup (MySQL)
 
-TuneBridge supports MySQL for persistent caching, playlist storage, and migration logs. You can run MySQL either via Homebrew (recommended for local macOS development) or via Docker Compose.
+PlayForgeX supports MySQL for persistent caching, playlist storage, and migration logs. You can run MySQL either via Homebrew (recommended for local macOS development) or via Docker Compose.
 
 ### Option A: Homebrew MySQL (Default for Local macOS)
 
@@ -62,7 +65,7 @@ brew install mysql
 brew services start mysql
 
 # Create database
-mysql -u root -e "CREATE DATABASE IF NOT EXISTS tunebridge CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS playforgex CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
 Default connection configuration (`.env` or environment variables):
@@ -71,7 +74,7 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=
-DB_NAME=tunebridge
+DB_NAME=playforgex
 ```
 
 ### Option B: Docker Compose with MySQL
@@ -79,7 +82,7 @@ DB_NAME=tunebridge
 If you prefer containerized services, run Docker Compose with the `with-db` profile:
 
 ```bash
-# Launch TuneBridge and containerized MySQL
+# Launch PlayForgeX and containerized MySQL
 docker compose --profile with-db up -d
 
 # MySQL data is persisted in ./data/mysql
@@ -104,8 +107,8 @@ docker compose up -d
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/TuneBridge.git
-cd TuneBridge
+git clone https://github.com/DanDhany/PlayForgeX.git
+cd PlayForgeX
 
 # Install dependencies
 npm install
@@ -132,9 +135,10 @@ npm run build
 ## 🛠️ Project Structure
 
 ```
-TuneBridge
+PlayForgeX
 ├── src/
 │   ├── core/
+│   │   ├── adapters/           # Modular platform adapters (YouTube, Spotify, SoundCloud, Deezer, File, etc.)
 │   │   ├── sanitizer.ts        # Unicode NFKC & noise tag stripper (preserves non-Latin)
 │   │   ├── matcher.ts          # Weighted scoring engine (Title / Artist / Album)
 │   │   ├── ytmusic.ts          # SAPISIDHASH generator & YouTube Music API client
@@ -152,6 +156,7 @@ TuneBridge
 │   ├── renderer/
 │   │   ├── components/
 │   │   │   ├── NavigationRail.tsx         # Linear-style navigation (desktop rail & mobile bottom bar)
+│   │   │   ├── landing/                   # High-craft animated landing page components
 │   │   │   ├── auth/                      # Login, register, user profile & permissions dialogs
 │   │   │   ├── views/
 │   │   │   │   ├── OverviewView.tsx       # System health, metrics & quick start
@@ -160,7 +165,7 @@ TuneBridge
 │   │   │   │   ├── AccountsView.tsx       # Multi-account connection manager
 │   │   │   │   ├── ActivityView.tsx       # Transfer audit trail
 │   │   │   │   └── SettingsView.tsx       # Algorithm weights & connection settings
-│   │   │   ├── AddAccountModal.tsx        # 1-Click bookmarklet & token input
+│   │   │   ├── AddAccountModal.tsx        # Multi-platform connection & import modal
 │   │   │   ├── ReviewStudio.tsx           # Track matching review interface
 │   │   │   ├── TrackRow.tsx               # Track comparison row with audio preview
 │   │   │   ├── AlternativePickerModal.tsx # Interactive catalog search & alternative picker
@@ -168,9 +173,9 @@ TuneBridge
 │   │   │   └── TransferProgressModal.tsx  # Live progress modal
 │   │   └── App.tsx                        # Root layout orchestrator
 │   └── shared/
-│       ├── types.ts            # Shared domain types & multi-account models
+│       ├── types.ts            # Shared domain types & multi-platform models
 │       └── ipc.ts              # Electron IPC channel contracts
-├── tests/                      # Vitest test suites (19 test suites, 95 tests)
+├── tests/                      # Vitest test suites
 ├── docker-compose.yml          # Container configuration (with-db profile for MySQL)
 └── Dockerfile                  # Application container definition
 ```
@@ -179,9 +184,9 @@ TuneBridge
 
 ## 🔒 Privacy & Security
 
-- **Local Execution:** All API calls originate directly from your machine to `music.youtube.com` and `amp-api.music.apple.com`.
-- **No Cloud Relay:** Account tokens are saved in `data/secrets.json` and are never exposed outside your local environment.
-- **Direct Service Communication:** No third-party proxy sits between your browser and the music services.
+- **Local Execution:** All API calls originate directly from your machine.
+- **Zero Cloud Relay:** Account tokens, cookies, and local database entries never leave your computer.
+- **Git Safety:** User session tokens, cookies, and `data/` caches are strictly `.gitignore`d and never committed.
 
 ---
 

@@ -27,7 +27,7 @@ export const HowItWorksSection: React.FC = () => {
           { label: isEn ? "Account 2" : "Akun 2", value: isEn ? "Personal Library (45 Playlists)" : "YouTube Pribadi (45 Playlist)", badge: isEn ? "Active" : "Aktif" },
           { label: isEn ? "Destination" : "Tujuan", value: isEn ? "Primary Apple Music" : "Apple Music Pribadi", badge: isEn ? "Ready" : "Siap Tulis" },
         ],
-        codeSnippet: `[TuneBridge] Initialized multi-account bridge session
+        codeSnippet: `[PlayForgeX] Initialized multi-account bridge session
 [Account: YTM Office] Connected • 32 Playlists indexed
 [Account: YTM Personal] Connected • 45 Playlists indexed
 [Target: Apple Music] Authenticated • Ready for lossless export`,
@@ -37,8 +37,8 @@ export const HowItWorksSection: React.FC = () => {
       number: "02",
       title: isEn ? "Smart Sanitization & Deep Matching" : "Pembersihan & Pencocokan Cerdas",
       subtitle: isEn
-        ? "TuneBridge's engine strips video noise ('Official 4K', 'Lyrics', remux tags) and harmonizes duplicates while preserving authentic live/remix editions."
-        : "Algoritma TuneBridge membuang noise judul video ('Official 4K', 'Lyrics') dan menggabungkan lagu duplikat tanpa menghilangkan versi live orisinal.",
+        ? "PlayForgeX's engine strips video noise ('Official 4K', 'Lyrics', remux tags) and harmonizes duplicates while preserving authentic live/remix editions."
+        : "Algoritma PlayForgeX membuang noise judul video ('Official 4K', 'Lyrics') dan menggabungkan lagu duplikat tanpa menghilangkan versi live orisinal.",
       icon: Sparkles,
       tag: isEn ? "Title-Priority Matcher" : "Title-Priority Matcher",
       preview: {
@@ -92,7 +92,7 @@ export const HowItWorksSection: React.FC = () => {
             <span>{isEn ? "Three-Step Workflow" : "Alur Kerja Tiga Langkah"}</span>
           </div>
           <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-text-primary max-w-2xl leading-tight">
-            {isEn ? "How TuneBridge Unifies Your Music." : "Bagaimana TuneBridge Menyatukan Musik Anda."}
+            {isEn ? "How PlayForgeX Unifies Your Music." : "Bagaimana PlayForgeX Menyatukan Musik Anda."}
           </h2>
           <p className="mt-4 text-sm sm:text-base text-text-secondary max-w-xl">
             {isEn
@@ -160,7 +160,7 @@ export const HowItWorksSection: React.FC = () => {
                   <div className="w-3 h-3 rounded-full bg-amber-500/80" />
                   <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
                   <span className="ml-2 text-xs font-mono text-text-muted">
-                    tunebridge://workflow/step-{current.number}
+                    playforgex://workflow/step-{current.number}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[11px] text-text-muted font-mono">

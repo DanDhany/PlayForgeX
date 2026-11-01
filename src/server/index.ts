@@ -18,6 +18,7 @@ import {
 } from "./matcher-worker.js";
 import { AccountManager } from "./account-manager.js";
 import { MergeEngine } from "./merge-engine.js";
+import { PlatformRegistry } from "../core/platform-registry.js";
 import { initDatabase, isDbConnected } from "./db.js";
 import * as authService from "./auth-service.js";
 
@@ -59,12 +60,12 @@ const authMiddleware = async (req: Request, _res: Response, next: any) => {
     const cookieHeader = req.headers.cookie;
     let cookieToken: string | undefined;
     if (cookieHeader) {
-      const match = cookieHeader.match(/tb_token=([^;]+)/);
+      const match = cookieHeader.match(/pfx_token=([^;]+)/);
       if (match) cookieToken = match[1];
     }
     const token = authHeader?.startsWith("Bearer ")
       ? authHeader.slice(7)
-      : (cookieToken || (req.headers["x-tunebridge-token"] as string | undefined));
+      : (cookieToken || (req.headers["x-playforgex-token"] as string | undefined));
 
     if (token) {
       const user = await authService.verifyToken(token);
@@ -105,7 +106,7 @@ app.post("/api/auth/register", async (req: Request, res: Response) => {
   try {
     await authService.register(username, password, role || "user");
     const session = await authService.login(username, password);
-    res.cookie("tb_token", session.token, { httpOnly: true, sameSite: "lax", path: "/" });
+    res.cookie("pfx_token", session.token, { httpOnly: true, sameSite: "lax", path: "/" });
     res.json({ success: true, user: session.user, token: session.token });
   } catch (err: any) {
     res.status(400).json({ error: err.message || "Registration failed" });
@@ -121,7 +122,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
 
   try {
     const session = await authService.login(username, password);
-    res.cookie("tb_token", session.token, { httpOnly: true, sameSite: "lax", path: "/" });
+    res.cookie("pfx_token", session.token, { httpOnly: true, sameSite: "lax", path: "/" });
     res.json({ success: true, user: session.user, token: session.token });
   } catch (err: any) {
     res.status(401).json({ error: err.message || "Invalid username or password" });
@@ -205,11 +206,33 @@ app.get("/api/accounts", async (req: Request, res: Response) => {
 
 // POST /api/accounts - Add a new connection
 app.post("/api/accounts", async (req: Request, res: Response) => {
-  const { platform, cookieString, musicUserToken, developerToken, alias } = req.body;
+  const {
+    platform,
+    cookieString,
+    musicUserToken,
+    developerToken,
+    alias,
+    playlistUrl,
+    playlistId,
+    accessToken,
+    setUrl,
+    content,
+    playlists,
+  } = req.body;
   const userId = (req as any).user?.id;
 
-  if (platform !== "youtube" && platform !== "apple") {
-    return res.status(400).json({ error: "platform must be 'youtube' or 'apple'" });
+  const validPlatforms = [
+    "youtube",
+    "youtube_video",
+    "apple",
+    "spotify",
+    "soundcloud",
+    "deezer",
+    "file",
+  ];
+
+  if (!validPlatforms.includes(platform)) {
+    return res.status(400).json({ error: `Platform must be one of: ${validPlatforms.join(", ")}` });
   }
 
   const cleanAlias = typeof alias === "string" ? alias.trim() : "";
@@ -222,9 +245,113 @@ app.post("/api/accounts", async (req: Request, res: Response) => {
       if (!cookieString) return res.status(400).json({ error: "cookieString is required for YouTube Music" });
       const acc = await accountManager.addYouTubeAccount(cookieString, cleanAlias, userId);
       return res.json({ success: true, account: acc });
-    } else {
+    } else if (platform === "apple") {
       if (!musicUserToken) return res.status(400).json({ error: "musicUserToken is required for Apple Music" });
       const acc = await accountManager.addAppleAccount(musicUserToken, developerToken, cleanAlias, undefined, userId);
+      return res.json({ success: true, account: acc });
+    } else if (platform === "youtube_video") {
+      const targetInput = playlistUrl || playlistId || cookieString;
+      if (!targetInput) return res.status(400).json({ error: "playlistUrl or playlistId is required for YouTube Video" });
+      const adapter = PlatformRegistry.getAdapter("youtube_video") as any;
+      const normId = adapter.normalizePlaylistId(targetInput);
+      const tracks = await adapter.fetchPlaylistTracks(normId);
+      const acc = accountManager.importSnapshotAccount(
+        cleanAlias,
+        [
+          {
+            id: normId,
+            title: cleanAlias,
+            trackCount: tracks.length,
+            tracks,
+            thumbnailUrl: tracks[0]?.thumbnailUrl,
+          },
+        ],
+        userId,
+        "youtube_video"
+      );
+      return res.json({ success: true, account: acc });
+    } else if (platform === "spotify") {
+      const targetInput = playlistUrl || playlistId || accessToken;
+      if (!targetInput) return res.status(400).json({ error: "playlistUrl, playlistId, or accessToken is required for Spotify" });
+      const adapter = PlatformRegistry.getAdapter("spotify") as any;
+      const cleanId = adapter.extractPlaylistId(targetInput);
+      const result = await adapter.fetchViaPublicEmbed(cleanId);
+      const acc = accountManager.importSnapshotAccount(
+        cleanAlias,
+        [
+          {
+            id: cleanId,
+            title: result.title || cleanAlias,
+            trackCount: result.tracks.length,
+            tracks: result.tracks,
+            thumbnailUrl: result.tracks[0]?.thumbnailUrl,
+          },
+        ],
+        userId,
+        "spotify"
+      );
+      return res.json({ success: true, account: acc });
+    } else if (platform === "soundcloud") {
+      const targetUrl = setUrl || playlistUrl || playlistId;
+      if (!targetUrl) return res.status(400).json({ error: "setUrl is required for SoundCloud" });
+      const adapter = PlatformRegistry.getAdapter("soundcloud") as any;
+      const tracks = await adapter.fetchPlaylistTracks(targetUrl);
+      const acc = accountManager.importSnapshotAccount(
+        cleanAlias,
+        [
+          {
+            id: targetUrl,
+            title: cleanAlias,
+            trackCount: tracks.length,
+            tracks,
+            thumbnailUrl: tracks[0]?.thumbnailUrl,
+          },
+        ],
+        userId,
+        "soundcloud"
+      );
+      return res.json({ success: true, account: acc });
+    } else if (platform === "deezer") {
+      const targetId = playlistId || playlistUrl;
+      if (!targetId) return res.status(400).json({ error: "playlistId or playlistUrl is required for Deezer" });
+      const adapter = PlatformRegistry.getAdapter("deezer") as any;
+      const cleanId = adapter.extractPlaylistId(targetId);
+      const pls = await adapter.fetchPlaylists(cleanId);
+      const tracks = await adapter.fetchPlaylistTracks(cleanId);
+      const plTitle = pls[0]?.title || cleanAlias;
+      const acc = accountManager.importSnapshotAccount(
+        cleanAlias,
+        [
+          {
+            id: cleanId,
+            title: plTitle,
+            trackCount: tracks.length,
+            tracks,
+            thumbnailUrl: pls[0]?.thumbnailUrl || tracks[0]?.thumbnailUrl,
+          },
+        ],
+        userId,
+        "deezer"
+      );
+      return res.json({ success: true, account: acc });
+    } else if (platform === "file") {
+      const text = content || (playlists ? JSON.stringify(playlists) : "");
+      if (!text) return res.status(400).json({ error: "content is required for File/Text import" });
+      const adapter = PlatformRegistry.getAdapter("file") as any;
+      const parsed = adapter.parseContent(text, cleanAlias);
+      const acc = accountManager.importSnapshotAccount(
+        cleanAlias,
+        [
+          {
+            id: `file_${Date.now()}`,
+            title: parsed.title || cleanAlias,
+            trackCount: parsed.tracks.length,
+            tracks: parsed.tracks,
+          },
+        ],
+        userId,
+        "file"
+      );
       return res.json({ success: true, account: acc });
     }
   } catch (err: any) {
@@ -386,7 +513,7 @@ app.post("/api/auth/web-catch", async (req: Request, res: Response) => {
         <body style="background:#0B0C0F;color:#F5F5F7;font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;padding:32px;text-align:center;">
           <h2 style="color:#FF777F;">Platform Tidak Dikenal</h2>
           <p style="color:#A3A8B5;">Platform harus 'youtube' atau 'apple'.</p>
-          <a href="/#tab=accounts" style="display:inline-block;margin-top:16px;padding:10px 24px;background:#A99BFF;color:#0B0C0F;text-decoration:none;border-radius:12px;font-weight:600;">Kembali ke TuneBridge</a>
+          <a href="/#tab=accounts" style="display:inline-block;margin-top:16px;padding:10px 24px;background:#A99BFF;color:#0B0C0F;text-decoration:none;border-radius:12px;font-weight:600;">Kembali ke PlayForgeX</a>
         </body>
       </html>
     `);
@@ -401,7 +528,7 @@ app.post("/api/auth/web-catch", async (req: Request, res: Response) => {
         <body style="background:#0B0C0F;color:#F5F5F7;font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;padding:32px;text-align:center;">
           <h2 style="color:#FF777F;">Nama Akun Diperlukan</h2>
           <p style="color:#A3A8B5;">Nama akun wajib ditentukan terlebih dahulu di aplikasi sebelum menghubungkan sesi.</p>
-          <a href="/#tab=accounts" style="display:inline-block;margin-top:16px;padding:10px 24px;background:#A99BFF;color:#0B0C0F;text-decoration:none;border-radius:12px;font-weight:600;">Kembali ke TuneBridge</a>
+          <a href="/#tab=accounts" style="display:inline-block;margin-top:16px;padding:10px 24px;background:#A99BFF;color:#0B0C0F;text-decoration:none;border-radius:12px;font-weight:600;">Kembali ke PlayForgeX</a>
         </body>
       </html>
     `);
@@ -444,7 +571,7 @@ app.post("/api/auth/web-catch", async (req: Request, res: Response) => {
         <body style="background:#0B0C0F;color:#F5F5F7;font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;padding:32px;text-align:center;">
           <h2 style="color:#FF777F;margin-bottom:8px;">Gagal Menghubungkan Akun</h2>
           <p style="color:#A3A8B5;margin-bottom:20px;font-size:14px;max-width:480px;margin-left:auto;margin-right:auto;">${err.message || "Terjadi kesalahan saat memproses sesi."}</p>
-          <a href="/#tab=accounts" style="display:inline-block;padding:10px 24px;background:#A99BFF;color:#0B0C0F;text-decoration:none;border-radius:12px;font-weight:600;">Kembali ke TuneBridge</a>
+          <a href="/#tab=accounts" style="display:inline-block;padding:10px 24px;background:#A99BFF;color:#0B0C0F;text-decoration:none;border-radius:12px;font-weight:600;">Kembali ke PlayForgeX</a>
         </body>
       </html>
     `);
@@ -471,7 +598,7 @@ app.post("/api/auth/logout", async (req: Request, res: Response) => {
     if (primaryApple) accountManager.removeAccount(primaryApple.id);
   }
 
-  res.clearCookie("tb_token", { path: "/" });
+  res.clearCookie("pfx_token", { path: "/" });
   res.json({ success: true });
 });
 
@@ -876,7 +1003,7 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
 
         destinationId = await ytClient.createPlaylist(
           playlistTitle,
-          "Imported via TuneBridge",
+          "Imported via PlayForgeX",
           initialBatch
         );
         success += initialBatch.length;
@@ -956,7 +1083,7 @@ if (fs.existsSync(distDir)) {
 let server: any = null;
 if (process.env.NODE_ENV !== "test") {
   server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`TuneBridge Server running at http://0.0.0.0:${PORT}`);
+    console.log(`PlayForgeX Server running at http://0.0.0.0:${PORT}`);
     console.log(`Persistent data directory: ${DATA_DIR}`);
   });
 }

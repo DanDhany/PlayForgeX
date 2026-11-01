@@ -1,18 +1,18 @@
-# TuneBridge Full Rebrand, MySQL Database, User Auth, Landing Page & Multi-Platform Extensibility
+# PlayForgeX Full Rebrand, MySQL Database, User Auth, Landing Page & Multi-Platform Extensibility
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Transform the project into TuneBridge by removing all legacy branding, implementing a persistent MySQL database with multi-user authentication (login/register), connecting by default to Homebrew MySQL on the host while providing a disabled-by-default persistent MySQL Docker service profile, migrating existing progress and state into the initial admin account, designing an Apple Music × Linear landing page, and introducing an extensible music platform adapter architecture (YouTube Music, Apple Music active; Spotify, Tidal, Deezer, SoundCloud, Navidrome extensible).
+**Goal:** Transform the project into PlayForgeX by removing all legacy branding, implementing a persistent MySQL database with multi-user authentication (login/register), connecting by default to Homebrew MySQL on the host while providing a disabled-by-default persistent MySQL Docker service profile, migrating existing progress and state into the initial admin account, designing an Apple Music × Linear landing page, and introducing an extensible music platform adapter architecture (YouTube Music, Apple Music active; Spotify, Tidal, Deezer, SoundCloud, Navidrome extensible).
 
 **Architecture:** A MySQL database layer (`src/server/db.ts`) powered by `mysql2/promise` with automatic schema migrations and password hashing (`node:crypto` scrypt). By default, the application connects to local Homebrew MySQL (`localhost` or `host.docker.internal`), with environment variable overrides (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`). A persistent MySQL container service is configured in `docker-compose.yml` under an optional profile (`profiles: ["with-db"]`) with volume mount `./data/mysql:/var/lib/mysql`. Multi-user authentication isolates accounts and playlists, and startup migration attaches existing legacy data (`data/accounts.json`, `data/secrets.json`, snapshots) to the default admin user. A modular `MusicPlatformProvider` registry defines platform capabilities, while the frontend features an Apple Music × Linear landing page, interactive migration preview, and auth modal.
 
 **Tech Stack:** TypeScript, React 18, Tailwind CSS, Vite, Express 5, Node 22, MySQL (`mysql2/promise`), `node:crypto`, Vitest, Docker Compose.
 
-**Spec:** User specification for complete rebranding to TuneBridge, persistent MySQL database (Homebrew host connection with disabled Docker compose service), user registration & login, migration of existing state to admin, landing page, and all-platform extensibility.
+**Spec:** User specification for complete rebranding to PlayForgeX, persistent MySQL database (Homebrew host connection with disabled Docker compose service), user registration & login, migration of existing state to admin, landing page, and all-platform extensibility.
 
 ## Global Constraints
 
-- **Branding:** Completely remove all mentions of "MirrorSong", "mirrorsong", and "music2anywhere" across code, package configuration, Docker services, UI copy, and documentation. Use "TuneBridge" / "tunebridge".
+- **Branding:** Completely remove all mentions of "MirrorSong", "mirrorsong", and "music2anywhere" across code, package configuration, Docker services, UI copy, and documentation. Use "PlayForgeX" / "playforgex".
 - **Database Engine:** MySQL 8.x using `mysql2/promise`. Must connect to Homebrew MySQL on host (`localhost` / `host.docker.internal`) by default.
 - **Docker Compose MySQL Service:** Include a persistent MySQL service with volume `./data/mysql:/var/lib/mysql` under `profiles: ["with-db"]` so it remains disabled by default for the user's host MySQL setup, but is easily enabled for standalone deployments.
 - **Data Continuity:** Existing local connections (`acc_ytm_primary`, `acc_apple_primary`, snapshots, drafts) must automatically migrate to the default admin account in MySQL on first boot.
@@ -29,7 +29,7 @@
 
 ---
 
-### Task 1: Complete Branding Purge & Rebrand to TuneBridge
+### Task 1: Complete Branding Purge & Rebrand to PlayForgeX
 
 **Files:**
 - Modify: `package.json`
@@ -42,22 +42,22 @@
 - Modify: `src/renderer/components/NavigationRail.tsx`
 
 **Interfaces:**
-- Package name: `tunebridge` (was `mirrorsong`)
-- Container name: `tunebridge-app` (was `music2anywhere-app`)
-- Image name: `tunebridge-app` (was `mirrorsong-app`)
-- Window / HTML Title: `TuneBridge — Universal Music Library & Migration Hub`
+- Package name: `playforgex` (was `mirrorsong`)
+- Container name: `playforgex-app` (was `music2anywhere-app`)
+- Image name: `playforgex-app` (was `mirrorsong-app`)
+- Window / HTML Title: `PlayForgeX — Universal Music Library & Migration Hub`
 
 - [ ] **Step 1: Write verification test for package and branding metadata in `tests/branding.test.ts`**
 - [ ] **Step 2: Update `package.json`, `docker-compose.yml`, `Dockerfile`, and `index.html`**
 - [ ] **Step 3: Update `docker-compose.yml` with disabled-by-default MySQL service (`profiles: ["with-db"]`) and volume `./data/mysql:/var/lib/mysql`**
-- [ ] **Step 4: Update `README.md` with TuneBridge branding, MySQL configuration docs, and multi-account architecture**
+- [ ] **Step 4: Update `README.md` with PlayForgeX branding, MySQL configuration docs, and multi-account architecture**
 - [ ] **Step 5: Update UI headers and text across navigation components**
 - [ ] **Step 6: Run tests and verify build**
 - [ ] **Step 7: Commit branding changes**
 
 ```bash
 git add package.json docker-compose.yml Dockerfile index.html README.md src/ tests/
-git commit -m "chore(branding): rename all services and repository references to TuneBridge"
+git commit -m "chore(branding): rename all services and repository references to PlayForgeX"
 ```
 
 ---
@@ -169,7 +169,7 @@ git commit -m "feat(core): introduce extensible multi-platform provider registry
 
 ---
 
-### Task 4: High-Craft Editorial Landing Page for TuneBridge
+### Task 4: High-Craft Editorial Landing Page for PlayForgeX
 
 **Files:**
 - Create: `src/renderer/components/landing/LandingPage.tsx`
@@ -191,13 +191,13 @@ git commit -m "feat(core): introduce extensible multi-platform provider registry
 - [ ] **Step 2: Build `HeroSection.tsx` with bold typography, call-to-action buttons ("Buka Studio" / "Mulai Sekarang"), and live preview**
 - [ ] **Step 3: Build `PlatformMatrixSection.tsx` showing supported services and roadmap**
 - [ ] **Step 4: Build `FeaturesSection.tsx` highlighting local privacy, deduplication engine, and smart mobile sync**
-- [ ] **Step 5: Integrate `LandingPage.tsx` into `App.tsx` with a top header toggle ("Studio" vs "Tentang TuneBridge") and guest mode**
+- [ ] **Step 5: Integrate `LandingPage.tsx` into `App.tsx` with a top header toggle ("Studio" vs "Tentang PlayForgeX") and guest mode**
 - [ ] **Step 6: Verify responsive rendering across mobile (393px) and desktop**
 - [ ] **Step 7: Commit landing page components**
 
 ```bash
 git add src/renderer/components/landing/ src/renderer/App.tsx
-git commit -m "feat(ui): create high-craft Apple Music × Linear landing page for TuneBridge"
+git commit -m "feat(ui): create high-craft Apple Music × Linear landing page for PlayForgeX"
 ```
 
 ---
@@ -251,6 +251,6 @@ git commit -m "feat(auth): add login/register modal, user session persistence, a
 
 ```bash
 git add -A
-git commit -m "feat: complete TuneBridge rebrand, MySQL database, user auth, landing page, and multi-platform architecture"
+git commit -m "feat: complete PlayForgeX rebrand, MySQL database, user auth, landing page, and multi-platform architecture"
 git push origin revamp
 ```

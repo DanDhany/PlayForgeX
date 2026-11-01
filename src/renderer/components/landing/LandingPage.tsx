@@ -75,7 +75,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-base font-bold tracking-tight text-text-primary">
-                TuneBridge
+                PlayForgeX
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25 font-mono font-medium hidden sm:inline-block">
                 v1.2

@@ -31,7 +31,7 @@ export const ComparisonSection: React.FC = () => {
         : "Judul lagu rusak oleh embel-embel 'Official 4K Music Video [Lyrics] HD'.",
       solution: isEn
         ? "Smart Title-Priority sanitizer strips video noise and matches original studio recording metadata."
-        : "Filter cerdas TuneBridge otomatis membersihkan judul video dan memprioritaskan metadata lagu asli.",
+        : "Filter cerdas PlayForgeX otomatis membersihkan judul video dan memprioritaskan metadata lagu asli.",
     },
     {
       problem: isEn
@@ -114,7 +114,7 @@ export const ComparisonSection: React.FC = () => {
           </div>
         </Reveal>
 
-        {/* Right: TuneBridge Self-Hosted */}
+        {/* Right: PlayForgeX Self-Hosted */}
         <Reveal direction="right" delay={200}>
           <SpotlightCard
             spotlightColor="rgba(105, 214, 175, 0.16)"
@@ -128,7 +128,7 @@ export const ComparisonSection: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-bold text-text-primary">
-                      TuneBridge (Self-Hosted)
+                      PlayForgeX (Self-Hosted)
                     </h3>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-status-success/20 text-status-success border border-status-success/30 font-semibold">
                       {isEn ? "RECOMMENDED" : "REKOMENDASI"}

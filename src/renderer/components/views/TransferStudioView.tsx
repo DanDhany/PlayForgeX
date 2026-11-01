@@ -18,14 +18,14 @@ import { useLanguage } from "../../context/LanguageContext";
 
 interface TransferStudioViewProps {
   accounts: AccountConnection[];
-  allPlaylists: (PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: "youtube" | "apple" })[];
+  allPlaylists: (PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: string })[];
   selectedPlaylist: PlaylistSummary | null;
   trackItems: TransferTrackItem[];
   isMatching: boolean;
   totalTracksToMatch: number;
   isTransferring: boolean;
-  sourcePlatform: "youtube" | "apple";
-  targetPlatform: "apple" | "youtube";
+  sourcePlatform: string;
+  targetPlatform: string;
   onSelectPlaylist: (playlist: PlaylistSummary, force?: boolean) => void;
   onToggleExclude: (item: TransferTrackItem) => void;
   onOpenAlternativePicker: (item: TransferTrackItem) => void;
@@ -89,7 +89,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
   };
 
   const handleTogglePlaylistSelection = (
-    pl: PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: "youtube" | "apple" }
+    pl: PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: string }
   ) => {
     if (!pl.accountId) return;
     const exists = selectedPlaylistSelections.some(

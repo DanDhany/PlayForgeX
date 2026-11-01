@@ -19,7 +19,7 @@ export default {
           muted: "#6B7280",
         },
         accent: {
-          DEFAULT: "#A99BFF",  // Signature TuneBridge Periwinkle
+          DEFAULT: "#A99BFF",  // Signature PlayForgeX Periwinkle
           hover: "#BDB2FF",
           dim: "rgba(169, 155, 255, 0.12)",
           ring: "rgba(169, 155, 255, 0.35)",

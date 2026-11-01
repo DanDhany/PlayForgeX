@@ -1,26 +1,27 @@
-# TuneBridge
+# PlayForgeX
 
 > Universal Music Library & Playlist Migration Hub (Self-Hosted, Local-First, MySQL-Backed)
 
-TuneBridge is a self-hosted open-source platform that bridges, merges, and synchronizes music playlists between YouTube Music and Apple Music without requiring a paid Apple Developer subscription or CLI terminal access on mobile devices. It features an extensible modular adapter architecture for Spotify, Tidal, Deezer, SoundCloud, and self-hosted Subsonic/Navidrome servers.
+PlayForgeX is a self-hosted open-source platform that bridges, merges, mixes, and synchronizes music playlists across YouTube Music, YouTube Video, Apple Music, Spotify, SoundCloud, Deezer, and local files without requiring paid developer subscriptions or cloud intermediaries. It features an extensible modular adapter architecture and complete local privacy.
 
 ## Core Capabilities
-- **Multi-Account Integration**: Connect multiple distinct YouTube Music accounts (e.g. personal, work, friends) and merge their playlists into a single unified library.
-- **Title-Priority Fuzzy Matching**: Proprietary matching engine prioritizes original song titles and filters out non-music metadata ("Official Video", "Lyric Video", "Remastered", "4K").
+- **Multi-Account & Multi-Source Merge**: Connect multiple accounts from different services and merge their playlists into a single unified library with configurable deduplication policies.
+- **Title-Priority & ISRC Matching**: Matching engine prioritizes original song titles, transliterates non-Latin scripts, and filters out video noise ("Official Music Video", "Lyric Video", "4K").
+- **Regular YouTube Video Playlist Support**: Ingest standard YouTube video playlists, retaining video IDs and extracting clean artist/song titles.
+- **Spotify & SoundCloud Integration**: Direct integration to import and synchronize playlists from Spotify and SoundCloud sets/tracks.
 - **Zero Developer Account Fee**: Connects to Apple Music via official web session tokens without paying Apple's $99/year developer fee.
 - **Local Network Mobile Onboarding**: Generate and input tokens directly from an iPhone or Android phone via local Wi-Fi without needing Node or terminal access on the phone.
 - **Persistent MySQL Database**: Stores users, accounts, tokens, playlists, and snapshots securely in local MySQL with automatic schema initialization and scrypt password hashing.
 - **Audio Verification Player**: Listen to 30-second audio previews directly in the browser to confirm match accuracy before committing transfers.
-- **Deduplication Engine**: Automatically identifies identical tracks across multiple source playlists to prevent bloated duplicate libraries.
-- **Pluggable Multi-Platform Architecture**: Extensible `PlatformProvider` interface (`src/core/platform-registry.ts`) enables adding new music services (Spotify, Tidal, Deezer, Subsonic) with minimal code.
+- **File & Text Playlist Import**: Ingest M3U, CSV, raw text, and Soundiiz JSON tracklists with interactive review.
 
 ## Architecture
-- **Frontend**: React 18, TypeScript, Tailwind CSS, Vite (Dark-mode Apple Music x Linear editorial design system).
+- **Frontend**: React 18, TypeScript, Tailwind CSS, Vite.
 - **Backend**: Node 22, Express 5, TypeScript.
 - **Persistence**: MySQL 8.x (`mysql2/promise`) with scrypt password hashing (`node:crypto`).
-- **Deployment**: Docker Compose (`tunebridge-app` with optional `with-db` profile for isolated container MySQL) or standalone web bundle for GitHub Pages.
+- **Deployment**: Docker Compose (`playforgex-app` with optional `with-db` profile for container MySQL) or standalone web bundle for GitHub Pages.
 
 ## Important Links
-- GitHub Repository: https://github.com/ramadhanykrismaliq/TuneBridge
-- Live Demonstration: https://tunebridge.app/
-- Full Technical Documentation: https://tunebridge.app/llms-full.txt
+- GitHub Repository: https://github.com/DanDhany/PlayForgeX
+- Live Demonstration: https://playforgex.app/
+- Full Technical Documentation: https://playforgex.app/llms-full.txt

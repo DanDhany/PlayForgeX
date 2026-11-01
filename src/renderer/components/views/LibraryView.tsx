@@ -11,7 +11,7 @@ import { useLanguage } from "../../context/LanguageContext";
 
 interface LibraryViewProps {
   accounts: AccountConnection[];
-  playlists: (PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: "youtube" | "apple" })[];
+  playlists: (PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: string })[];
   isLoading: boolean;
   onRefresh: () => void;
   onSelectForTransfer: (playlist: PlaylistSummary, accountId?: string) => void;

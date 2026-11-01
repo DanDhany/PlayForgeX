@@ -137,7 +137,7 @@ describe("Authentication Express Endpoints & Session Management", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: "admin",
-          password: "tunebridge2026",
+          password: "playforgex2026",
         }),
       });
 
@@ -355,7 +355,7 @@ describe("Authentication Express Endpoints & Session Management", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: "admin",
-          password: "tunebridge2026",
+          password: "playforgex2026",
         }),
       });
       expect(loginRes.status).toBe(200);

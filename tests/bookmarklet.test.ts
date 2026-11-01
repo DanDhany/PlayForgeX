@@ -11,7 +11,7 @@ describe("Mobile Sync Bookmarklet Generator", () => {
     const script = generateYouTubeMobileSyncScript(origin, alias);
 
     expect(script).toContain("SAPISID");
-    expect(script).toContain("tunebridge-mobile-sync");
+    expect(script).toContain("playforgex-mobile-sync");
     expect(script).toContain(`${origin}/api/auth/web-catch`);
     expect(script).toContain("YouTube (HP Orang B)");
 
