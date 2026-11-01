@@ -9,9 +9,12 @@ import {
   ExternalLink,
   CheckCircle2,
   AlertCircle,
+  Layers,
+  Search,
 } from "lucide-react";
 import { AccountConnection } from "../../../shared/types";
 import { useLanguage } from "../../context/LanguageContext";
+import { getPlatformMeta } from "../../utils/platform-meta";
 
 interface AccountsViewProps {
   accounts: AccountConnection[];
@@ -35,9 +38,8 @@ export const AccountsView: React.FC<AccountsViewProps> = ({
   const [editAliasValue, setEditAliasValue] = useState("");
   const [testingId, setTestingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const ytAccounts = accounts.filter((a) => a.platform === "youtube");
-  const appleAccounts = accounts.filter((a) => a.platform === "apple");
+  const [filterPlatform, setFilterPlatform] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const startEditing = (acc: AccountConnection) => {
     setEditingId(acc.id);
@@ -59,10 +61,32 @@ export const AccountsView: React.FC<AccountsViewProps> = ({
     }
   };
 
+  // Unique platforms that currently have connected accounts
+  const presentPlatforms = Array.from(new Set(accounts.map((a) => a.platform)));
+
+  // Filter accounts by search query and active platform tab
+  const filteredAccounts = accounts.filter((acc) => {
+    const matchesFilter = filterPlatform === "all" || acc.platform === filterPlatform;
+    const matchesSearch =
+      !searchQuery.trim() ||
+      acc.localAlias.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      acc.platform.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  // Group filtered accounts by platform
+  const groupedByPlatform = filteredAccounts.reduce<Record<string, AccountConnection[]>>((res, acc) => {
+    const key = acc.platform || "other";
+    if (!res[key]) res[key] = [];
+    res[key].push(acc);
+    return res;
+  }, {});
+
   const renderAccountCard = (acc: AccountConnection) => {
     const isEditing = editingId === acc.id;
     const isTesting = testingId === acc.id;
     const isConfirmingDelete = deletingId === acc.id;
+    const meta = getPlatformMeta(acc.platform);
 
     return (
       <div
@@ -72,13 +96,9 @@ export const AccountsView: React.FC<AccountsViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5 ${
-                acc.platform === "youtube"
-                  ? "bg-red-500/15 text-red-400 border border-red-500/20"
-                  : "bg-accent/15 text-accent border border-accent/20"
-              }`}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5 border ${meta.badgeBg} ${meta.badgeBorder} ${meta.textColor}`}
             >
-              {acc.platform === "youtube" ? "YTM" : "APM"}
+              {meta.shortCode}
             </div>
             <div className="min-w-0 flex-1">
               {isEditing ? (
@@ -126,10 +146,18 @@ export const AccountsView: React.FC<AccountsViewProps> = ({
                 </div>
               )}
               <div className="text-[11px] text-text-secondary mt-1 flex items-center gap-1.5 flex-wrap">
-                <span>{acc.playlistCount !== undefined ? t("library.tracksCount", { count: acc.playlistCount }) : "Loading..."}</span>
+                <span className="font-medium text-text-primary/90">
+                  {meta.name}
+                </span>
+                <span>•</span>
+                <span>
+                  {acc.playlistCount !== undefined
+                    ? t("library.tracksCount", { count: acc.playlistCount })
+                    : "0 playlists"}
+                </span>
                 {acc.syncType === "snapshot" && (
                   <span className="px-1.5 py-0.5 text-[9px] rounded bg-accent/15 text-accent border border-accent/25 font-mono">
-                    {t("accounts.mobileSync")}
+                    {t("accounts.mobileSync") || "Snapshot / Ingestion"}
                   </span>
                 )}
                 {acc.storefront ? <span>· Storefront: {acc.storefront.toUpperCase()}</span> : ""}
@@ -205,7 +233,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 max-w-5xl mx-auto w-full pb-32 md:pb-8">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 max-w-5xl mx-auto w-full pb-32 md:pb-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div>
@@ -226,61 +254,113 @@ export const AccountsView: React.FC<AccountsViewProps> = ({
         </button>
       </div>
 
-      {/* Section 1: YouTube Music Accounts */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-            <h3 className="text-sm sm:text-base font-semibold text-text-primary">
-              YouTube Music ({ytAccounts.length})
-            </h3>
-          </div>
-        </div>
-
-        {ytAccounts.length === 0 ? (
-          <div className="p-8 text-center rounded-2xl border border-dashed border-border bg-surface/50 text-xs text-text-secondary space-y-2">
-            <p>{t("accounts.emptyYt")}</p>
+      {/* Filter and Search Bar */}
+      {accounts.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Platform Filter Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs select-none no-scrollbar">
             <button
-              onClick={onOpenAddAccount}
-              className="text-accent hover:underline font-medium"
+              onClick={() => setFilterPlatform("all")}
+              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors btn-press flex items-center gap-1.5 ${
+                filterPlatform === "all"
+                  ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
+                  : "bg-surface border border-border text-text-secondary hover:text-text-primary"
+              }`}
             >
-              + {t("accounts.addNew")}
+              <Layers className="w-3.5 h-3.5" />
+              <span>Semua ({accounts.length})</span>
             </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {ytAccounts.map((acc) => renderAccountCard(acc))}
-          </div>
-        )}
-      </div>
 
-      {/* Section 2: Apple Music Accounts */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-accent" />
-            <h3 className="text-sm sm:text-base font-semibold text-text-primary">
-              Apple Music ({appleAccounts.length})
-            </h3>
+            {presentPlatforms.map((p) => {
+              const meta = getPlatformMeta(p);
+              const count = accounts.filter((a) => a.platform === p).length;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setFilterPlatform(p)}
+                  className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors btn-press flex items-center gap-1.5 ${
+                    filterPlatform === p
+                      ? "bg-accent/20 text-accent border border-accent/30 font-semibold"
+                      : "bg-surface border border-border text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${meta.dotColor}`} />
+                  <span>
+                    {meta.name} ({count})
+                  </span>
+                </button>
+              );
+            })}
           </div>
+
+          {/* Search box if multiple accounts exist */}
+          {accounts.length > 3 && (
+            <div className="relative min-w-[200px]">
+              <Search className="w-3.5 h-3.5 text-text-secondary absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nama akun..."
+                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-text-primary placeholder-text-secondary/60 focus:outline-none focus:border-accent"
+              />
+            </div>
+          )}
         </div>
+      )}
 
-        {appleAccounts.length === 0 ? (
-          <div className="p-8 text-center rounded-2xl border border-dashed border-border bg-surface/50 text-xs text-text-secondary space-y-2">
-            <p>{t("accounts.emptyApple")}</p>
-            <button
-              onClick={onOpenAddAccount}
-              className="text-accent hover:underline font-medium"
-            >
-              + {t("accounts.addNew")}
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {appleAccounts.map((acc) => renderAccountCard(acc))}
-          </div>
-        )}
-      </div>
+      {/* Empty State */}
+      {accounts.length === 0 ? (
+        <div className="p-12 text-center rounded-2xl border border-dashed border-border bg-surface/50 text-xs text-text-secondary space-y-3">
+          <p className="text-sm font-medium text-text-primary">Belum ada akun musik yang terhubung</p>
+          <p className="max-w-md mx-auto text-text-secondary">
+            Hubungkan akun YouTube Music, YouTube Video Playlists, Apple Music, Spotify, SoundCloud, Deezer, atau File lokal untuk memulai migrasi.
+          </p>
+          <button
+            onClick={onOpenAddAccount}
+            className="px-4 py-2 rounded-xl bg-accent text-background font-semibold hover:brightness-110 btn-press inline-flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ {t("accounts.addNew")}</span>
+          </button>
+        </div>
+      ) : filteredAccounts.length === 0 ? (
+        <div className="p-8 text-center rounded-2xl border border-dashed border-border bg-surface/50 text-xs text-text-secondary space-y-2">
+          <p>Tidak ada akun yang sesuai dengan filter atau kata kunci pencarian.</p>
+          <button
+            onClick={() => {
+              setFilterPlatform("all");
+              setSearchQuery("");
+            }}
+            className="text-accent hover:underline font-medium"
+          >
+            Reset Filter
+          </button>
+        </div>
+      ) : (
+        /* Dynamic Grouping by Platform */
+        <div className="space-y-8">
+          {Object.entries(groupedByPlatform).map(([plat, groupAccounts]) => {
+            const meta = getPlatformMeta(plat);
+            return (
+              <div key={plat} className="space-y-3">
+                <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${meta.dotColor}`} />
+                    <h3 className="text-sm sm:text-base font-semibold text-text-primary">
+                      {meta.name} ({groupAccounts.length})
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {groupAccounts.map((acc) => renderAccountCard(acc))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

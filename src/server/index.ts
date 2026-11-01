@@ -277,6 +277,7 @@ app.post("/api/accounts", async (req: Request, res: Response) => {
         userId,
         "youtube_video"
       );
+      await accountManager.saveAccountToDb(acc, undefined, userId);
       return res.json({ success: true, account: acc });
     } else if (platform === "spotify") {
       const targetInput = playlistUrl || playlistId || accessToken;
@@ -298,6 +299,7 @@ app.post("/api/accounts", async (req: Request, res: Response) => {
         userId,
         "spotify"
       );
+      await accountManager.saveAccountToDb(acc, undefined, userId);
       return res.json({ success: true, account: acc });
     } else if (platform === "soundcloud") {
       const targetUrl = setUrl || playlistUrl || playlistId;
@@ -318,6 +320,7 @@ app.post("/api/accounts", async (req: Request, res: Response) => {
         userId,
         "soundcloud"
       );
+      await accountManager.saveAccountToDb(acc, undefined, userId);
       return res.json({ success: true, account: acc });
     } else if (platform === "deezer") {
       const targetId = playlistId || playlistUrl;
@@ -341,6 +344,7 @@ app.post("/api/accounts", async (req: Request, res: Response) => {
         userId,
         "deezer"
       );
+      await accountManager.saveAccountToDb(acc, undefined, userId);
       return res.json({ success: true, account: acc });
     } else if (platform === "file") {
       const text = content || (playlists ? JSON.stringify(playlists) : "");
@@ -360,6 +364,7 @@ app.post("/api/accounts", async (req: Request, res: Response) => {
         userId,
         "file"
       );
+      await accountManager.saveAccountToDb(acc, undefined, userId);
       return res.json({ success: true, account: acc });
     }
   } catch (err: any) {

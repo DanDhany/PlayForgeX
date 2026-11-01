@@ -15,6 +15,7 @@ import {
 } from "../../../shared/types";
 import { ReviewStudio } from "../ReviewStudio";
 import { useLanguage } from "../../context/LanguageContext";
+import { getPlatformMeta } from "../../utils/platform-meta";
 
 interface TransferStudioViewProps {
   accounts: AccountConnection[];
@@ -291,7 +292,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                     <div className="min-w-0 flex items-center gap-2">
                       <span
                         className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                          pl.platform === "youtube" ? "bg-red-500" : "bg-accent"
+                          getPlatformMeta(pl.platform).dotColor
                         }`}
                       />
                       <span className="truncate">{pl.title}</span>
@@ -412,7 +413,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span
                         className={`w-2 h-2 rounded-full ${
-                          acc.platform === "youtube" ? "bg-red-500" : "bg-accent"
+                          getPlatformMeta(acc.platform).dotColor
                         }`}
                       />
                       <div className="min-w-0">
@@ -420,7 +421,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                           {acc.localAlias}
                         </div>
                         <div className="text-[11px] text-text-secondary">
-                          {acc.platform === "apple" ? "Apple Music" : "YouTube Music"}
+                          {getPlatformMeta(acc.platform).name}
                         </div>
                       </div>
                     </div>

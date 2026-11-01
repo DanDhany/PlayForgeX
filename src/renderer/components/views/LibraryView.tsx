@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { AccountConnection, PlaylistSummary } from "../../../shared/types";
 import { useLanguage } from "../../context/LanguageContext";
+import { getPlatformMeta } from "../../utils/platform-meta";
 
 interface LibraryViewProps {
   accounts: AccountConnection[];
@@ -96,7 +97,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             >
               <span
                 className={`w-1.5 h-1.5 rounded-full ${
-                  acc.platform === "youtube" ? "bg-red-500" : "bg-accent"
+                  getPlatformMeta(acc.platform).dotColor
                 }`}
               />
               <span>{acc.localAlias}</span>
@@ -149,15 +150,16 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               </div>
 
               <div className="pt-2.5 border-t border-border/60 flex items-center justify-between gap-2">
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded font-mono uppercase font-semibold ${
-                    pl.platform === "youtube"
-                      ? "bg-red-500/15 text-red-400"
-                      : "bg-accent/15 text-accent"
-                  }`}
-                >
-                  {pl.platform === "youtube" ? "YTM" : "Apple"}
-                </span>
+                {(() => {
+                  const meta = getPlatformMeta(pl.platform);
+                  return (
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded font-mono uppercase font-semibold border ${meta.badgeBg} ${meta.badgeBorder} ${meta.textColor}`}
+                    >
+                      {meta.shortCode}
+                    </span>
+                  );
+                })()}
 
                 <button
                   onClick={() => onSelectForTransfer(pl, pl.accountId)}

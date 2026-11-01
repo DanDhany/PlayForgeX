@@ -14,6 +14,7 @@ import {
 import { AccountConnection, ActivityLogItem } from "../../../shared/types";
 import { NavTab } from "../NavigationRail";
 import { useLanguage } from "../../context/LanguageContext";
+import { getPlatformMeta } from "../../utils/platform-meta";
 
 interface OverviewViewProps {
   accounts: AccountConnection[];
@@ -31,8 +32,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   onTestAccount,
 }) => {
   const { t } = useLanguage();
-  const ytAccounts = accounts.filter((a) => a.platform === "youtube");
-  const appleAccounts = accounts.filter((a) => a.platform === "apple");
   const totalPlaylists = accounts.reduce((acc, curr) => acc + (curr.playlistCount || 0), 0);
 
   return (
@@ -80,7 +79,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             <div className="text-xl font-semibold text-text-primary">
               {accounts.length}{" "}
               <span className="text-xs font-normal text-text-secondary">
-                ({ytAccounts.length} YT · {appleAccounts.length} Apple)
+                ({accounts.length} {t("nav.accounts")})
               </span>
             </div>
           </div>
@@ -161,15 +160,16 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                   className="p-3 rounded-lg bg-surface-elevated border border-border flex items-center justify-between gap-3 text-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={`w-7 h-7 rounded-md flex items-center justify-center font-bold text-[11px] flex-shrink-0 ${
-                        acc.platform === "youtube"
-                          ? "bg-red-500/15 text-red-400 border border-red-500/20"
-                          : "bg-accent/15 text-accent border border-accent/20"
-                      }`}
-                    >
-                      {acc.platform === "youtube" ? "YT" : "AP"}
-                    </div>
+                    {(() => {
+                      const meta = getPlatformMeta(acc.platform);
+                      return (
+                        <div
+                          className={`w-7 h-7 rounded-md flex items-center justify-center font-bold text-[10px] flex-shrink-0 border ${meta.badgeBg} ${meta.badgeBorder} ${meta.textColor}`}
+                        >
+                          {meta.shortCode}
+                        </div>
+                      );
+                    })()}
                     <div className="min-w-0">
                       <div className="font-medium text-text-primary truncate">{acc.localAlias}</div>
                       <div className="text-[11px] text-text-secondary">

@@ -335,6 +335,23 @@ export class AccountManager {
           ]
         );
       }
+
+      const snap = this.snapshots.get(account.id);
+      if (snap) {
+        await query(
+          `INSERT INTO snapshots (id, user_id, account_id, snapshot_data, created_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             snapshot_data = VALUES(snapshot_data)`,
+          [
+            `snap_${account.id}`,
+            uid,
+            account.id,
+            JSON.stringify(snap),
+            Date.now(),
+          ]
+        );
+      }
     } catch (err) {
       console.warn("[AccountManager] Failed saving account to DB:", err);
     }
