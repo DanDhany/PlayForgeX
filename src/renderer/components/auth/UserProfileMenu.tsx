@@ -15,6 +15,7 @@ interface UserProfileMenuProps {
   onOpenAuth: (initialTab?: "login" | "register") => void;
   onLogout: () => void;
   compact?: boolean;
+  dropUp?: boolean;
 }
 
 export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
@@ -22,6 +23,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
   onOpenAuth,
   onLogout,
   compact = false,
+  dropUp = false,
 }) => {
   const { t, lang } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -56,7 +58,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
       <button
         onClick={() => onOpenAuth("login")}
         className={`rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-xs font-medium text-text-primary flex items-center gap-2 btn-press transition-colors shadow-sm ${
-          compact ? "p-1.5" : "px-3 py-1.5"
+          compact ? "p-1.5" : "w-full px-3 py-1.5 justify-center"
         }`}
         title={t("auth.loginOrRegister")}
       >
@@ -69,7 +71,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
   // Derive initials for avatar
   const initials = currentUser.username
     ? currentUser.username.slice(0, 2).toUpperCase()
-    : "TB";
+    : "PX";
 
   const isAdmin = currentUser.role === "admin";
 
@@ -82,48 +84,60 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
     : t("auth.justNow");
 
   return (
-    <div className="relative inline-block text-left" ref={menuRef}>
+    <div className={`relative ${compact ? "inline-block" : "block w-full"} text-left`} ref={menuRef}>
       {/* Pill trigger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-2 rounded-xl transition-all btn-press border ${
+          compact ? "p-1.5" : "w-full justify-between px-2.5 py-1.5"
+        } ${
           isOpen
             ? "bg-surface-elevated border-accent/40 shadow-sm shadow-accent/10"
             : "bg-surface-elevated/70 hover:bg-surface-elevated border-border"
-        } ${compact ? "p-1.5" : "px-2.5 py-1.5"}`}
+        }`}
         title={`${t("auth.signedInAs")}: ${currentUser.username} (${isAdmin ? "Admin" : "User"})`}
       >
-        {/* Avatar badge */}
-        <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-accent/30 to-accent/10 border border-accent/30 flex items-center justify-center text-[11px] font-bold text-accent font-mono flex-shrink-0">
-          {initials}
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Avatar badge */}
+          <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-accent/30 to-accent/10 border border-accent/30 flex items-center justify-center text-[11px] font-bold text-accent font-mono flex-shrink-0">
+            {initials}
+          </div>
+
+          {!compact && (
+            <div className="flex items-center gap-1.5 min-w-0 truncate">
+              <span className="text-xs font-semibold text-text-primary truncate max-w-[100px]">
+                {currentUser.username}
+              </span>
+              <span
+                className={`text-[9px] px-1.5 py-0.2 rounded font-medium border ${
+                  isAdmin
+                    ? "bg-accent/15 text-accent border-accent/30"
+                    : "bg-white/[0.08] text-text-secondary border-border"
+                }`}
+              >
+                {isAdmin ? "Admin" : "User"}
+              </span>
+            </div>
+          )}
         </div>
 
         {!compact && (
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-xs font-semibold text-text-primary truncate max-w-[100px]">
-              {currentUser.username}
-            </span>
-            <span
-              className={`text-[9px] px-1.5 py-0.2 rounded font-medium border ${
-                isAdmin
-                  ? "bg-accent/15 text-accent border-accent/30"
-                  : "bg-white/[0.08] text-text-secondary border-border"
-              }`}
-            >
-              {isAdmin ? "Admin" : "User"}
-            </span>
-            <ChevronDown
-              className={`w-3 h-3 text-text-secondary transition-transform ${
-                isOpen ? "rotate-180" : ""
-              }`}
-            />
-          </div>
+          <ChevronDown
+            className={`w-3 h-3 text-text-secondary transition-transform flex-shrink-0 ${
+              isOpen ? (dropUp ? "rotate-0" : "rotate-180") : dropUp ? "rotate-180" : ""
+            }`}
+          />
         )}
       </button>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-surface border border-border shadow-2xl overflow-hidden z-50 animate-dialog-in backdrop-blur-xl">
+        <div
+          style={{ maxHeight: "calc(100vh - 90px)" }}
+          className={`absolute ${
+            dropUp ? "bottom-full mb-2 left-0" : "top-full mt-2 right-0"
+          } w-64 rounded-2xl bg-surface border border-border shadow-2xl overflow-y-auto z-[100] animate-dialog-in backdrop-blur-xl`}
+        >
           {/* Header profile info */}
           <div className="p-4 border-b border-border bg-surface-elevated/60">
             <div className="flex items-center gap-3">
@@ -187,12 +201,13 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
 
             <div className="h-px bg-border my-1" />
 
+            {/* Logout button */}
             <button
               onClick={() => {
                 setIsOpen(false);
                 onLogout();
               }}
-              className="w-full px-3 py-2 rounded-xl text-left text-rose-300 hover:bg-rose-500/15 flex items-center gap-2.5 transition-colors btn-press"
+              className="w-full px-3 py-2 rounded-xl text-left text-rose-300 hover:bg-rose-500/15 flex items-center gap-2.5 transition-colors btn-press font-medium"
             >
               <LogOut className="w-3.5 h-3.5 text-rose-400" />
               <span>{t("auth.logout")}</span>

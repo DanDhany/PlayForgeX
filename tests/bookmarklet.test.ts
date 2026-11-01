@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   generateYouTubeMobileSyncScript,
   generateAppleMobileSyncScript,
+  generateDirectLoginScript,
 } from "../src/renderer/utils/bookmarklet-generator.js";
 
 describe("Mobile Sync Bookmarklet Generator", () => {
@@ -30,5 +31,20 @@ describe("Mobile Sync Bookmarklet Generator", () => {
 
     // Ensure valid JS syntax
     expect(() => new Function(script)).not.toThrow();
+  });
+
+  it("generates valid direct login script for YouTube and Apple without syntax errors", () => {
+    const origin = "http://localhost:3080";
+    const ytLogin = generateDirectLoginScript(origin, "youtube", "Akun Utama YT", "token_123");
+    expect(ytLogin).toContain("document.cookie");
+    expect(ytLogin).toContain(`${origin}/api/auth/web-catch`);
+    expect(ytLogin).toContain("token_123");
+    expect(() => new Function(ytLogin)).not.toThrow();
+
+    const appleLogin = generateDirectLoginScript(origin, "apple", "Akun Utama Apple", "token_123");
+    expect(appleLogin).toContain("media-user-token");
+    expect(appleLogin).toContain(`${origin}/api/auth/web-catch`);
+    expect(appleLogin).toContain("token_123");
+    expect(() => new Function(appleLogin)).not.toThrow();
   });
 });

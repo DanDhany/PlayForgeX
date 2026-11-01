@@ -49,7 +49,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   const [alias, setAlias] = useState("");
   const [aliasTouched, setAliasTouched] = useState(false);
   const [connectMethod, setConnectMethod] = useState<ConnectMethod>("bookmarklet");
-  const [scriptFormat, setScriptFormat] = useState<ScriptFormat>("bookmarklet");
+  const [scriptFormat, setScriptFormat] = useState<ScriptFormat>("console");
   const [cookieString, setCookieString] = useState("");
   const [musicUserToken, setMusicUserToken] = useState("");
   const [developerToken, setDeveloperToken] = useState("");
@@ -101,8 +101,9 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   const canProceedToConnect = trimmedAlias.length > 0 && !isDuplicate;
 
   // Anti-Mixed-Content & In-Page Mobile Sync Script (Customized to validated alias & dynamic origin)
-  const ytScript = generateYouTubeMobileSyncScript(origin, trimmedAlias);
-  const appleScript = generateAppleMobileSyncScript(origin, trimmedAlias);
+  const currentToken = typeof window !== "undefined" ? localStorage.getItem("playforgex_token") : null;
+  const ytScript = generateYouTubeMobileSyncScript(origin, trimmedAlias, currentToken);
+  const appleScript = generateAppleMobileSyncScript(origin, trimmedAlias, currentToken);
 
   const activeRawScript = platform === "youtube" ? ytScript : appleScript;
   const bookmarkletCode = `javascript:${activeRawScript}`;

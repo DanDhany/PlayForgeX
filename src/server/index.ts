@@ -510,8 +510,12 @@ app.post("/api/auth/apple", async (req: Request, res: Response) => {
 // Enables 1-click account addition from mobile (iOS/Android) & remote LAN clients,
 // completely bypassing Mixed-Content (HTTPS -> HTTP) and CORS blocks via top-level form POST navigation.
 app.post("/api/auth/web-catch", async (req: Request, res: Response) => {
-  const { platform, cookieString, musicUserToken, developerToken, alias, returnUrl } = req.body;
-  const userId = (req as any).user?.id;
+  const { platform, cookieString, musicUserToken, developerToken, alias, returnUrl, token } = req.body;
+  let userId = (req as any).user?.id;
+  if (!userId && token) {
+    const verified = await authService.verifyToken(token);
+    if (verified) userId = verified.id;
+  }
 
   if (platform !== "youtube" && platform !== "apple") {
     return res.status(400).send(`

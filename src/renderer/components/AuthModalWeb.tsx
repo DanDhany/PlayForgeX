@@ -1,6 +1,18 @@
-import React, { useState } from "react";
-import { X, KeyRound, AlertCircle, ChevronDown, ChevronUp, Copy, Check, Smartphone, Monitor } from "lucide-react";
+import React, { useState, useRef } from "react";
+import {
+  X,
+  KeyRound,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Check,
+  Terminal,
+  ExternalLink,
+  Code2,
+} from "lucide-react";
 import { copyToClipboard } from "../utils/ui-helpers";
+import { generateDirectLoginScript } from "../utils/bookmarklet-generator";
 
 interface AuthModalWebProps {
   service: "youtube" | "apple" | null;
@@ -23,25 +35,40 @@ export const AuthModalWeb: React.FC<AuthModalWebProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
-  const [showIosTutorial, setShowIosTutorial] = useState(false);
-  const [copiedBookmarklet, setCopiedBookmarklet] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [scriptFormat, setScriptFormat] = useState<"console" | "bookmarklet">("console");
+  const [copiedState, setCopiedState] = useState<"idle" | "script" | "cli">("idle");
+  const scriptTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3080";
+  const userToken = typeof window !== "undefined" ? localStorage.getItem("playforgex_token") : null;
+  const targetAlias = service === "youtube" ? "Koleksi Utama (YouTube)" : "Koleksi Utama (Apple)";
 
-  // 1-Click Bookmarklet Codes (uses dynamic host origin)
-  const ytBookmarkletCode = `javascript:(function(){const c=document.cookie;if(c.includes('SAPISID')||c.includes('__Secure-3PAPISID')){fetch('${origin}/api/auth/youtube',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cookieString:c})}).then(()=>{alert('🎉 YouTube Music berhasil tersinkron ke PlayForgeX!');window.location.href='${origin}';}).catch(e=>alert('Koneksi gagal: '+e));}else{alert('Silakan login ke YouTube Music terlebih dahulu!');}})();`;
+  const rawScript = generateDirectLoginScript(origin, service, targetAlias, userToken);
+  const activeScript = scriptFormat === "bookmarklet" ? `javascript:${rawScript}` : rawScript;
 
-  const appleBookmarkletCode = `javascript:(function(){const m=localStorage.getItem('media-user-token')||(document.cookie.match(/media-user-token=([^;]+)/)||[])[1]||(window.MusicKit&&window.MusicKit.getInstance&&window.MusicKit.getInstance().musicUserToken);if(m){fetch('${origin}/api/auth/apple',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({musicUserToken:m})}).then(()=>{alert('🎉 Apple Music berhasil tersinkron ke PlayForgeX!');window.location.href='${origin}';}).catch(e=>alert('Koneksi gagal: '+e));}else{alert('Silakan login ke Apple Music terlebih dahulu!');}})();`;
-
-  const activeBookmarklet = service === "youtube" ? ytBookmarkletCode : appleBookmarkletCode;
   const targetSiteUrl = service === "youtube" ? "https://music.youtube.com" : "https://music.apple.com";
-  const cliCommand = service === "youtube" ? "npm run auth:yt" : "npm run auth:apple";
+  const cliCommand =
+    service === "youtube"
+      ? `npm run auth:yt -- --alias "${targetAlias}" --server "${origin}"`
+      : `npm run auth:apple -- --alias "${targetAlias}" --server "${origin}"`;
 
-  const handleCopyBookmarklet = async () => {
-    const ok = await copyToClipboard(activeBookmarklet);
+  const handleCopyScript = async () => {
+    const ok = await copyToClipboard(activeScript);
     if (ok) {
-      setCopiedBookmarklet(true);
-      setTimeout(() => setCopiedBookmarklet(false), 2000);
+      setCopiedState("script");
+      setTimeout(() => setCopiedState("idle"), 2500);
+    } else if (scriptTextareaRef.current) {
+      scriptTextareaRef.current.focus();
+      scriptTextareaRef.current.select();
+    }
+  };
+
+  const handleCopyCli = async () => {
+    const ok = await copyToClipboard(cliCommand);
+    if (ok) {
+      setCopiedState("cli");
+      setTimeout(() => setCopiedState("idle"), 2500);
     }
   };
 
@@ -72,7 +99,7 @@ export const AuthModalWeb: React.FC<AuthModalWebProps> = ({
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4">
       <div className="fixed inset-0 -z-10" onClick={onClose} />
 
-      <div className="bg-surface border-t md:border border-white/[0.1] rounded-t-3xl md:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden p-4 md:p-6 space-y-4 max-h-[90dvh] overflow-y-auto animate-sheet-up md:animate-dialog-in pb-safe">
+      <div className="bg-surface border-t md:border border-white/[0.1] rounded-t-3xl md:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden p-4 md:p-6 space-y-4 max-h-[92dvh] overflow-y-auto animate-sheet-up md:animate-dialog-in pb-safe">
         {/* iOS Drag Handle */}
         <div className="md:hidden w-10 h-1 bg-white/20 rounded-full mx-auto -mt-1 mb-1" />
 
@@ -91,7 +118,7 @@ export const AuthModalWeb: React.FC<AuthModalWebProps> = ({
                 Hubungkan {serviceName}
               </h3>
               <p className="text-[11px] text-slate-400">
-                Pilih opsi koneksi yang Anda inginkan
+                Pilih metode sinkronisasi sesi yang paling nyaman untuk Anda
               </p>
             </div>
           </div>
@@ -107,72 +134,179 @@ export const AuthModalWeb: React.FC<AuthModalWebProps> = ({
           </div>
         )}
 
-        {/* METODE UTAMA: Terminal Mac */}
-        <div className="p-3.5 rounded-xl bg-card border border-emerald-500/25 space-y-2">
-          <div className="flex items-center space-x-2 text-xs font-semibold text-emerald-400">
-            <Monitor className="w-3.5 h-3.5" />
-            <span>Opsi Tercepat: 1x Perintah di Mac Server</span>
+        {/* METODE 1: In-Page Script Browser (Console DevTools F12 / Safari Bookmarklet) */}
+        <div className="p-3.5 rounded-xl bg-card border border-accent/30 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold text-accent">
+              <Code2 className="w-4 h-4" />
+              <span>Script Browser 1-Klik (Bebas CORS & Mixed-Content)</span>
+            </div>
+
+            {/* Format Switcher */}
+            <div className="flex items-center p-0.5 bg-surface rounded-md border border-border text-[10px]">
+              <button
+                type="button"
+                onClick={() => setScriptFormat("console")}
+                className={`px-2 py-0.5 rounded transition-colors ${
+                  scriptFormat === "console"
+                    ? "bg-accent/20 text-accent font-semibold"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                Console (F12)
+              </button>
+              <button
+                type="button"
+                onClick={() => setScriptFormat("bookmarklet")}
+                className={`px-2 py-0.5 rounded transition-colors ${
+                  scriptFormat === "bookmarklet"
+                    ? "bg-accent/20 text-accent font-semibold"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                Bookmarklet
+              </button>
+            </div>
           </div>
 
           <p className="text-[11px] text-slate-300 leading-relaxed">
-            Jalankan perintah ini di Terminal Mac host. Browser akan terbuka otomatis untuk login, dan sesi akan langsung aktif di seluruh perangkat (termasuk iPhone):
+            {scriptFormat === "console" ? (
+              <>
+                Buka tab baru di{" "}
+                <a href={targetSiteUrl} target="_blank" rel="noreferrer" className="text-accent underline font-mono">
+                  {targetSiteUrl.replace("https://", "")}
+                </a>
+                , tekan <kbd className="px-1 py-0.5 bg-surface rounded border border-border font-mono text-[10px]">F12</kbd> (Inspect &gt; Console), lalu tempel script ini dan tekan Enter.
+              </>
+            ) : (
+              <>
+                Simpan script ini sebagai bookmark di browser Safari / Chrome HP Anda saat membuka tab{" "}
+                <a href={targetSiteUrl} target="_blank" rel="noreferrer" className="text-accent underline font-mono">
+                  {targetSiteUrl.replace("https://", "")}
+                </a>
+                .
+              </>
+            )}
           </p>
 
-          <div className="bg-surface border border-white/[0.08] rounded-lg p-2 flex items-center justify-between font-mono text-xs text-emerald-300">
-            <code>{cliCommand}</code>
+          {/* Copy Script & Open Target Site */}
+          <div className="flex items-center gap-2">
             <button
-              onClick={async () => {
-                const ok = await copyToClipboard(cliCommand);
-                if (ok) {
-                  alert(`Perintah '${cliCommand}' berhasil disalin.`);
+              onClick={handleCopyScript}
+              className="flex-1 py-2 px-3 bg-accent text-background font-semibold text-xs rounded-lg flex items-center justify-center gap-2 btn-press transition shadow-sm hover:brightness-110"
+            >
+              {copiedState === "script" ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Script Berhasil Disalin!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>
+                    {scriptFormat === "console" ? "Salin Script Console (F12)" : "Salin Kode Bookmarklet"}
+                  </span>
+                </>
+              )}
+            </button>
+
+            <a
+              href={targetSiteUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="py-2 px-3 bg-surface hover:bg-surface-elevated text-slate-200 border border-border text-xs font-medium rounded-lg flex items-center gap-1.5 btn-press transition"
+            >
+              <span>Buka Situs</span>
+              <ExternalLink className="w-3 h-3 text-slate-400" />
+            </a>
+          </div>
+
+          {/* Code box */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] text-slate-400">
+              <span>{scriptFormat === "console" ? "Kode JavaScript Console:" : "Kode URL Bookmarklet:"}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (scriptTextareaRef.current) {
+                    scriptTextareaRef.current.focus();
+                    scriptTextareaRef.current.select();
+                  }
+                }}
+                className="text-accent hover:underline"
+              >
+                Pilih Semua
+              </button>
+            </div>
+            <textarea
+              ref={scriptTextareaRef}
+              readOnly
+              rows={3}
+              value={activeScript}
+              onClick={() => {
+                if (scriptTextareaRef.current) {
+                  scriptTextareaRef.current.focus();
+                  scriptTextareaRef.current.select();
                 }
               }}
-              className="p-1 text-slate-400 hover:text-white transition btn-press"
-              title="Salin perintah"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </button>
+              className="w-full bg-surface border border-border rounded-lg p-2 text-[10px] font-mono text-slate-300 resize-none focus:outline-none focus:border-accent select-all break-all leading-relaxed"
+            />
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowTutorial(!showTutorial)}
+            className="text-[11px] text-accent hover:underline flex items-center gap-1 pt-0.5"
+          >
+            <span>{showTutorial ? "Sembunyikan petunjuk" : "Lihat cara menjalankan script ini"}</span>
+            {showTutorial ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+
+          {showTutorial && (
+            <div className="bg-surface p-3 rounded-lg border border-border text-[11px] text-slate-300 space-y-1.5 leading-relaxed">
+              <p className="font-semibold text-text-primary">Langkah Menggunakan:</p>
+              <ol className="list-decimal pl-4 space-y-1 text-slate-300">
+                <li>Buka tab <a href={targetSiteUrl} target="_blank" rel="noreferrer" className="text-accent underline font-mono">{targetSiteUrl.replace("https://", "")}</a> dan pastikan akun Anda sudah masuk.</li>
+                <li>
+                  {scriptFormat === "console" ? (
+                    <>Buka Developer Tools (tekan <b>F12</b> atau klik kanan &gt; <b>Inspect</b> &gt; pilih tab <b>Console</b>).</>
+                  ) : (
+                    <>Buat penanda/bookmark baru di Safari/Chrome, lalu tempel kode script ke kolom URL bookmark.</>
+                  )}
+                </li>
+                <li>
+                  {scriptFormat === "console" ? (
+                    <>Tempel script yang disalin ke Console lalu tekan <b>Enter</b>.</>
+                  ) : (
+                    <>Ketuk penanda bookmark tersebut saat sedang berada di tab YouTube/Apple Music.</>
+                  )}
+                </li>
+                <li>Sesi login otomatis dikirim via navigasi form aman ke PlayForgeX dan browser akan dialihkan kembali dengan status terhubung.</li>
+              </ol>
+            </div>
+          )}
         </div>
 
-        {/* METODE 2: Bookmarklet Safari HP */}
-        <div className="p-3.5 rounded-xl bg-card border border-white/[0.08] space-y-2.5">
-          <div className="flex items-center space-x-2 text-xs font-semibold text-amber-400">
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>Opsi Mobile: Bookmarklet Safari iPhone</span>
+        {/* METODE 2: Terminal Mac / CLI */}
+        <div className="p-3.5 rounded-xl bg-card border border-border space-y-2">
+          <div className="flex items-center space-x-2 text-xs font-semibold text-text-primary">
+            <Terminal className="w-3.5 h-3.5 text-accent" />
+            <span>Opsi Terminal Host (Otomatis &amp; Terisolasi)</span>
           </div>
 
-          <div className="text-xs text-slate-300 leading-relaxed space-y-1.5">
-            <p className="text-[11px] text-slate-400">
-              Salin kode script berikut ke bookmark Safari Anda:
-            </p>
+          <p className="text-[11px] text-slate-300 leading-relaxed">
+            Jalankan perintah ini di Terminal host untuk meluncurkan profil Chrome terpisah yang langsung merekam sesi Anda:
+          </p>
 
+          <div className="bg-surface border border-border rounded-lg p-2 flex items-center justify-between font-mono text-[11px] text-emerald-300">
+            <code className="truncate mr-2">{cliCommand}</code>
             <button
-              onClick={handleCopyBookmarklet}
-              className="w-full py-2 px-3 bg-white/[0.08] hover:bg-white/[0.12] text-white font-medium text-xs rounded-lg flex items-center justify-center gap-2 btn-press transition"
+              onClick={handleCopyCli}
+              className="p-1 text-slate-400 hover:text-white transition btn-press flex-shrink-0"
+              title="Salin perintah"
             >
-              {copiedBookmarklet ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedBookmarklet ? "Kode Script Berhasil Disalin!" : "Salin Kode Script"}</span>
+              {copiedState === "cli" ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
-
-            <button
-              type="button"
-              onClick={() => setShowIosTutorial(!showIosTutorial)}
-              className="text-[11px] text-primary hover:underline flex items-center gap-1 pt-1"
-            >
-              <span>{showIosTutorial ? "Sembunyikan langkah" : "Lihat 5 langkah pemasangan di Safari"}</span>
-              {showIosTutorial ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            </button>
-
-            {showIosTutorial && (
-              <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-300 bg-surface p-2.5 rounded-lg border border-white/[0.06] mt-1.5">
-                <li>Buka Safari, tambahkan penanda/bookmark pada halaman ini.</li>
-                <li>Edit penanda tersebut, ubah nama menjadi <b>Sync {service === "youtube" ? "YTM" : "Apple"}</b>.</li>
-                <li>Hapus URL lama, lalu paste kode script yang tadi disalin.</li>
-                <li>Buka tab <a href={targetSiteUrl} target="_blank" rel="noreferrer" className="text-primary underline">{service === "youtube" ? "music.youtube.com" : "music.apple.com"}</a> (pastikan sudah login).</li>
-                <li>Buka Bookmark dan ketuk penanda <b>Sync</b> tadi.</li>
-              </ol>
-            )}
           </div>
         </div>
 
@@ -182,7 +316,7 @@ export const AuthModalWeb: React.FC<AuthModalWebProps> = ({
             onClick={() => setShowManual(!showManual)}
             className="w-full flex items-center justify-between text-xs text-slate-400 hover:text-slate-200 py-1 transition"
           >
-            <span>Input Teks Manual (Lanjutan)</span>
+            <span>Input Kredensial Manual</span>
             {showManual ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
@@ -191,14 +325,14 @@ export const AuthModalWeb: React.FC<AuthModalWebProps> = ({
               {service === "youtube" ? (
                 <div>
                   <label className="text-[11px] font-medium text-slate-300 block mb-1">
-                    Cookie SAPISID YouTube Music
+                    Cookie SAPISID / Full Cookie YouTube Music
                   </label>
                   <textarea
                     value={cookieString}
                     onChange={(e) => setCookieString(e.target.value)}
                     placeholder="SAPISID=...; __Secure-3PAPISID=..."
                     rows={3}
-                    className="w-full bg-card border border-white/[0.08] rounded-lg p-2 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-white/20"
+                    className="w-full bg-surface border border-border rounded-lg p-2 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-accent"
                   />
                 </div>
               ) : (
@@ -211,7 +345,7 @@ export const AuthModalWeb: React.FC<AuthModalWebProps> = ({
                     onChange={(e) => setAppleUserToken(e.target.value)}
                     placeholder="Paste media-user-token..."
                     rows={2}
-                    className="w-full bg-card border border-white/[0.08] rounded-lg p-2 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-white/20"
+                    className="w-full bg-surface border border-border rounded-lg p-2 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-accent"
                   />
                 </div>
               )}
@@ -220,7 +354,7 @@ export const AuthModalWeb: React.FC<AuthModalWebProps> = ({
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="px-3.5 py-1.5 bg-primary hover:bg-primary-hover disabled:opacity-50 text-white rounded-lg text-xs font-medium btn-press transition"
+                  className="px-3.5 py-1.5 bg-accent text-background hover:brightness-110 disabled:opacity-50 rounded-lg text-xs font-semibold btn-press transition"
                 >
                   {isLoading ? "Menyimpan..." : "Simpan Kredensial"}
                 </button>

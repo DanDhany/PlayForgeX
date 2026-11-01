@@ -65,7 +65,7 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
   return (
     <>
       {/* Desktop Left Rail (Linear Style) */}
-      <aside className="hidden md:flex flex-col w-60 bg-surface border-r border-border select-none flex-shrink-0 z-30 justify-between h-full">
+      <aside className="hidden md:flex flex-col w-60 bg-surface border-r border-border select-none flex-shrink-0 z-40 justify-between h-full">
         <div className="flex flex-col">
           {/* Brand Header */}
           <div className="h-14 px-5 flex items-center justify-between border-b border-border/80">
@@ -152,6 +152,7 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
 
           <div className="w-full">
             <UserProfileMenu
+              dropUp
               currentUser={currentUser}
               onOpenAuth={onOpenAuth || (() => {})}
               onLogout={onUserLogout || (() => {})}
