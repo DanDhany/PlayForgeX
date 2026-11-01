@@ -7,9 +7,10 @@ COPY package*.json tsconfig*.json vite.config.ts tailwind.config.js postcss.conf
 
 RUN npm install
 
-# Copy source code
+# Copy source code and public assets
 COPY src/ ./src/
 COPY electron/ ./electron/
+COPY public/ ./public/
 
 # Build client bundle
 RUN npm run build
