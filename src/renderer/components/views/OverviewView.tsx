@@ -36,30 +36,30 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-6xl mx-auto w-full pb-24 md:pb-8">
       {/* Hero Banner (Apple Music × Linear aesthetic: restrained, focused) */}
-      <div className="rounded-2xl bg-surface border border-border p-6 md:p-8 relative overflow-hidden shadow-sm">
+      <div className="rounded-2xl bg-surface border border-border p-5 md:p-8 relative overflow-hidden shadow-sm">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-accent/5 to-transparent pointer-events-none" />
         <div className="max-w-2xl space-y-3 relative z-10">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-medium">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[11px] font-medium">
             <Layers className="w-3.5 h-3.5" />
             <span>Multi-Account Music Migration Engine</span>
           </div>
-          <h2 className="text-xl md:text-3xl font-semibold tracking-tight text-text-primary">
+          <h2 className="text-lg sm:text-xl md:text-3xl font-semibold tracking-tight text-text-primary leading-snug">
             Satu Jembatan untuk Semua Playlist Anda
           </h2>
           <p className="text-xs md:text-sm text-text-secondary leading-relaxed">
-            Gabungkan koleksi lagu dari berbagai akun YouTube Music (keluarga, teman, pribadi) langsung ke satu akun Apple Music, atau sebaliknya. Mandiri, aman, dan tanpa biaya langganan pihak ketiga.
+            Gabungkan koleksi lagu dari berbagai akun YouTube Music langsung ke satu akun Apple Music, atau sebaliknya. Mandiri, aman, dan tanpa biaya langganan pihak ketiga.
           </p>
-          <div className="flex flex-wrap items-center gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-2">
             <button
               onClick={() => onNavigate("transfer")}
-              className="px-4 py-2 rounded-lg bg-accent text-background font-medium text-xs md:text-sm flex items-center gap-2 hover:bg-accent/90 btn-press shadow-sm"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-accent text-background font-semibold text-xs md:text-sm flex items-center justify-center gap-2 hover:bg-accent/90 btn-press shadow-sm"
             >
               <ArrowRightLeft className="w-4 h-4" />
               <span>Mulai Transfer & Merge</span>
             </button>
             <button
               onClick={onOpenAddAccount}
-              className="px-4 py-2 rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-text-primary font-medium text-xs md:text-sm flex items-center gap-2 btn-press"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-text-primary font-medium text-xs md:text-sm flex items-center justify-center gap-2 btn-press"
             >
               <Plus className="w-4 h-4 text-text-secondary" />
               <span>Tambah Koneksi Akun</span>

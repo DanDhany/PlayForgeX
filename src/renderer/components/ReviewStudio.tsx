@@ -93,7 +93,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
 
   if (!selectedPlaylist) {
     return (
-      <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 text-center select-none overflow-y-auto bg-background">
+      <main className="flex-1 w-full h-full min-h-0 flex flex-col items-center justify-center p-6 md:p-12 text-center select-none overflow-y-auto bg-background">
         <div className="max-w-sm w-full flex flex-col items-center space-y-5 animate-fade-in">
           <div className="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center shadow-lg text-accent">
             <Disc3 className="w-8 h-8" />
@@ -125,7 +125,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
   const destinationName = targetPlatform === "youtube" ? "YouTube Music" : "Apple Music";
 
   return (
-    <main className="flex-1 flex flex-col h-[calc(100dvh-3.5rem)] bg-background select-none overflow-hidden relative">
+    <main className="flex-1 w-full h-full min-h-0 flex flex-col bg-background select-none overflow-hidden relative">
       {/* 1. Header Toolbar */}
       <div className="px-4 py-3 md:px-6 md:py-3.5 border-b border-border bg-surface/90 backdrop-blur-md flex-shrink-0 space-y-3">
         <div className="flex items-center justify-between gap-3">
@@ -319,7 +319,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
       </div>
 
       {/* 4. Tracks Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-2 pb-24 md:pb-6">
+      <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-2 pb-36 md:pb-6">
         {isMatching && items.length === 0 ? (
           <div className="py-20 text-center text-xs text-text-secondary flex flex-col items-center gap-3">
             <RefreshCw className="w-6 h-6 text-accent animate-spin" />

@@ -374,7 +374,7 @@ export const App: React.FC = () => {
   const currentTargetPlatform = currentSourcePlatform === "youtube" ? "apple" : "youtube";
 
   return (
-    <div className="flex h-[100dvh] w-screen bg-background overflow-hidden text-text-primary font-sans selection:bg-accent selection:text-background">
+    <div className="flex flex-col md:flex-row h-[100dvh] w-full bg-background overflow-hidden text-text-primary font-sans selection:bg-accent selection:text-background">
       {/* Linear-Style Navigation Rail on Desktop & Mobile Tabbar */}
       <NavigationRail
         activeTab={activeTab}
@@ -383,7 +383,7 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Pane */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
+      <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0 w-full relative">
         {activeTab === "overview" && (
           <OverviewView
             accounts={accounts}

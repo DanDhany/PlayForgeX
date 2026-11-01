@@ -211,7 +211,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({
         </div>
         <button
           onClick={onOpenAddAccount}
-          className="px-4 py-2 rounded-lg bg-accent text-background font-medium text-xs md:text-sm flex items-center gap-2 hover:bg-accent/90 btn-press shadow-sm flex-shrink-0 self-start sm:self-auto"
+          className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-accent text-background font-semibold text-xs md:text-sm flex items-center justify-center gap-2 hover:bg-accent/90 btn-press shadow-sm flex-shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>Tambah Akun Baru</span>

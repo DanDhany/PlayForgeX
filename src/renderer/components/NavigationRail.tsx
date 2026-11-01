@@ -23,7 +23,7 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
   onChangeTab,
   connectedCount,
 }) => {
-  const navItems: { id: NavTab; label: string; icon: React.FC<{ className?: string }> }[] = [
+  const desktopNavItems: { id: NavTab; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "transfer", label: "Transfer & Merge", icon: ArrowRightLeft },
     { id: "library", label: "Library", icon: ListMusic },
@@ -32,10 +32,19 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
+  // Mobile Bottom Tab Bar has 5 primary items; Settings is in the mobile top header
+  const mobileTabItems: { id: NavTab; label: string; icon: React.FC<{ className?: string }> }[] = [
+    { id: "overview", label: "Home", icon: LayoutDashboard },
+    { id: "transfer", label: "Transfer", icon: ArrowRightLeft },
+    { id: "library", label: "Library", icon: ListMusic },
+    { id: "accounts", label: "Accounts", icon: Users },
+    { id: "activity", label: "Activity", icon: History },
+  ];
+
   return (
     <>
       {/* Desktop Left Rail (Linear Style) */}
-      <aside className="hidden md:flex flex-col w-60 bg-surface border-r border-border select-none flex-shrink-0 z-30 justify-between">
+      <aside className="hidden md:flex flex-col w-60 bg-surface border-r border-border select-none flex-shrink-0 z-30 justify-between h-full">
         <div className="flex flex-col">
           {/* Brand Header */}
           <div className="h-14 px-5 flex items-center gap-3 border-b border-border/80">
@@ -60,7 +69,7 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
             <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-text-secondary/70">
               Workspace
             </div>
-            {navItems.map((item) => {
+            {desktopNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
@@ -103,8 +112,8 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
         </div>
       </aside>
 
-      {/* Mobile Top Brand Bar */}
-      <header className="md:hidden h-14 bg-surface/95 backdrop-blur-md border-b border-border px-4 flex items-center justify-between sticky top-0 z-40 select-none">
+      {/* Mobile Top Brand Bar (Full Width Block at Top) */}
+      <header className="md:hidden w-full h-14 bg-surface/95 backdrop-blur-md border-b border-border px-4 flex items-center justify-between sticky top-0 z-40 select-none flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-surface-elevated border border-border flex items-center justify-center text-accent">
             <Disc3 className="w-3.5 h-3.5" />
@@ -114,22 +123,39 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-[11px] text-text-secondary font-mono">
-          <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-          <span>{connectedCount} Akun</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onChangeTab("accounts")}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-[11px] text-text-secondary font-mono btn-press"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+            <span>{connectedCount} Akun</span>
+          </button>
+
+          <button
+            onClick={() => onChangeTab("settings")}
+            className={`p-1.5 rounded-lg border btn-press transition-colors ${
+              activeTab === "settings"
+                ? "bg-accent/20 border-accent/40 text-accent"
+                : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"
+            }`}
+            title="Pengaturan"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
       {/* Mobile Bottom Navigation Bar (Linear / Apple Tabbar Style) */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur-md border-t border-border z-40 px-2 py-1 flex items-center justify-around select-none pb-safe">
-        {navItems.map((item) => {
+      <nav className="md:hidden fixed bottom-0 inset-x-0 w-full bg-surface/95 backdrop-blur-md border-t border-border z-40 px-1 py-1 flex items-center justify-around select-none pb-safe">
+        {mobileTabItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
               onClick={() => onChangeTab(item.id)}
-              className={`flex flex-col items-center justify-center py-1.5 px-2.5 rounded-lg btn-press transition-colors ${
+              className={`flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-lg btn-press transition-colors ${
                 isActive ? "text-accent" : "text-text-secondary hover:text-text-primary"
               }`}
             >
@@ -141,8 +167,8 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
                   </span>
                 )}
               </div>
-              <span className="text-[10px] mt-1 font-medium tracking-tight">
-                {item.id === "transfer" ? "Transfer" : item.label}
+              <span className={`text-[10px] mt-1 tracking-tight ${isActive ? "font-semibold" : "font-medium"}`}>
+                {item.label}
               </span>
             </button>
           );

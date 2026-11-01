@@ -51,6 +51,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
   onNavigateAccounts,
 }) => {
   const [studioMode, setStudioMode] = useState<"quick" | "merge">("quick");
+  const [mobileQuickTab, setMobileQuickTab] = useState<"picker" | "review">("picker");
 
   // Merge Mode States
   const [selectedPlaylistSelections, setSelectedPlaylistSelections] = useState<SourcePlaylistSelection[]>([]);
@@ -71,6 +72,12 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
       else setDestinationAccountId(accounts[0].id);
     }
   }, [accounts, destinationAccountId]);
+
+  // When a playlist is selected, default to review view on mobile
+  const handlePickPlaylist = (pl: PlaylistSummary) => {
+    onSelectPlaylist(pl);
+    setMobileQuickTab("review");
+  };
 
   const handleTogglePlaylistSelection = (
     pl: PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: "youtube" | "apple" }
@@ -212,8 +219,39 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
       {studioMode === "quick" ? (
         // Mode 1: Quick Transfer (1:1) - Direct ReviewStudio layout
         <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
+          {/* Mobile Sub-Segmented Control: Playlist List vs Review Studio */}
+          <div className="md:hidden flex items-center justify-between p-2 bg-surface border-b border-border flex-shrink-0">
+            <div className="flex items-center p-0.5 bg-surface-elevated rounded-lg border border-border text-xs w-full">
+              <button
+                onClick={() => setMobileQuickTab("picker")}
+                className={`flex-1 py-1.5 rounded-md font-medium text-center transition-colors btn-press ${
+                  mobileQuickTab === "picker"
+                    ? "bg-accent/20 text-accent font-semibold shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                Pilih Playlist ({allPlaylists.length})
+              </button>
+              <button
+                onClick={() => setMobileQuickTab("review")}
+                disabled={!selectedPlaylist}
+                className={`flex-1 py-1.5 rounded-md font-medium text-center transition-colors btn-press ${
+                  mobileQuickTab === "review"
+                    ? "bg-accent/20 text-accent font-semibold shadow-sm"
+                    : "text-text-secondary disabled:opacity-40"
+                }`}
+              >
+                Review Lagu {selectedPlaylist ? `(${trackItems.length})` : ""}
+              </button>
+            </div>
+          </div>
+
           {/* Quick Playlist Picker Sidebar */}
-          <div className="w-full md:w-72 bg-surface/80 border-r border-border flex flex-col h-auto md:h-full flex-shrink-0">
+          <div
+            className={`w-full md:w-72 bg-surface/80 border-r border-border flex-col h-full flex-shrink-0 pb-24 md:pb-0 ${
+              mobileQuickTab === "picker" ? "flex" : "hidden md:flex"
+            }`}
+          >
             <div className="p-3 border-b border-border flex items-center justify-between text-xs">
               <span className="font-semibold text-text-primary flex items-center gap-1.5">
                 <ListMusic className="w-4 h-4 text-accent" />
@@ -224,13 +262,13 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
               </span>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 space-y-1 max-h-48 md:max-h-full">
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {allPlaylists.map((pl) => {
                 const isSelected = selectedPlaylist?.id === pl.id;
                 return (
                   <button
                     key={`${pl.accountId}_${pl.id}`}
-                    onClick={() => onSelectPlaylist(pl)}
+                    onClick={() => handlePickPlaylist(pl)}
                     className={`w-full text-left p-2.5 rounded-lg text-xs transition-colors flex items-center justify-between gap-2 btn-press ${
                       isSelected
                         ? "bg-accent/15 border border-accent/30 text-text-primary font-semibold"
@@ -255,7 +293,11 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
           </div>
 
           {/* Review Studio Stage */}
-          <div className="flex-1 flex flex-col h-full overflow-hidden">
+          <div
+            className={`flex-1 flex-col h-full overflow-hidden ${
+              mobileQuickTab === "review" ? "flex" : "hidden md:flex"
+            }`}
+          >
             <ReviewStudio
               selectedPlaylist={selectedPlaylist}
               items={trackItems}
