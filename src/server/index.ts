@@ -2,13 +2,12 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import path from "node:path";
 import fs from "node:fs";
-import { YouTubeMusicClient } from "../core/ytmusic.js";
-import { AppleMusicClient } from "../core/applemusic.js";
 import { cleanTitle } from "../core/sanitizer.js";
 import {
   TrackMetadata,
   TransferTrackItem,
   PlaylistSummary,
+  SourcePlaylistSelection,
 } from "../shared/types.js";
 import {
   loadDraft,
@@ -17,260 +16,255 @@ import {
   startBackgroundMatching,
   isJobRunning,
 } from "./matcher-worker.js";
+import { AccountManager } from "./account-manager.js";
+import { MergeEngine } from "./merge-engine.js";
 
 const app = express();
 const PORT = parseInt(process.env.APP_PORT || process.env.PORT || "3080", 10);
 const DATA_DIR = process.env.DATA_DIR || path.resolve(process.cwd(), "data");
-const SESSION_FILE = path.join(DATA_DIR, "session.json");
 
 app.use(cors());
-app.use(express.json({ limit: "20mb" }));
+app.use(express.json({ limit: "25mb" }));
 
 // Ensure data dir exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Session store interface
-interface SavedSession {
-  ytCookieString?: string;
-  appleUserToken?: string;
-  appleDevToken?: string;
-  appleStorefront?: string;
-}
+// Initialize Multi-Account & Merge Managers
+const accountManager = new AccountManager(DATA_DIR);
+const mergeEngine = new MergeEngine(DATA_DIR, accountManager);
 
-let sessionData: SavedSession = {};
-let ytClient: YouTubeMusicClient | null = null;
-let appleClient: AppleMusicClient | null = null;
 let currentProgress = { current: 0, total: 0, success: 0, failed: 0 };
 
-function loadSavedSession() {
-  if (fs.existsSync(SESSION_FILE)) {
-    try {
-      const raw = fs.readFileSync(SESSION_FILE, "utf-8");
-      sessionData = JSON.parse(raw);
-      if (sessionData.ytCookieString) {
-        ytClient = new YouTubeMusicClient(sessionData.ytCookieString);
-      }
-      if (sessionData.appleUserToken) {
-        appleClient = new AppleMusicClient(
-          sessionData.appleUserToken,
-          sessionData.appleDevToken
-        );
-      }
-      console.log("Persistent session loaded successfully from:", SESSION_FILE);
-    } catch (err) {
-      console.warn("Failed to load session file:", err);
-    }
-  }
-}
+// ==========================================
+// 1. Multi-Account Management APIs
+// ==========================================
 
-function persistSession() {
-  try {
-    fs.writeFileSync(SESSION_FILE, JSON.stringify(sessionData, null, 2), "utf-8");
-  } catch (err) {
-    console.error("Failed to save session to disk:", err);
-  }
-}
-
-// Load session at startup
-loadSavedSession();
-
-// 1. Get Auth Status
-app.get("/api/status", async (_req: Request, res: Response) => {
-  let ytCount = 0;
-  if (ytClient && ytClient.hasValidAuth()) {
-    try {
-      const playlists = await ytClient.fetchPlaylists();
-      ytCount = playlists.length;
-    } catch {}
-  }
-
-  let appleCount = 0;
-  let sf = sessionData.appleStorefront || "us";
-  if (appleClient) {
-    try {
-      sf = await appleClient.getUserStorefront();
-      sessionData.appleStorefront = sf;
-      const applePlaylists = await appleClient.getUserPlaylists();
-      appleCount = applePlaylists.length;
-    } catch {}
-  }
-
-  res.json({
-    youtube: {
-      connected: !!ytClient && ytClient.hasValidAuth(),
-      playlistCount: ytCount,
-    },
-    apple: {
-      connected: !!appleClient,
-      storefront: sf,
-      playlistCount: appleCount,
-    },
-  });
+// GET /api/accounts - List all connected accounts (sanitized, zero secrets exposed)
+app.get("/api/accounts", (_req: Request, res: Response) => {
+  res.json(accountManager.getAccounts());
 });
 
-// 2. Auth YouTube Music
-app.post("/api/auth/youtube", async (req: Request, res: Response) => {
-  const { cookieString } = req.body;
-  if (!cookieString) {
-    return res.status(400).json({ error: "cookieString is required" });
+// POST /api/accounts - Add a new connection
+app.post("/api/accounts", async (req: Request, res: Response) => {
+  const { platform, cookieString, musicUserToken, developerToken, alias } = req.body;
+
+  if (platform !== "youtube" && platform !== "apple") {
+    return res.status(400).json({ error: "platform must be 'youtube' or 'apple'" });
   }
 
   try {
-    const client = new YouTubeMusicClient(cookieString);
-    if (!client.hasValidAuth()) {
-      return res.status(400).json({
-        error: "Cookie must contain SAPISID or __Secure-3PAPISID",
-      });
+    if (platform === "youtube") {
+      if (!cookieString) return res.status(400).json({ error: "cookieString is required for YouTube Music" });
+      const acc = await accountManager.addYouTubeAccount(cookieString, alias);
+      return res.json({ success: true, account: acc });
+    } else {
+      if (!musicUserToken) return res.status(400).json({ error: "musicUserToken is required for Apple Music" });
+      const acc = await accountManager.addAppleAccount(musicUserToken, developerToken, alias);
+      return res.json({ success: true, account: acc });
     }
-
-    const playlists = await client.fetchPlaylists();
-    ytClient = client;
-    sessionData.ytCookieString = cookieString;
-    persistSession();
-
-    res.json({ success: true, playlistCount: playlists.length });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || "Failed to authenticate YouTube Music" });
+    res.status(500).json({ error: err.message || "Failed adding account connection" });
   }
 });
 
-// 3. Auth Apple Music
-app.post("/api/auth/apple", async (req: Request, res: Response) => {
-  const { musicUserToken, developerToken } = req.body;
-  if (!musicUserToken) {
-    return res.status(400).json({ error: "musicUserToken is required" });
-  }
+// PATCH /api/accounts/:id - Rename alias
+app.patch("/api/accounts/:id", (req: Request, res: Response) => {
+  const accountId = String(req.params.id);
+  const { alias } = req.body;
+  if (!alias) return res.status(400).json({ error: "alias is required" });
 
   try {
-    const client = new AppleMusicClient(musicUserToken, developerToken);
-    const sf = await client.getUserStorefront();
-    let playlistCount = 0;
-    try {
-      const playlists = await client.getUserPlaylists();
-      playlistCount = playlists.length;
-    } catch {}
-
-    appleClient = client;
-    sessionData.appleUserToken = musicUserToken;
-    sessionData.appleDevToken = developerToken;
-    sessionData.appleStorefront = sf;
-    persistSession();
-
-    res.json({ success: true, storefront: sf, playlistCount });
+    const updated = accountManager.updateAlias(accountId, alias);
+    res.json({ success: true, account: updated });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || "Failed to authenticate Apple Music" });
+    res.status(404).json({ error: err.message });
   }
 });
 
-// 4. Logout
-app.post("/api/auth/logout", (req: Request, res: Response) => {
-  const { service } = req.body;
-  if (service === "youtube" || service === "all") {
-    ytClient = null;
-    delete sessionData.ytCookieString;
+// POST /api/accounts/:id/test - Check connection status
+app.post("/api/accounts/:id/test", async (req: Request, res: Response) => {
+  const accountId = String(req.params.id);
+  try {
+    const updated = await accountManager.testConnection(accountId);
+    res.json({ success: true, account: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    const chromeProfile = path.resolve(DATA_DIR, "chrome-profile");
-    if (fs.existsSync(chromeProfile)) {
-      try {
-        fs.rmSync(chromeProfile, { recursive: true, force: true });
-      } catch (err) {
-        console.warn("Could not delete chrome-profile on logout:", err);
-      }
-    }
-  }
-  if (service === "apple" || service === "all") {
-    appleClient = null;
-    delete sessionData.appleUserToken;
-    delete sessionData.appleDevToken;
-    delete sessionData.appleStorefront;
-  }
-  persistSession();
+// DELETE /api/accounts/:id - Remove account connection
+app.delete("/api/accounts/:id", (req: Request, res: Response) => {
+  const accountId = String(req.params.id);
+  const removed = accountManager.removeAccount(accountId);
+  if (!removed) return res.status(404).json({ error: "Account not found" });
   res.json({ success: true });
 });
 
-// 5. Fetch Playlists (supports source=youtube | apple)
-app.get("/api/playlists", async (req: Request, res: Response) => {
-  const source = (req.query.source as string) || "youtube";
-
-  if (source === "apple") {
-    if (!appleClient) {
-      return res.status(401).json({ error: "Apple Music not connected" });
-    }
-    try {
-      const playlists = await appleClient.getUserPlaylists();
-      return res.json(playlists);
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  }
-
-  // Default: YouTube Music
-  if (!ytClient) {
-    return res.status(401).json({ error: "YouTube Music not connected" });
-  }
+// GET /api/accounts/:id/playlists - Get playlists for specific account
+app.get("/api/accounts/:id/playlists", async (req: Request, res: Response) => {
+  const accountId = String(req.params.id);
   try {
-    const playlists = await ytClient.fetchPlaylists();
+    const playlists = await accountManager.getPlaylists(accountId);
     res.json(playlists);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 6. Fetch Tracks (supports source=youtube | apple or auto-detect by prefix)
-app.get("/api/playlists/:id/tracks", async (req: Request, res: Response) => {
-  const playlistId = req.params.id as string;
-  const source = (req.query.source as string) || (playlistId.startsWith("p.") ? "apple" : "youtube");
+// ==========================================
+// 2. Legacy-Compatible Authentication APIs
+// ==========================================
 
-  if (source === "apple") {
-    if (!appleClient) {
-      return res.status(401).json({ error: "Apple Music not connected" });
-    }
-    try {
-      const tracks = await appleClient.getPlaylistTracks(playlistId);
-      return res.json(tracks);
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  }
+// GET /api/status - Returns primary accounts status for backward compatibility
+app.get("/api/status", async (_req: Request, res: Response) => {
+  const accounts = accountManager.getAccounts();
+  const primaryYt = accountManager.getPrimaryAccount("youtube");
+  const primaryApple = accountManager.getPrimaryAccount("apple");
 
-  // Default: YouTube Music
-  if (!ytClient) {
-    return res.status(401).json({ error: "YouTube Music not connected" });
-  }
+  res.json({
+    youtube: {
+      connected: !!primaryYt && primaryYt.status === "connected",
+      playlistCount: primaryYt?.playlistCount || 0,
+      totalAccounts: accounts.filter((a) => a.platform === "youtube").length,
+    },
+    apple: {
+      connected: !!primaryApple && primaryApple.status === "connected",
+      storefront: primaryApple?.storefront || "us",
+      playlistCount: primaryApple?.playlistCount || 0,
+      totalAccounts: accounts.filter((a) => a.platform === "apple").length,
+    },
+  });
+});
+
+// POST /api/auth/youtube
+app.post("/api/auth/youtube", async (req: Request, res: Response) => {
+  const { cookieString, alias } = req.body;
+  if (!cookieString) return res.status(400).json({ error: "cookieString is required" });
+
   try {
-    const tracks = await ytClient.fetchPlaylistTracks(playlistId);
-    res.json(tracks);
+    const acc = await accountManager.addYouTubeAccount(cookieString, alias || "Koleksi Utama (YouTube)");
+    res.json({ success: true, account: acc, playlistCount: acc.playlistCount });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed authenticating YouTube Music" });
+  }
+});
+
+// POST /api/auth/apple
+app.post("/api/auth/apple", async (req: Request, res: Response) => {
+  const { musicUserToken, developerToken, alias } = req.body;
+  if (!musicUserToken) return res.status(400).json({ error: "musicUserToken is required" });
+
+  try {
+    const acc = await accountManager.addAppleAccount(
+      musicUserToken,
+      developerToken,
+      alias || "Koleksi Utama (Apple)"
+    );
+    res.json({ success: true, account: acc, storefront: acc.storefront, playlistCount: acc.playlistCount });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed authenticating Apple Music" });
+  }
+});
+
+// POST /api/auth/logout
+app.post("/api/auth/logout", (req: Request, res: Response) => {
+  const { service, accountId } = req.body;
+
+  if (accountId) {
+    accountManager.removeAccount(accountId);
+  } else if (service === "youtube" || service === "all") {
+    const primaryYt = accountManager.getPrimaryAccount("youtube");
+    if (primaryYt) accountManager.removeAccount(primaryYt.id);
+  } else if (service === "apple" || service === "all") {
+    const primaryApple = accountManager.getPrimaryAccount("apple");
+    if (primaryApple) accountManager.removeAccount(primaryApple.id);
+  }
+
+  res.json({ success: true });
+});
+
+// ==========================================
+// 3. Playlists & Tracks APIs (Account-Aware)
+// ==========================================
+
+// GET /api/playlists (supports optional accountId query)
+app.get("/api/playlists", async (req: Request, res: Response) => {
+  const accountId = req.query.accountId as string;
+  const source = (req.query.source as string) || "youtube";
+
+  let targetAcc = accountId
+    ? accountManager.getAccount(accountId)
+    : accountManager.getPrimaryAccount(source as "youtube" | "apple");
+
+  if (!targetAcc) {
+    return res.status(401).json({ error: `No connected ${source} account available` });
+  }
+
+  try {
+    const playlists = await accountManager.getPlaylists(targetAcc.id);
+    res.json(playlists);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 7. Match Tracks (Original Title Priority - Bidirectional)
+// GET /api/playlists/:id/tracks
+app.get("/api/playlists/:id/tracks", async (req: Request, res: Response) => {
+  const playlistId = req.params.id as string;
+  const accountId = req.query.accountId as string;
+  const source = (req.query.source as string) || (playlistId.startsWith("p.") ? "apple" : "youtube");
+
+  let targetAcc = accountId
+    ? accountManager.getAccount(accountId)
+    : accountManager.getPrimaryAccount(source as "youtube" | "apple");
+
+  if (!targetAcc) {
+    return res.status(401).json({ error: `No connected ${source} account available` });
+  }
+
+  try {
+    if (targetAcc.platform === "apple") {
+      const client = accountManager.getAppleClient(targetAcc.id);
+      if (!client) return res.status(401).json({ error: "Apple client not active" });
+      const tracks = await client.getPlaylistTracks(playlistId);
+      return res.json(tracks);
+    } else {
+      const client = accountManager.getYTMClient(targetAcc.id);
+      if (!client || !client.hasValidAuth()) return res.status(401).json({ error: "YouTube client not active" });
+      const tracks = await client.fetchPlaylistTracks(playlistId);
+      return res.json(tracks);
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 4. Match & Search APIs
+// ==========================================
+
 app.post("/api/tracks/match", async (req: Request, res: Response) => {
-  const { tracks, targetPlatform = "apple" } = req.body as {
+  const { tracks, targetPlatform = "apple", targetAccountId } = req.body as {
     tracks: TrackMetadata[];
     targetPlatform?: "apple" | "youtube";
+    targetAccountId?: string;
   };
 
   if (!tracks || !Array.isArray(tracks)) {
     return res.status(400).json({ error: "tracks array is required" });
   }
 
-  if (targetPlatform === "apple" && !appleClient) {
-    return res.status(401).json({ error: "Apple Music not connected" });
+  const targetAcc = targetAccountId
+    ? accountManager.getAccount(targetAccountId)
+    : accountManager.getPrimaryAccount(targetPlatform);
+
+  if (!targetAcc) {
+    return res.status(401).json({ error: `Target ${targetPlatform} account not connected` });
   }
 
-  if (targetPlatform === "youtube" && (!ytClient || !ytClient.hasValidAuth())) {
-    return res.status(401).json({ error: "YouTube Music not connected" });
-  }
-
-  let sf = "us";
-  if (targetPlatform === "apple" && appleClient) {
-    sf = await appleClient.getUserStorefront();
-  }
-
+  let sf = targetAcc.storefront || "us";
   const results: TransferTrackItem[] = [];
 
   for (const track of tracks) {
@@ -280,11 +274,15 @@ app.post("/api/tracks/match", async (req: Request, res: Response) => {
       let match: any;
 
       if (targetPlatform === "apple") {
-        const resMatch = await appleClient!.searchWithOriginalPriority(track, sf);
+        const client = accountManager.getAppleClient(targetAcc.id);
+        if (!client) throw new Error("Apple client not available");
+        const resMatch = await client.searchWithOriginalPriority(track, sf);
         candidate = resMatch.candidate;
         match = resMatch.match;
       } else {
-        const resMatch = await ytClient!.searchWithOriginalPriority(track);
+        const client = accountManager.getYTMClient(targetAcc.id);
+        if (!client || !client.hasValidAuth()) throw new Error("YouTube client not available");
+        const resMatch = await client.searchWithOriginalPriority(track);
         candidate = resMatch.candidate;
         match = resMatch.match;
       }
@@ -299,7 +297,6 @@ app.post("/api/tracks/match", async (req: Request, res: Response) => {
         excluded: shouldExclude,
       });
     } catch (err) {
-      console.error(`Error matching ${track.title} on ${targetPlatform}:`, err);
       results.push({
         source: track,
         sanitizedTitle: sanitized,
@@ -319,38 +316,40 @@ app.post("/api/tracks/match", async (req: Request, res: Response) => {
   res.json(results);
 });
 
-// 8. Search Catalog manually (Bidirectional)
 app.post(["/api/search", "/api/search/apple", "/api/search/youtube"], async (req: Request, res: Response) => {
-  const { query, targetPlatform = "apple" } = req.body;
+  const { query, targetPlatform = "apple", targetAccountId } = req.body;
   if (!query) return res.json([]);
 
   const isYt = targetPlatform === "youtube" || req.path.includes("youtube");
+  const platform = isYt ? "youtube" : "apple";
 
-  if (isYt) {
-    if (!ytClient || !ytClient.hasValidAuth()) {
-      return res.status(401).json({ error: "YouTube Music not connected" });
-    }
-    try {
-      const tracks = await ytClient.searchCatalog(query);
-      return res.json(tracks);
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  }
+  const targetAcc = targetAccountId
+    ? accountManager.getAccount(targetAccountId)
+    : accountManager.getPrimaryAccount(platform);
 
-  // Default: Apple Music
-  if (!appleClient) {
-    return res.status(401).json({ error: "Apple Music not connected" });
-  }
+  if (!targetAcc) return res.status(401).json({ error: `${platform} account not connected` });
+
   try {
-    const tracks = await appleClient.searchCatalog(query);
-    res.json(tracks);
+    if (platform === "youtube") {
+      const client = accountManager.getYTMClient(targetAcc.id);
+      if (!client || !client.hasValidAuth()) return res.status(401).json({ error: "YouTube client not active" });
+      const tracks = await client.searchCatalog(query);
+      return res.json(tracks);
+    } else {
+      const client = accountManager.getAppleClient(targetAcc.id);
+      if (!client) return res.status(401).json({ error: "Apple client not active" });
+      const tracks = await client.searchCatalog(query);
+      return res.json(tracks);
+    }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 9. Draft & Background Matching API
+// ==========================================
+// 5. Drafts & Background Matching APIs
+// ==========================================
+
 app.get("/api/drafts/:sourcePlatform/:playlistId", (req: Request, res: Response) => {
   const sourcePlatform = String(req.params.sourcePlatform);
   const playlistId = String(req.params.playlistId);
@@ -363,24 +362,47 @@ app.put("/api/drafts/:sourcePlatform/:playlistId/item", (req: Request, res: Resp
   const sourcePlatform = String(req.params.sourcePlatform);
   const playlistId = String(req.params.playlistId);
   const { item } = req.body as { item: TransferTrackItem };
-  if (!item) {
-    return res.status(400).json({ error: "item is required" });
-  }
+  if (!item) return res.status(400).json({ error: "item is required" });
   const updated = updateDraftItem(sourcePlatform, playlistId, item);
   res.json({ success: updated });
 });
 
 app.post("/api/matching/start", async (req: Request, res: Response) => {
-  const { sourcePlatform, targetPlatform, playlist, force = false } = req.body as {
+  const {
+    sourcePlatform,
+    targetPlatform,
+    playlist,
+    force = false,
+    sourceAccountId,
+    targetAccountId,
+  } = req.body as {
     sourcePlatform: "youtube" | "apple";
     targetPlatform: "apple" | "youtube";
     playlist: PlaylistSummary;
     force?: boolean;
+    sourceAccountId?: string;
+    targetAccountId?: string;
   };
 
-  if (!playlist || !playlist.id) {
-    return res.status(400).json({ error: "playlist is required" });
-  }
+  if (!playlist || !playlist.id) return res.status(400).json({ error: "playlist is required" });
+
+  const sourceAcc = sourceAccountId
+    ? accountManager.getAccount(sourceAccountId)
+    : accountManager.getPrimaryAccount(sourcePlatform);
+
+  const targetAcc = targetAccountId
+    ? accountManager.getAccount(targetAccountId)
+    : accountManager.getPrimaryAccount(targetPlatform);
+
+  const ytClient =
+    sourcePlatform === "youtube"
+      ? accountManager.getYTMClient(sourceAcc?.id || "")
+      : accountManager.getYTMClient(targetAcc?.id || "");
+
+  const appleClient =
+    sourcePlatform === "apple"
+      ? accountManager.getAppleClient(sourceAcc?.id || "")
+      : accountManager.getAppleClient(targetAcc?.id || "");
 
   try {
     const draft = await startBackgroundMatching(
@@ -397,37 +419,71 @@ app.post("/api/matching/start", async (req: Request, res: Response) => {
   }
 });
 
-app.get("/api/matching/status/:sourcePlatform/:playlistId", (req: Request, res: Response) => {
-  const sourcePlatform = String(req.params.sourcePlatform);
-  const playlistId = String(req.params.playlistId);
-  const draft = loadDraft(sourcePlatform, playlistId);
-  const isRunning = isJobRunning(sourcePlatform, playlistId);
-  res.json({ draft, isRunning });
+// ==========================================
+// 6. Merge Collections & Multi-Source APIs
+// ==========================================
+
+// POST /api/workflows/merge/preview - Discover & deduplicate tracks across multiple accounts
+app.post("/api/workflows/merge/preview", async (req: Request, res: Response) => {
+  const { sourceSelections, deduplicationPolicy = "remove_exact" } = req.body as {
+    sourceSelections: SourcePlaylistSelection[];
+    deduplicationPolicy?: "remove_exact" | "keep_all" | "review_possible";
+  };
+
+  if (!sourceSelections || !Array.isArray(sourceSelections) || sourceSelections.length === 0) {
+    return res.status(400).json({ error: "sourceSelections array is required" });
+  }
+
+  try {
+    const discovered = await mergeEngine.fetchDiscoveredTracks(sourceSelections);
+    const { uniqueTracks, duplicates } = mergeEngine.deduplicateTracks(discovered, deduplicationPolicy);
+
+    res.json({
+      totalDiscovered: discovered.length,
+      uniqueCount: uniqueTracks.length,
+      duplicatesCount: duplicates.length,
+      uniqueTracks,
+      duplicates,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed generating merge preview" });
+  }
 });
 
-// 10. Transfer Progress polling
+// GET /api/activity - Transfer audit history
+app.get("/api/activity", (_req: Request, res: Response) => {
+  res.json(mergeEngine.getActivityLogs());
+});
+
+// GET /api/transfer/progress
 app.get("/api/transfer/progress", (_req: Request, res: Response) => {
   res.json(currentProgress);
 });
 
-// 11. Execute Transfer (Bidirectional & Flexible mode: Create New or Embed into Existing)
+// POST /api/transfer - Execute Transfer (Supports both Single & Merge Collections)
 app.post("/api/transfer", async (req: Request, res: Response) => {
   const {
     playlistTitle,
     items,
     targetPlatform = "apple",
+    targetAccountId,
     mode = "create",
     existingPlaylistId,
     sourcePlaylistId,
     sourcePlatform = "youtube",
+    workflowName,
+    sourceAliases = [],
   } = req.body as {
     playlistTitle: string;
     items: TransferTrackItem[];
     targetPlatform?: "apple" | "youtube";
+    targetAccountId?: string;
     mode?: "create" | "existing";
     existingPlaylistId?: string;
     sourcePlaylistId?: string;
     sourcePlatform?: "youtube" | "apple";
+    workflowName?: string;
+    sourceAliases?: string[];
   };
 
   const activeItems = (items || []).filter((item) => !item.excluded && item.selectedCandidate);
@@ -437,8 +493,12 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "No tracks selected for transfer" });
   }
 
-  if (mode === "existing" && !existingPlaylistId) {
-    return res.status(400).json({ error: "existingPlaylistId is required when mode is 'existing'" });
+  const targetAcc = targetAccountId
+    ? accountManager.getAccount(targetAccountId)
+    : accountManager.getPrimaryAccount(targetPlatform);
+
+  if (!targetAcc) {
+    return res.status(401).json({ error: `Target ${targetPlatform} account not connected` });
   }
 
   const total = trackIds.length;
@@ -447,14 +507,15 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
   currentProgress = { current: 0, total, success: 0, failed: 0 };
 
   try {
-    if (targetPlatform === "apple") {
-      if (!appleClient) {
-        return res.status(401).json({ error: "Apple Music not connected" });
-      }
+    let destinationId: string;
 
-      let destinationId: string;
+    if (targetPlatform === "apple") {
+      const appleClient = accountManager.getAppleClient(targetAcc.id);
+      if (!appleClient) return res.status(401).json({ error: "Target Apple Music client not connected" });
+
       if (mode === "existing") {
-        destinationId = existingPlaylistId!;
+        if (!existingPlaylistId) return res.status(400).json({ error: "existingPlaylistId is required" });
+        destinationId = existingPlaylistId;
       } else {
         destinationId = await appleClient.createPlaylist(playlistTitle);
       }
@@ -471,33 +532,16 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
           failed,
         };
       }
-
-      if (sourcePlaylistId) {
-        const draft = loadDraft(sourcePlatform, sourcePlaylistId);
-        if (draft) {
-          draft.status = "transferred";
-          saveDraft(draft);
-        }
-      }
-
-      return res.json({
-        success: true,
-        targetPlatform: "apple",
-        mode,
-        destinationPlaylistId: destinationId,
-        createdPlaylistId: destinationId,
-        added: success,
-        failed,
-      });
     } else {
       // targetPlatform === "youtube"
+      const ytClient = accountManager.getYTMClient(targetAcc.id);
       if (!ytClient || !ytClient.hasValidAuth()) {
-        return res.status(401).json({ error: "YouTube Music not connected" });
+        return res.status(401).json({ error: "Target YouTube Music client not connected" });
       }
 
-      let destinationId: string;
       if (mode === "existing") {
-        destinationId = existingPlaylistId!;
+        if (!existingPlaylistId) return res.status(400).json({ error: "existingPlaylistId is required" });
+        destinationId = existingPlaylistId;
         for (let i = 0; i < total; i += 25) {
           const chunk = trackIds.slice(i, i + 25);
           const resChunk = await ytClient.addTracksToPlaylist(destinationId, chunk);
@@ -516,48 +560,51 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
 
         destinationId = await ytClient.createPlaylist(
           playlistTitle,
-          "Imported from Apple Music via MirrorSong",
+          "Imported via TuneBridge",
           initialBatch
         );
         success += initialBatch.length;
-        currentProgress = {
-          current: initialBatch.length,
-          total,
-          success,
-          failed: 0,
-        };
+        currentProgress = { current: initialBatch.length, total, success, failed: 0 };
 
         if (remaining.length > 0) {
           const resChunk = await ytClient.addTracksToPlaylist(destinationId, remaining);
           success += resChunk.added;
           failed += resChunk.failed;
-          currentProgress = {
-            current: total,
-            total,
-            success,
-            failed,
-          };
+          currentProgress = { current: total, total, success, failed };
         }
       }
-
-      if (sourcePlaylistId) {
-        const draft = loadDraft(sourcePlatform, sourcePlaylistId);
-        if (draft) {
-          draft.status = "transferred";
-          saveDraft(draft);
-        }
-      }
-
-      return res.json({
-        success: true,
-        targetPlatform: "youtube",
-        mode,
-        destinationPlaylistId: destinationId,
-        createdPlaylistId: destinationId,
-        added: success,
-        failed,
-      });
     }
+
+    // Mark draft transferred if applicable
+    if (sourcePlaylistId) {
+      const draft = loadDraft(sourcePlatform, sourcePlaylistId);
+      if (draft) {
+        draft.status = "transferred";
+        saveDraft(draft);
+      }
+    }
+
+    // Record audit activity log
+    mergeEngine.logActivity({
+      workflowName: workflowName || playlistTitle,
+      sourceAliases: sourceAliases.length > 0 ? sourceAliases : [sourcePlatform === "youtube" ? "YouTube Music" : "Apple Music"],
+      destinationAlias: targetAcc.localAlias,
+      destinationPlatform: targetPlatform,
+      totalTracks: total,
+      matchedCount: activeItems.length,
+      successCount: success,
+      failedCount: failed,
+      duplicatesRemoved: 0,
+      status: failed === 0 ? "completed" : success > 0 ? "partial" : "failed",
+    });
+
+    res.json({
+      success: true,
+      destinationPlaylistId: destinationId,
+      createdPlaylistId: destinationId,
+      added: success,
+      failed,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -573,6 +620,6 @@ if (fs.existsSync(distDir)) {
 }
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`MirrorSong Web Server running at http://0.0.0.0:${PORT}`);
+  console.log(`TuneBridge Server running at http://0.0.0.0:${PORT}`);
   console.log(`Persistent data directory: ${DATA_DIR}`);
 });

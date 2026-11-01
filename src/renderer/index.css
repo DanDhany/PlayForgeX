@@ -15,15 +15,15 @@
     touch-action: manipulation;
     height: 100%;
     overscroll-behavior-y: none;
-    background-color: #08090E;
+    background-color: #0B0C0F;
   }
 
   body {
     margin: 0;
     padding: 0;
     min-height: 100dvh;
-    background-color: #08090E;
-    color: #F8FAFC;
+    background-color: #0B0C0F;
+    color: #F5F5F7;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

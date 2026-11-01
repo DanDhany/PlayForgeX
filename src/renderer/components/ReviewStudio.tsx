@@ -95,23 +95,23 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
     return (
       <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 text-center select-none overflow-y-auto bg-background">
         <div className="max-w-sm w-full flex flex-col items-center space-y-5 animate-fade-in">
-          <div className="w-16 h-16 rounded-2xl bg-card border border-white/[0.08] flex items-center justify-center shadow-lg">
-            <Disc3 className="w-8 h-8 text-primary/80" />
+          <div className="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center shadow-lg text-accent">
+            <Disc3 className="w-8 h-8" />
           </div>
 
           <div className="space-y-1.5">
-            <h2 className="text-base font-semibold text-white tracking-tight">
+            <h2 className="text-base font-semibold text-text-primary tracking-tight">
               Pilih Playlist untuk Ditinjau
             </h2>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Pilih playlist dari daftar untuk memulai pencocokan judul original non-Latin (Kanji/Kana) secara presisi ke platform tujuan.
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Pilih playlist dari daftar untuk memulai pencocokan judul original non-Latin secara presisi ke platform tujuan.
             </p>
           </div>
 
           {onOpenMobileSidebar && (
             <button
               onClick={onOpenMobileSidebar}
-              className="md:hidden px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-medium flex items-center gap-2 btn-press shadow-sm"
+              className="md:hidden px-4 py-2 bg-accent text-background rounded-xl text-xs font-semibold flex items-center gap-2 btn-press shadow-sm"
             >
               <ListMusic className="w-4 h-4" />
               <span>Buka Daftar Playlist</span>
@@ -127,11 +127,11 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
   return (
     <main className="flex-1 flex flex-col h-[calc(100dvh-3.5rem)] bg-background select-none overflow-hidden relative">
       {/* 1. Header Toolbar */}
-      <div className="px-4 py-3 md:px-6 md:py-3.5 border-b border-white/[0.08] bg-surface/70 backdrop-blur-md flex-shrink-0 space-y-3">
+      <div className="px-4 py-3 md:px-6 md:py-3.5 border-b border-border bg-surface/90 backdrop-blur-md flex-shrink-0 space-y-3">
         <div className="flex items-center justify-between gap-3">
           {/* Playlist Info */}
           <div className="flex items-center space-x-3 min-w-0">
-            <div className="w-11 h-11 md:w-12 md:h-12 rounded-lg bg-card border border-white/[0.08] overflow-hidden flex-shrink-0 flex items-center justify-center">
+            <div className="w-11 h-11 md:w-12 md:h-12 rounded-lg bg-surface-elevated border border-border overflow-hidden flex-shrink-0 flex items-center justify-center">
               {selectedPlaylist.thumbnailUrl ? (
                 <img
                   src={selectedPlaylist.thumbnailUrl}
@@ -139,20 +139,20 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <Disc3 className="w-5 h-5 text-slate-500" />
+                <Disc3 className="w-5 h-5 text-text-secondary" />
               )}
             </div>
 
             <div className="min-w-0">
               <div className="flex items-center space-x-2">
-                <h2 className="text-sm md:text-base font-semibold text-white tracking-tight truncate">
+                <h2 className="text-sm md:text-base font-semibold text-text-primary tracking-tight truncate">
                   {selectedPlaylist.title}
                 </h2>
-                <span className="hidden sm:inline-block px-1.5 py-0.2 text-[9px] font-mono uppercase bg-white/[0.06] text-slate-300 rounded border border-white/[0.08]">
+                <span className="hidden sm:inline-block px-1.5 py-0.2 text-[9px] font-mono uppercase bg-surface-elevated text-text-secondary rounded border border-border">
                   {sourcePlatform === "youtube" ? "YTM" : "Apple"} ➔ {targetPlatform === "youtube" ? "YTM" : "Apple"}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+              <p className="text-[11px] text-text-secondary mt-0.5 truncate">
                 {items.length} lagu · Ekspor ke {destinationName}
               </p>
             </div>
@@ -164,16 +164,16 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
               onClick={onReMatch}
               disabled={isMatching || isTransferring}
               title="Cari ulang semua kecocokan lagu"
-              className="px-3 py-1.5 bg-card hover:bg-card-hover border border-white/[0.08] rounded-lg text-xs font-medium text-slate-300 hover:text-white flex items-center gap-1.5 btn-press transition"
+              className="px-3 py-1.5 bg-surface-elevated hover:bg-surface-hover border border-border rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary flex items-center gap-1.5 btn-press transition-colors"
             >
-              <RotateCcw className={`w-3.5 h-3.5 ${isMatching ? "animate-spin" : ""}`} />
+              <RotateCcw className={`w-3.5 h-3.5 ${isMatching ? "animate-spin text-accent" : ""}`} />
               <span>Re-Match</span>
             </button>
 
             <button
               onClick={onStartTransfer}
               disabled={isTransferring || stats.activeForImport === 0}
-              className="px-3.5 py-1.5 bg-primary hover:bg-primary-hover disabled:bg-card disabled:text-slate-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 btn-press transition shadow-sm"
+              className="px-3.5 py-1.5 bg-accent text-background hover:bg-accent/90 disabled:opacity-50 text-xs font-semibold rounded-lg flex items-center gap-2 btn-press transition shadow-sm"
             >
               <ArrowRight className="w-3.5 h-3.5" />
               <span>Transfer ({stats.activeForImport})</span>
@@ -183,42 +183,42 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
 
         {/* Matching In-Progress Banner */}
         {isMatching && (
-          <div className="py-1.5 px-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between text-xs">
+          <div className="py-1.5 px-3 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-between text-xs">
             <div className="flex items-center space-x-2">
-              <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
-              <span className="text-slate-200 text-[11px]">
+              <Loader2 className="w-3.5 h-3.5 text-accent animate-spin" />
+              <span className="text-text-primary text-[11px]">
                 Mencocokkan lagu di latar belakang ({items.length}{totalTracksToMatch > 0 ? ` / ${totalTracksToMatch}` : ""} lagu)...
               </span>
             </div>
-            <span className="text-[10px] font-mono text-primary/80 hidden sm:inline">
+            <span className="text-[10px] font-mono text-accent hidden sm:inline">
               Otomatis tersimpan
             </span>
           </div>
         )}
 
-        {/* Quiet, Single-Line Status Strip (Replaces AI-slop 4 KPI cards) */}
-        <div className="flex items-center space-x-4 text-xs text-slate-400 pt-0.5 overflow-x-auto scrollbar-none">
+        {/* Quiet, Single-Line Status Strip */}
+        <div className="flex items-center space-x-4 text-xs text-text-secondary pt-0.5 overflow-x-auto scrollbar-none">
           <div className="flex items-center space-x-1.5 flex-shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span className="text-slate-300 font-medium tabular-nums">{stats.exact}</span>
-            <span className="text-slate-400">Cocok</span>
+            <span className="w-2 h-2 rounded-full bg-status-success" />
+            <span className="text-text-primary font-medium tabular-nums">{stats.exact}</span>
+            <span className="text-text-secondary">Cocok</span>
           </div>
 
           <div className="flex items-center space-x-1.5 flex-shrink-0">
-            <span className="w-2 h-2 rounded-full bg-amber-400" />
-            <span className="text-slate-300 font-medium tabular-nums">{stats.covers}</span>
-            <span className="text-slate-400">Cover / Alt</span>
+            <span className="w-2 h-2 rounded-full bg-status-warning" />
+            <span className="text-text-primary font-medium tabular-nums">{stats.covers}</span>
+            <span className="text-text-secondary">Cover / Alt</span>
           </div>
 
           <div className="flex items-center space-x-1.5 flex-shrink-0">
-            <span className="w-2 h-2 rounded-full bg-rose-400" />
-            <span className="text-slate-300 font-medium tabular-nums">{stats.unmatched}</span>
-            <span className="text-slate-400">Belum Ada</span>
+            <span className="w-2 h-2 rounded-full bg-status-danger" />
+            <span className="text-text-primary font-medium tabular-nums">{stats.unmatched}</span>
+            <span className="text-text-secondary">Belum Ada</span>
           </div>
 
-          <div className="flex items-center space-x-1.5 flex-shrink-0 ml-auto font-mono text-[11px] text-slate-400">
+          <div className="flex items-center space-x-1.5 flex-shrink-0 ml-auto font-mono text-[11px] text-text-secondary">
             <span>Siap:</span>
-            <span className="text-white font-semibold tabular-nums">{stats.activeForImport}</span>
+            <span className="text-text-primary font-semibold tabular-nums">{stats.activeForImport}</span>
             <span>/</span>
             <span className="tabular-nums">{items.length}</span>
           </div>
@@ -226,44 +226,44 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
       </div>
 
       {/* 2. Filter Tabs & Search Bar */}
-      <div className="px-4 md:px-6 py-2 border-b border-white/[0.08] bg-surface/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs flex-shrink-0">
+      <div className="px-4 md:px-6 py-2 border-b border-border bg-surface/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs flex-shrink-0">
         <div className="flex items-center space-x-1 overflow-x-auto pb-0.5 sm:pb-0 scrollbar-none">
           <button
             onClick={() => setFilter("all")}
-            className={`px-2.5 py-1 rounded-md font-medium transition flex-shrink-0 btn-press ${
+            className={`px-2.5 py-1 rounded-md font-medium transition-colors flex-shrink-0 btn-press ${
               filter === "all"
-                ? "bg-white/[0.12] text-white shadow-sm"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-surface-elevated text-text-primary border border-border shadow-sm font-semibold"
+                : "text-text-secondary hover:text-text-primary"
             }`}
           >
             Semua ({stats.total})
           </button>
           <button
             onClick={() => setFilter("exact")}
-            className={`px-2.5 py-1 rounded-md font-medium transition flex-shrink-0 btn-press ${
+            className={`px-2.5 py-1 rounded-md font-medium transition-colors flex-shrink-0 btn-press ${
               filter === "exact"
-                ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
-                : "text-slate-400 hover:text-emerald-300"
+                ? "bg-status-success/15 text-status-success border border-status-success/25 font-semibold"
+                : "text-text-secondary hover:text-status-success"
             }`}
           >
             Cocok ({stats.exact})
           </button>
           <button
             onClick={() => setFilter("covers")}
-            className={`px-2.5 py-1 rounded-md font-medium transition flex-shrink-0 btn-press ${
+            className={`px-2.5 py-1 rounded-md font-medium transition-colors flex-shrink-0 btn-press ${
               filter === "covers"
-                ? "bg-amber-500/15 text-amber-300 border border-amber-500/25"
-                : "text-slate-400 hover:text-amber-300"
+                ? "bg-status-warning/15 text-status-warning border border-status-warning/25 font-semibold"
+                : "text-text-secondary hover:text-status-warning"
             }`}
           >
             Cover ({stats.covers})
           </button>
           <button
             onClick={() => setFilter("unmatched")}
-            className={`px-2.5 py-1 rounded-md font-medium transition flex-shrink-0 btn-press ${
+            className={`px-2.5 py-1 rounded-md font-medium transition-colors flex-shrink-0 btn-press ${
               filter === "unmatched"
-                ? "bg-rose-500/15 text-rose-300 border border-rose-500/25"
-                : "text-slate-400 hover:text-rose-300"
+                ? "bg-status-danger/15 text-status-danger border border-status-danger/25 font-semibold"
+                : "text-text-secondary hover:text-status-danger"
             }`}
           >
             Belum Ada ({stats.unmatched})
@@ -273,36 +273,36 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
         {/* Search & Select All */}
         <div className="flex items-center space-x-2">
           <div className="relative flex-1 sm:w-56">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-500" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-text-secondary" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari lagu di playlist..."
-              className="w-full bg-card border border-white/[0.08] rounded-md pl-7 pr-6 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-white/20 transition"
+              placeholder="Cari lagu / artis..."
+              className="w-full pl-8 pr-7 py-1 bg-surface-elevated border border-border rounded-md text-xs text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-2 text-slate-500 hover:text-slate-300"
+                className="absolute right-2 top-1.5 text-text-secondary hover:text-text-primary"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3 h-3" />
               </button>
             )}
           </div>
 
-          <div className="hidden sm:flex items-center space-x-1 border-l border-white/[0.08] pl-2">
+          <div className="flex items-center space-x-0.5 border-l border-border pl-2">
             <button
               onClick={() => handleToggleSelectAll(true)}
-              title="Pilih semua lagu"
-              className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/[0.06] transition btn-press"
+              title="Pilih semua lagu yang cocok"
+              className="p-1 rounded text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors btn-press"
             >
               <CheckSquare className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => handleToggleSelectAll(false)}
               title="Batalkan pilihan semua lagu"
-              className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/[0.06] transition btn-press"
+              className="p-1 rounded text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors btn-press"
             >
               <Square className="w-3.5 h-3.5" />
             </button>
@@ -311,7 +311,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
       </div>
 
       {/* 3. Table Column Headers (Desktop Only) */}
-      <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-2 text-[10px] uppercase font-semibold tracking-wider text-slate-400 border-b border-white/[0.06] bg-surface/30 flex-shrink-0 items-center">
+      <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-2 text-[10px] uppercase font-semibold tracking-wider text-text-secondary border-b border-border bg-surface/30 flex-shrink-0 items-center">
         <div className="col-span-1">#</div>
         <div className="col-span-4">Lagu Sumber ({sourcePlatform === "youtube" ? "YouTube" : "Apple"})</div>
         <div className="col-span-2 text-center">Status Kecocokan</div>
@@ -321,19 +321,19 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
       {/* 4. Tracks Scroll Area */}
       <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-2 pb-24 md:pb-6">
         {isMatching && items.length === 0 ? (
-          <div className="py-20 text-center text-xs text-slate-400 flex flex-col items-center gap-3">
-            <RefreshCw className="w-6 h-6 text-primary animate-spin" />
+          <div className="py-20 text-center text-xs text-text-secondary flex flex-col items-center gap-3">
+            <RefreshCw className="w-6 h-6 text-accent animate-spin" />
             <div className="space-y-1">
-              <p className="font-semibold text-white text-sm">
+              <p className="font-semibold text-text-primary text-sm">
                 Mencocokkan lagu di latar belakang...
               </p>
-              <p className="text-[11px] text-slate-400 max-w-sm">
+              <p className="text-[11px] text-text-secondary max-w-sm">
                 Lagu akan otomatis muncul satu per satu dan tersimpan ke draft lokal.
               </p>
             </div>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="py-16 text-center text-xs text-slate-500">
+          <div className="py-16 text-center text-xs text-text-secondary">
             {isMatching ? "Sedang memproses lagu pertama..." : "Tidak ada lagu yang cocok dengan filter ini."}
           </div>
         ) : (
@@ -351,15 +351,15 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
         )}
       </div>
 
-      {/* 5. Floating Bottom Bar on Mobile (Ensures Transfer CTA is always accessible without scrolling up) */}
+      {/* 5. Floating Bottom Bar on Mobile */}
       {selectedPlaylist && stats.activeForImport > 0 && (
-        <div className="md:hidden fixed bottom-3 inset-x-3 z-30 pb-safe">
-          <div className="bg-surface-elevated/95 border border-white/[0.12] backdrop-blur-xl p-2.5 rounded-2xl shadow-2xl flex items-center justify-between gap-3">
+        <div className="md:hidden fixed bottom-16 inset-x-3 z-30 pb-safe">
+          <div className="bg-surface-elevated/95 border border-border backdrop-blur-xl p-2.5 rounded-2xl shadow-2xl flex items-center justify-between gap-3">
             <div className="min-w-0 pl-1">
-              <p className="text-[11px] font-medium text-white truncate">
+              <p className="text-[11px] font-medium text-text-primary truncate">
                 {stats.activeForImport} lagu terpilih
               </p>
-              <p className="text-[10px] text-slate-400 truncate">
+              <p className="text-[10px] text-text-secondary truncate">
                 Ke {destinationName}
               </p>
             </div>
@@ -367,7 +367,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
             <button
               onClick={onStartTransfer}
               disabled={isTransferring || stats.activeForImport === 0}
-              className="px-4 py-2.5 bg-primary hover:bg-primary-hover disabled:bg-card text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 btn-press shadow-md shadow-primary/20 flex-shrink-0"
+              className="px-4 py-2 bg-accent text-background rounded-xl text-xs font-semibold flex items-center gap-1.5 btn-press shadow-md flex-shrink-0"
             >
               <span>Transfer</span>
               <ArrowRight className="w-3.5 h-3.5" />

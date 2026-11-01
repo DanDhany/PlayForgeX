@@ -1,0 +1,459 @@
+import React, { useState, useEffect } from "react";
+import {
+  ArrowRightLeft,
+  Layers,
+  Sparkles,
+  ListMusic,
+  Check,
+  Plus,
+} from "lucide-react";
+import {
+  AccountConnection,
+  PlaylistSummary,
+  TransferTrackItem,
+  SourcePlaylistSelection,
+} from "../../../shared/types";
+import { ReviewStudio } from "../ReviewStudio";
+
+interface TransferStudioViewProps {
+  accounts: AccountConnection[];
+  allPlaylists: (PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: "youtube" | "apple" })[];
+  selectedPlaylist: PlaylistSummary | null;
+  trackItems: TransferTrackItem[];
+  isMatching: boolean;
+  totalTracksToMatch: number;
+  isTransferring: boolean;
+  sourcePlatform: "youtube" | "apple";
+  targetPlatform: "apple" | "youtube";
+  onSelectPlaylist: (playlist: PlaylistSummary, force?: boolean) => void;
+  onToggleExclude: (item: TransferTrackItem) => void;
+  onOpenAlternativePicker: (item: TransferTrackItem) => void;
+  onStartTransfer: () => void;
+  onReMatch: () => void;
+  onNavigateAccounts: () => void;
+}
+
+export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
+  accounts,
+  allPlaylists,
+  selectedPlaylist,
+  trackItems,
+  isMatching,
+  totalTracksToMatch,
+  isTransferring,
+  sourcePlatform,
+  targetPlatform,
+  onSelectPlaylist,
+  onToggleExclude,
+  onOpenAlternativePicker,
+  onStartTransfer,
+  onReMatch,
+  onNavigateAccounts,
+}) => {
+  const [studioMode, setStudioMode] = useState<"quick" | "merge">("quick");
+
+  // Merge Mode States
+  const [selectedPlaylistSelections, setSelectedPlaylistSelections] = useState<SourcePlaylistSelection[]>([]);
+  const [destinationAccountId, setDestinationAccountId] = useState<string>("");
+  const [dedupPolicy, setDedupPolicy] = useState<"remove_exact" | "keep_all">("remove_exact");
+  const [isGeneratingMerge, setIsGeneratingMerge] = useState(false);
+  const [mergeStats, setMergeStats] = useState<{
+    totalDiscovered: number;
+    uniqueCount: number;
+    duplicatesCount: number;
+  } | null>(null);
+
+  // Initialize destination account if available
+  useEffect(() => {
+    if (!destinationAccountId && accounts.length > 0) {
+      const appleAcc = accounts.find((a) => a.platform === "apple");
+      if (appleAcc) setDestinationAccountId(appleAcc.id);
+      else setDestinationAccountId(accounts[0].id);
+    }
+  }, [accounts, destinationAccountId]);
+
+  const handleTogglePlaylistSelection = (
+    pl: PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: "youtube" | "apple" }
+  ) => {
+    if (!pl.accountId) return;
+    const exists = selectedPlaylistSelections.some(
+      (s) => s.accountId === pl.accountId && s.playlistId === pl.id
+    );
+
+    if (exists) {
+      setSelectedPlaylistSelections((prev) =>
+        prev.filter((s) => !(s.accountId === pl.accountId && s.playlistId === pl.id))
+      );
+    } else {
+      setSelectedPlaylistSelections((prev) => [
+        ...prev,
+        {
+          accountId: pl.accountId!,
+          accountAlias: pl.accountAlias || "Akun",
+          platform: pl.platform || "youtube",
+          playlistId: pl.id,
+          playlistTitle: pl.title,
+          trackCount: pl.trackCount || 0,
+        },
+      ]);
+    }
+  };
+
+  const handleRunMergePreview = async () => {
+    if (selectedPlaylistSelections.length === 0) return;
+    setIsGeneratingMerge(true);
+
+    try {
+      const res = await fetch("/api/workflows/merge/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceSelections: selectedPlaylistSelections,
+          deduplicationPolicy: dedupPolicy,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed generating preview");
+      const data = await res.json();
+      setMergeStats({
+        totalDiscovered: data.totalDiscovered,
+        uniqueCount: data.uniqueCount,
+        duplicatesCount: data.duplicatesCount,
+      });
+
+      // Synthesize a virtual playlist for Review Studio
+      const virtualPlaylist: PlaylistSummary = {
+        id: `virtual_merge_${Date.now()}`,
+        title: `Merge Koleksi (${selectedPlaylistSelections.length} Playlist)`,
+        trackCount: data.uniqueCount,
+      };
+
+      // Call onSelectPlaylist to start matching into target catalog
+      onSelectPlaylist(virtualPlaylist, true);
+    } catch (err) {
+      console.error("Merge preview error:", err);
+      alert("Gagal memproses penggabungan playlist");
+    } finally {
+      setIsGeneratingMerge(false);
+    }
+  };
+
+  if (accounts.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none bg-background pb-24 md:pb-8">
+        <div className="max-w-md space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center mx-auto text-accent shadow-md">
+            <ArrowRightLeft className="w-8 h-8" />
+          </div>
+          <h2 className="text-lg font-semibold text-text-primary">
+            Belum Ada Akun Terhubung
+          </h2>
+          <p className="text-xs text-text-secondary leading-relaxed">
+            Untuk memulai transfer atau penggabungan playlist musik, hubungkan setidaknya satu akun sumber dan satu akun tujuan di menu Akun.
+          </p>
+          <button
+            onClick={onNavigateAccounts}
+            className="px-4 py-2 rounded-lg bg-accent text-background font-medium text-xs hover:bg-accent/90 btn-press inline-flex items-center gap-1.5 shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Hubungkan Akun Sekarang</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
+      {/* Studio Top Control Ribbon */}
+      <div className="h-13 bg-surface border-b border-border px-4 md:px-6 flex items-center justify-between flex-shrink-0 select-none">
+        <div className="flex items-center gap-2">
+          {/* Mode Switcher */}
+          <div className="flex items-center p-0.5 bg-surface-elevated rounded-lg border border-border text-xs">
+            <button
+              onClick={() => setStudioMode("quick")}
+              className={`px-3 py-1 rounded-md font-medium transition-colors flex items-center gap-1.5 btn-press ${
+                studioMode === "quick"
+                  ? "bg-accent/20 text-accent font-semibold shadow-sm"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              <span>Transfer 1:1</span>
+            </button>
+            <button
+              onClick={() => setStudioMode("merge")}
+              className={`px-3 py-1 rounded-md font-medium transition-colors flex items-center gap-1.5 btn-press ${
+                studioMode === "merge"
+                  ? "bg-accent text-background font-semibold shadow-sm"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Merge Koleksi Multi-Akun</span>
+              <span className="text-[10px] px-1 py-0.2 bg-white/20 rounded font-bold">
+                NEW
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {selectedPlaylist && (
+          <div className="hidden md:flex items-center gap-2 text-xs font-mono text-text-secondary">
+            <span>Aktif:</span>
+            <span className="text-text-primary font-medium truncate max-w-xs">
+              {selectedPlaylist.title}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Main Studio Body */}
+      {studioMode === "quick" ? (
+        // Mode 1: Quick Transfer (1:1) - Direct ReviewStudio layout
+        <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
+          {/* Quick Playlist Picker Sidebar */}
+          <div className="w-full md:w-72 bg-surface/80 border-r border-border flex flex-col h-auto md:h-full flex-shrink-0">
+            <div className="p-3 border-b border-border flex items-center justify-between text-xs">
+              <span className="font-semibold text-text-primary flex items-center gap-1.5">
+                <ListMusic className="w-4 h-4 text-accent" />
+                <span>Pilih Playlist Sumber</span>
+              </span>
+              <span className="text-[11px] text-text-secondary font-mono">
+                {allPlaylists.length}
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 max-h-48 md:max-h-full">
+              {allPlaylists.map((pl) => {
+                const isSelected = selectedPlaylist?.id === pl.id;
+                return (
+                  <button
+                    key={`${pl.accountId}_${pl.id}`}
+                    onClick={() => onSelectPlaylist(pl)}
+                    className={`w-full text-left p-2.5 rounded-lg text-xs transition-colors flex items-center justify-between gap-2 btn-press ${
+                      isSelected
+                        ? "bg-accent/15 border border-accent/30 text-text-primary font-semibold"
+                        : "hover:bg-surface-hover text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    <div className="min-w-0 flex items-center gap-2">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                          pl.platform === "youtube" ? "bg-red-500" : "bg-accent"
+                        }`}
+                      />
+                      <span className="truncate">{pl.title}</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-text-secondary flex-shrink-0">
+                      {pl.trackCount || 0}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Review Studio Stage */}
+          <div className="flex-1 flex flex-col h-full overflow-hidden">
+            <ReviewStudio
+              selectedPlaylist={selectedPlaylist}
+              items={trackItems}
+              isMatching={isMatching}
+              totalTracksToMatch={totalTracksToMatch}
+              isTransferring={isTransferring}
+              onToggleExclude={onToggleExclude}
+              onOpenAlternativePicker={onOpenAlternativePicker}
+              onStartTransfer={onStartTransfer}
+              onReMatch={onReMatch}
+              sourcePlatform={sourcePlatform}
+              targetPlatform={targetPlatform}
+            />
+          </div>
+        </div>
+      ) : (
+        // Mode 2: Multi-Source Merge Workflow Wizard
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-5xl mx-auto w-full pb-24 md:pb-8">
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold text-text-primary">
+              Gabungkan Koleksi Multi-Akun ke Satu Tujuan
+            </h2>
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Pilih playlist dari berbagai akun sumber (misal: Orang A + Orang B + Orang C), sistem akan mengeliminasi duplikat lagu dengan tetap mempertahankan versi live/remix, lalu memindahkannya ke akun tujuan Anda.
+            </p>
+          </div>
+
+          {/* Step 1: Select Source Playlists */}
+          <div className="p-5 rounded-xl bg-surface border border-border space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-accent text-background text-xs font-bold flex items-center justify-center">
+                  1
+                </span>
+                <span>Pilih Playlist dari Akun Sumber</span>
+              </h3>
+              <span className="text-xs text-accent font-medium">
+                {selectedPlaylistSelections.length} playlist dipilih
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-64 overflow-y-auto p-1">
+              {allPlaylists.map((pl) => {
+                const isChecked = selectedPlaylistSelections.some(
+                  (s) => s.accountId === pl.accountId && s.playlistId === pl.id
+                );
+
+                return (
+                  <div
+                    key={`${pl.accountId}_${pl.id}`}
+                    onClick={() => handleTogglePlaylistSelection(pl)}
+                    className={`p-3 rounded-lg border text-xs cursor-pointer transition-colors flex items-start gap-2.5 btn-press ${
+                      isChecked
+                        ? "bg-accent/15 border-accent text-text-primary font-semibold"
+                        : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => {}} // Handled by div click
+                      className="mt-0.5 rounded text-accent focus:ring-0"
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate text-text-primary">{pl.title}</div>
+                      <div className="text-[11px] text-text-secondary truncate mt-0.5">
+                        {pl.accountAlias} ({pl.trackCount || 0} lagu)
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Step 2: Select Destination Account */}
+          <div className="p-5 rounded-xl bg-surface border border-border space-y-4">
+            <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-accent text-background text-xs font-bold flex items-center justify-center">
+                2
+              </span>
+              <span>Pilih Akun Musik Tujuan</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {accounts.map((acc) => {
+                const isSelected = destinationAccountId === acc.id;
+                return (
+                  <div
+                    key={acc.id}
+                    onClick={() => setDestinationAccountId(acc.id)}
+                    className={`p-3.5 rounded-lg border text-xs cursor-pointer transition-colors flex items-center justify-between btn-press ${
+                      isSelected
+                        ? "bg-accent/15 border-accent text-text-primary font-semibold shadow-sm"
+                        : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          acc.platform === "youtube" ? "bg-red-500" : "bg-accent"
+                        }`}
+                      />
+                      <div className="min-w-0">
+                        <div className="text-text-primary font-medium truncate">
+                          {acc.localAlias}
+                        </div>
+                        <div className="text-[11px] text-text-secondary">
+                          {acc.platform === "apple" ? "Apple Music" : "YouTube Music"}
+                        </div>
+                      </div>
+                    </div>
+                    {isSelected && <Check className="w-4 h-4 text-accent" />}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Step 3: Deduplication Strategy */}
+          <div className="p-5 rounded-xl bg-surface border border-border space-y-4">
+            <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-accent text-background text-xs font-bold flex items-center justify-center">
+                3
+              </span>
+              <span>Kebijakan Eliminasi Duplikasi</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div
+                onClick={() => setDedupPolicy("remove_exact")}
+                className={`p-3.5 rounded-lg border cursor-pointer transition-colors space-y-1 btn-press ${
+                  dedupPolicy === "remove_exact"
+                    ? "bg-accent/15 border-accent text-text-primary font-medium"
+                    : "bg-surface-elevated border-border text-text-secondary"
+                }`}
+              >
+                <div className="font-semibold text-text-primary flex items-center justify-between">
+                  <span>Hapus Duplikat Persis (Direkomendasikan)</span>
+                  {dedupPolicy === "remove_exact" && <Check className="w-4 h-4 text-accent" />}
+                </div>
+                <p className="text-[11px] text-text-secondary leading-relaxed">
+                  Lagu dengan judul dan artis yang sama hanya dimasukkan satu kali. Versi Live, Remix, atau Akustik tetap dipertahankan.
+                </p>
+              </div>
+
+              <div
+                onClick={() => setDedupPolicy("keep_all")}
+                className={`p-3.5 rounded-lg border cursor-pointer transition-colors space-y-1 btn-press ${
+                  dedupPolicy === "keep_all"
+                    ? "bg-accent/15 border-accent text-text-primary font-medium"
+                    : "bg-surface-elevated border-border text-text-secondary"
+                }`}
+              >
+                <div className="font-semibold text-text-primary flex items-center justify-between">
+                  <span>Pertahankan Semua Lagu</span>
+                  {dedupPolicy === "keep_all" && <Check className="w-4 h-4 text-accent" />}
+                </div>
+                <p className="text-[11px] text-text-secondary leading-relaxed">
+                  Semua lagu dari setiap playlist dimasukkan tanpa pengecekan duplikasi ganda.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Merge Stats Preview (if generated) */}
+          {mergeStats && (
+            <div className="p-4 rounded-xl bg-surface-elevated border border-accent/30 flex items-center justify-around text-xs">
+              <div className="text-center">
+                <span className="text-text-secondary text-[11px]">Total Ditemukan</span>
+                <div className="text-base font-bold text-text-primary">{mergeStats.totalDiscovered}</div>
+              </div>
+              <div className="text-center">
+                <span className="text-text-secondary text-[11px]">Duplikat Dieliminasi</span>
+                <div className="text-base font-bold text-accent">{mergeStats.duplicatesCount}</div>
+              </div>
+              <div className="text-center">
+                <span className="text-text-secondary text-[11px]">Lagu Unik Siap Pindah</span>
+                <div className="text-base font-bold text-status-success">{mergeStats.uniqueCount}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Submit Action */}
+          <div className="pt-2 flex justify-end">
+            <button
+              onClick={handleRunMergePreview}
+              disabled={selectedPlaylistSelections.length === 0 || isGeneratingMerge}
+              className="px-6 py-2.5 rounded-xl bg-accent text-background font-semibold text-xs md:text-sm flex items-center gap-2 hover:bg-accent/90 disabled:opacity-50 btn-press shadow-md"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>
+                {isGeneratingMerge ? "Memproses Penggabungan..." : "Pratinjau & Buka Review Studio"}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

@@ -26,10 +26,10 @@ export const TrackRow: React.FC<TrackRowProps> = ({
 
   return (
     <div
-      className={`rounded-xl border transition-all duration-150 overflow-hidden ${
+      className={`rounded-xl border transition-colors duration-150 overflow-hidden ${
         excluded
-          ? "bg-card/30 border-white/[0.04] opacity-40"
-          : "bg-card border-white/[0.07] hover:border-white/[0.16] hover:bg-card-hover"
+          ? "bg-surface/30 border-border/40 opacity-40"
+          : "bg-surface border-border hover:border-accent/30 hover:bg-surface-elevated shadow-sm"
       }`}
     >
       {/* ================= DESKTOP VIEW (md and up) ================= */}
@@ -38,41 +38,41 @@ export const TrackRow: React.FC<TrackRowProps> = ({
         <div className="col-span-1 flex items-center space-x-2">
           <button
             onClick={() => onToggleExclude(item)}
-            className={`w-4 h-4 rounded border flex items-center justify-center transition btn-press ${
+            className={`w-4 h-4 rounded border flex items-center justify-center transition-colors btn-press ${
               !excluded
-                ? "bg-primary border-primary text-white"
-                : "border-white/20 bg-surface/50 text-transparent"
+                ? "bg-accent border-accent text-background"
+                : "border-border bg-surface-elevated text-transparent"
             }`}
             title={excluded ? "Sertakan lagu ini" : "Kecualikan lagu ini"}
           >
             <Check className="w-3 h-3 stroke-[3]" />
           </button>
-          <span className="text-[11px] font-mono tabular-nums text-slate-400 w-5 text-right">
+          <span className="text-[11px] font-mono tabular-nums text-text-secondary w-5 text-right">
             {index + 1}
           </span>
         </div>
 
         {/* Source Track */}
         <div className="col-span-4 flex items-center space-x-3 min-w-0">
-          <div className="w-10 h-10 rounded-lg bg-surface border border-white/[0.08] overflow-hidden flex-shrink-0 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-surface-elevated border border-border overflow-hidden flex-shrink-0 flex items-center justify-center">
             {source.thumbnailUrl ? (
               <img src={source.thumbnailUrl} alt={source.title} className="w-full h-full object-cover" />
             ) : (
-              <Music className="w-4 h-4 text-slate-500" />
+              <Music className="w-4 h-4 text-text-secondary" />
             )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center space-x-1.5">
-              <h4 className="text-xs font-semibold text-slate-100 truncate" title={source.title}>
+              <h4 className="text-xs font-semibold text-text-primary truncate" title={source.title}>
                 {sanitizedTitle.originalTitle}
               </h4>
               {sanitizedTitle.hasNonLatin && (
-                <span className="px-1 py-0.2 text-[8px] font-mono uppercase bg-white/[0.08] text-slate-300 rounded">
+                <span className="px-1 py-0.2 text-[8px] font-mono uppercase bg-surface-elevated text-accent border border-accent/20 rounded">
                   JP
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-400 truncate mt-0.5">
+            <p className="text-[11px] text-text-secondary truncate mt-0.5">
               {source.artist || "Unknown Artist"}
               {source.album ? ` · ${source.album}` : ""}
             </p>
@@ -144,17 +144,17 @@ export const TrackRow: React.FC<TrackRowProps> = ({
 
               {/* Title & Artist */}
               <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-semibold text-slate-100 truncate" title={selectedCandidate.name}>
+                <h4 className="text-xs font-semibold text-text-primary truncate" title={selectedCandidate.name}>
                   {selectedCandidate.name}
                 </h4>
-                <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                <p className="text-[11px] text-text-secondary truncate mt-0.5">
                   {selectedCandidate.artistName}
                   {selectedCandidate.albumName ? ` · ${selectedCandidate.albumName}` : ""}
                 </p>
               </div>
             </div>
           ) : (
-            <div className="flex items-center space-x-2 text-xs text-rose-400 flex-1">
+            <div className="flex items-center space-x-2 text-xs text-status-danger flex-1">
               <X className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="truncate">Lagu tidak ditemukan</span>
             </div>
@@ -164,9 +164,9 @@ export const TrackRow: React.FC<TrackRowProps> = ({
           <button
             onClick={() => onOpenAlternativePicker(item)}
             title="Cari alternatif lagu lain"
-            className="px-2 py-1 rounded-lg bg-card-hover border border-white/[0.08] text-slate-300 hover:text-white btn-press transition flex items-center gap-1.5 text-[11px]"
+            className="px-2 py-1 rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-text-secondary hover:text-text-primary btn-press transition flex items-center gap-1.5 text-[11px]"
           >
-            <Replace className="w-3 h-3 text-slate-400" />
+            <Replace className="w-3 h-3 text-text-secondary" />
             <span>Ganti</span>
           </button>
         </div>
@@ -176,7 +176,7 @@ export const TrackRow: React.FC<TrackRowProps> = ({
       {/* Sleek, Unified Music Row with minimal vertical footprint */}
       <div className="md:hidden p-3 flex items-center space-x-3">
         {/* Cover Art with Embedded Audio Preview Trigger */}
-        <div className="relative group w-11 h-11 rounded-lg bg-surface border border-white/[0.08] overflow-hidden flex-shrink-0 flex items-center justify-center">
+        <div className="relative group w-11 h-11 rounded-lg bg-surface-elevated border border-border overflow-hidden flex-shrink-0 flex items-center justify-center">
           {selectedCandidate?.artworkUrl || source.thumbnailUrl ? (
             <img
               src={selectedCandidate?.artworkUrl || source.thumbnailUrl}
@@ -184,7 +184,7 @@ export const TrackRow: React.FC<TrackRowProps> = ({
               className="w-full h-full object-cover"
             />
           ) : (
-            <Disc className="w-4 h-4 text-slate-500" />
+            <Disc className="w-4 h-4 text-text-secondary" />
           )}
 
           {selectedCandidate?.previewUrl && (
@@ -196,9 +196,9 @@ export const TrackRow: React.FC<TrackRowProps> = ({
             >
               {isPlaying ? (
                 <div className="flex items-end space-x-0.5 h-3">
-                  <div className="w-0.5 bg-primary rounded-full animate-eq-1" />
-                  <div className="w-0.5 bg-primary rounded-full animate-eq-2" />
-                  <div className="w-0.5 bg-primary rounded-full animate-eq-3" />
+                  <div className="w-0.5 bg-accent rounded-full animate-eq-1" />
+                  <div className="w-0.5 bg-accent rounded-full animate-eq-2" />
+                  <div className="w-0.5 bg-accent rounded-full animate-eq-3" />
                 </div>
               ) : (
                 <Play className="w-3.5 h-3.5 text-white fill-white ml-0.5" />
@@ -211,24 +211,24 @@ export const TrackRow: React.FC<TrackRowProps> = ({
         <div className="min-w-0 flex-1 space-y-0.5">
           {/* Original Source Title */}
           <div className="flex items-center space-x-1.5">
-            <span className="text-[10px] font-mono tabular-nums text-slate-400">
+            <span className="text-[10px] font-mono tabular-nums text-text-secondary">
               #{index + 1}
             </span>
-            <h4 className="text-xs font-semibold text-white truncate">
+            <h4 className="text-xs font-semibold text-text-primary truncate">
               {sanitizedTitle.originalTitle}
             </h4>
           </div>
 
           {/* Matched Target Subline */}
           {selectedCandidate ? (
-            <div className="flex items-center space-x-1 text-[11px] text-slate-400 truncate">
-              <ArrowRight className="w-2.5 h-2.5 text-slate-500 flex-shrink-0" />
-              <span className="text-slate-200 truncate">{selectedCandidate.name}</span>
-              <span className="text-slate-500">·</span>
+            <div className="flex items-center space-x-1 text-[11px] text-text-secondary truncate">
+              <ArrowRight className="w-2.5 h-2.5 text-text-secondary/70 flex-shrink-0" />
+              <span className="text-text-primary truncate">{selectedCandidate.name}</span>
+              <span className="text-text-secondary/70">·</span>
               <span className="truncate">{selectedCandidate.artistName}</span>
             </div>
           ) : (
-            <p className="text-[11px] text-rose-400 truncate">
+            <p className="text-[11px] text-status-danger truncate">
               Belum ada lagu yang cocok
             </p>
           )}
@@ -239,12 +239,12 @@ export const TrackRow: React.FC<TrackRowProps> = ({
               {badge.label} ({Math.round(match.totalScore * 100)}%)
             </span>
             {match.lyricsVerified && (
-              <span className="px-1 py-0.2 text-[8px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 rounded">
+              <span className="px-1 py-0.2 text-[8px] font-medium bg-status-success/15 text-status-success border border-status-success/20 rounded">
                 ✓ Lirik
               </span>
             )}
             {selectedCandidate && match.artistScore < 0.45 && (
-              <span className="px-1 py-0.2 text-[8px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/20 rounded">
+              <span className="px-1 py-0.2 text-[8px] font-medium bg-status-warning/15 text-status-warning border border-status-warning/20 rounded">
                 ⚠ Beda Artis
               </span>
             )}
@@ -255,18 +255,18 @@ export const TrackRow: React.FC<TrackRowProps> = ({
         <div className="flex items-center space-x-2 flex-shrink-0">
           <button
             onClick={() => onOpenAlternativePicker(item)}
-            className="p-1.5 rounded-lg bg-card-hover border border-white/[0.08] text-slate-300 hover:text-white btn-press"
+            className="p-1.5 rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-text-secondary hover:text-text-primary btn-press"
             title="Ganti alternatif lagu"
           >
-            <Replace className="w-3.5 h-3.5 text-slate-400" />
+            <Replace className="w-3.5 h-3.5 text-text-secondary" />
           </button>
 
           <button
             onClick={() => onToggleExclude(item)}
-            className={`w-6 h-6 rounded-lg border flex items-center justify-center transition btn-press ${
+            className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-colors btn-press ${
               !excluded
-                ? "bg-primary border-primary text-white"
-                : "border-white/20 bg-surface/50 text-transparent"
+                ? "bg-accent border-accent text-background"
+                : "border-border bg-surface-elevated text-transparent"
             }`}
             title={excluded ? "Sertakan lagu" : "Kecualikan lagu"}
           >

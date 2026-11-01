@@ -7,28 +7,39 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "#08090E", // Deep Obsidian
-        surface: "#0D1017",
-        "surface-elevated": "#121620",
-        card: "#161B27",
-        "card-hover": "#1D2333",
-        "card-active": "#242C3F",
-        border: "rgba(255, 255, 255, 0.08)",
-        "border-subtle": "rgba(255, 255, 255, 0.04)",
-        primary: {
-          DEFAULT: "#FA2D48", // Apple Music Crimson
-          hover: "#FF375F",
-          dim: "rgba(250, 45, 72, 0.12)",
-          ring: "rgba(250, 45, 72, 0.35)",
+        background: "#0B0C0F", // Deep neutral ground
+        surface: "#12141A",    // Primary sidebars, panels
+        "surface-elevated": "#1A1D25", // Dialogs, sheets, menus
+        "surface-hover": "#222630",    // Hover interactive state
+        border: "#292D37",     // Hairline borders
+        "border-subtle": "rgba(255, 255, 255, 0.05)",
+        text: {
+          primary: "#F5F5F7",
+          secondary: "#A3A8B5",
+          muted: "#6B7280",
         },
-        ytmusic: {
-          DEFAULT: "#FF0000",
-          dim: "rgba(255, 0, 0, 0.12)",
+        accent: {
+          DEFAULT: "#A99BFF",  // Signature TuneBridge Periwinkle
+          hover: "#BDB2FF",
+          dim: "rgba(169, 155, 255, 0.12)",
+          ring: "rgba(169, 155, 255, 0.35)",
+        },
+        primary: {
+          DEFAULT: "#A99BFF",
+          hover: "#BDB2FF",
+          dim: "rgba(169, 155, 255, 0.12)",
+        },
+        service: {
+          ytmusic: "#FF0000",
+          apple: "#FA2D48",
         },
         status: {
-          exact: "#10B981",
-          cover: "#F59E0B",
-          unmatched: "#EF4444",
+          success: "#69D6AF",
+          exact: "#69D6AF",
+          warning: "#F2BE72",
+          cover: "#F2BE72",
+          danger: "#FF777F",
+          unmatched: "#FF777F",
         },
       },
       fontFamily: {

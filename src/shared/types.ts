@@ -106,3 +106,59 @@ export interface ServiceAuthStatus {
     playlistCount?: number;
   };
 }
+
+export type ConnectionStatus = "connected" | "checking" | "reauth_required" | "unavailable" | "error";
+
+export interface AccountConnection {
+  id: string;
+  platform: "youtube" | "apple";
+  localAlias: string;
+  status: ConnectionStatus;
+  createdAt: number;
+  lastVerifiedAt?: number;
+  playlistCount?: number;
+  storefront?: string;
+  errorMessage?: string;
+}
+
+export type MergeStrategy = "preserve" | "merge_one" | "append_existing";
+export type DeduplicationPolicy = "keep_all" | "remove_exact" | "review_possible";
+
+export interface SourcePlaylistSelection {
+  accountId: string;
+  accountAlias: string;
+  platform: "youtube" | "apple";
+  playlistId: string;
+  playlistTitle: string;
+  trackCount: number;
+  thumbnailUrl?: string;
+}
+
+export interface MergeWorkflowConfig {
+  id: string;
+  name: string;
+  sourceSelections: SourcePlaylistSelection[];
+  destinationAccountId: string;
+  destinationAccountAlias: string;
+  destinationPlatform: "youtube" | "apple";
+  strategy: MergeStrategy;
+  targetPlaylistTitle?: string;
+  targetExistingPlaylistId?: string;
+  deduplicationPolicy: DeduplicationPolicy;
+}
+
+export interface ActivityLogItem {
+  id: string;
+  timestamp: number;
+  workflowName: string;
+  sourceAliases: string[];
+  destinationAlias: string;
+  destinationPlatform: "youtube" | "apple";
+  totalTracks: number;
+  matchedCount: number;
+  successCount: number;
+  failedCount: number;
+  duplicatesRemoved: number;
+  status: "completed" | "failed" | "partial";
+  details?: string;
+}
