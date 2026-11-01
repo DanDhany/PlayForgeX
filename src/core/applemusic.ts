@@ -350,7 +350,7 @@ export class AppleMusicClient {
     return fetchAppleLyrics(songId, sf, this.developerToken, this.musicUserToken);
   }
 
-  public async createPlaylist(name: string, description = "Imported from YouTube Music via MirrorSong"): Promise<string> {
+  public async createPlaylist(name: string, description = "Imported from YouTube Music via TuneBridge"): Promise<string> {
     const url = "https://amp-api.music.apple.com/v1/me/library/playlists";
     const payload = {
       attributes: {

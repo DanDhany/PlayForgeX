@@ -1,10 +1,13 @@
 services:
-  app:
+  tunebridge-app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: music2anywhere-app
+    container_name: tunebridge-app
+    image: tunebridge-app:latest
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${APP_PORT:-3080}:${APP_PORT:-3080}"
     environment:
@@ -13,3 +16,17 @@ services:
       - DATA_DIR=/app/data
     volumes:
       - ./data:/app/data
+
+  mysql:
+    image: mysql:8.0
+    container_name: tunebridge-mysql
+    restart: unless-stopped
+    profiles:
+      - with-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: tunebridge
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./data/mysql:/var/lib/mysql

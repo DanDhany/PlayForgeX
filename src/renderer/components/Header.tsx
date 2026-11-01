@@ -43,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div className="min-w-0">
             <h1 className="text-sm font-semibold tracking-tight text-white flex items-center gap-1.5 truncate">
-              MirrorSong
+              TuneBridge
             </h1>
           </div>
         </div>

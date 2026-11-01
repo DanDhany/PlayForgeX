@@ -100,7 +100,7 @@ export const VinylIllustration: React.FC<VinylIllustrationProps> = ({
           fontWeight="600"
           letterSpacing="1.5"
         >
-          MIRRORSONG
+          TUNEBRIDGE
         </text>
 
         <text

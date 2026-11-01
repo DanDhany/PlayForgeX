@@ -1,4 +1,4 @@
-# MirrorSong: YouTube Music to Apple Music Playlist Exporter & Importer
+# TuneBridge: YouTube Music to Apple Music Playlist Exporter & Importer
 
 **Author:** Antigravity  
 **Date:** 2026-11-01  
@@ -13,7 +13,7 @@ Users who want to migrate playlists from YouTube Music to Apple Music face two c
 1. **Developer Program Gatekeeping:** Apple Music API requires a paid Apple Developer Program membership (\$99/year) to generate MusicKit keys. Google Cloud Console requires creating projects, OAuth client credentials, and managing strict quota limitations.
 2. **Non-Latin / Japanese Song Matching Failures:** Standard migration services (TuneMyMusic, SongShift, Soundiiz) perform naive 1:1 artist/album matching. In Japanese music (J-Pop, Anime OSTs, Vocaloid, Doujin, VTuber tracks), YouTube Music titles frequently use native Kanji/Kana (e.g. `夜に駆ける`, `廻廻奇譚`, `群青`), while Apple Music regional storefronts might list Romanized titles, or YouTube Music video titles include artist names and noise tags while the artist field is messy. Traditional tools fail to match these songs or discard them entirely.
 
-**MirrorSong** solves both problems:
+**TuneBridge** solves both problems:
 - **Zero Developer Accounts:** Authenticates via real session cookies and tokens captured via a built-in Electron native modal window. Users log in directly on official Google / Apple pages.
 - **Original-Title-First Matching Engine:** Prioritizes matching the original native title above artist and album.
 - **Tolerant Cover Matching:** Accepts cover versions or alternative recordings if the original is not indexed, rather than dropping the track.
@@ -78,7 +78,7 @@ Users who want to migrate playlists from YouTube Music to Apple Music face two c
 ### 4.1 System Diagram
 ```
 +-------------------------------------------------------------+
-|                     MirrorSong (Electron)                   |
+|                     TuneBridge (Electron)                   |
 |                                                             |
 | +-------------------------+     +-------------------------+ |
 | |    Login Modal Window   |     |    Login Modal Window   | |
