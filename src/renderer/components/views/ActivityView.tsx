@@ -31,6 +31,7 @@ export const ActivityView: React.FC<ActivityViewProps> = ({
     return (
       log.workflowName.toLowerCase().includes(q) ||
       log.destinationAlias.toLowerCase().includes(q) ||
+      (log.username && log.username.toLowerCase().includes(q)) ||
       log.sourceAliases.some((s) => s.toLowerCase().includes(q))
     );
   });
@@ -139,6 +140,12 @@ export const ActivityView: React.FC<ActivityViewProps> = ({
                     <span className="text-[11px] font-mono text-text-secondary">
                       {new Date(log.timestamp).toLocaleString()}
                     </span>
+
+                    {log.username && (
+                      <span className="px-1.5 py-0.5 rounded bg-white/[0.06] text-accent border border-white/[0.08] text-[10px] font-mono">
+                        @{log.username}
+                      </span>
+                    )}
                   </div>
 
                   <h4 className="text-sm sm:text-base font-semibold text-text-primary tracking-tight">

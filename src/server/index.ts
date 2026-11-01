@@ -105,6 +105,7 @@ app.post("/api/auth/register", async (req: Request, res: Response) => {
   try {
     await authService.register(username, password, role || "user");
     const session = await authService.login(username, password);
+    res.cookie("tb_token", session.token, { httpOnly: true, sameSite: "lax", path: "/" });
     res.json({ success: true, user: session.user, token: session.token });
   } catch (err: any) {
     res.status(400).json({ error: err.message || "Registration failed" });
@@ -120,6 +121,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
 
   try {
     const session = await authService.login(username, password);
+    res.cookie("tb_token", session.token, { httpOnly: true, sameSite: "lax", path: "/" });
     res.json({ success: true, user: session.user, token: session.token });
   } catch (err: any) {
     res.status(401).json({ error: err.message || "Invalid username or password" });
@@ -129,6 +131,59 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
 // GET /api/auth/me
 app.get("/api/auth/me", (req: Request, res: Response) => {
   res.json({ user: (req as any).user || null });
+});
+
+// ==========================================
+// Admin User Management APIs
+// ==========================================
+
+// GET /api/admin/users - List all users (admin only)
+app.get("/api/admin/users", async (req: Request, res: Response) => {
+  const user = (req as any).user;
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({ error: "Administrator privileges required" });
+  }
+  const users = await authService.listAllUsers();
+  res.json({ users });
+});
+
+// DELETE /api/admin/users/:id - Delete a user (admin only)
+app.delete("/api/admin/users/:id", async (req: Request, res: Response) => {
+  const user = (req as any).user;
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({ error: "Administrator privileges required" });
+  }
+  const targetId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  if (targetId === user.id) {
+    return res.status(400).json({ error: "Cannot delete your own active administrator account" });
+  }
+  const result = await authService.deleteUser(targetId);
+  if (!result.success) {
+    return res.status(400).json({ error: result.error });
+  }
+  res.json({ success: true });
+});
+
+// PATCH /api/admin/users/:id/role - Update a user's role (admin only)
+app.patch("/api/admin/users/:id/role", async (req: Request, res: Response) => {
+  const user = (req as any).user;
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({ error: "Administrator privileges required" });
+  }
+  const targetId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const { role } = req.body;
+  if (role !== "admin" && role !== "user") {
+    return res.status(400).json({ error: "Role must be 'admin' or 'user'" });
+  }
+  try {
+    const updated = await authService.updateUserRole(targetId, role);
+    if (!updated) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json({ success: true, user: updated });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // ==========================================
@@ -416,6 +471,7 @@ app.post("/api/auth/logout", async (req: Request, res: Response) => {
     if (primaryApple) accountManager.removeAccount(primaryApple.id);
   }
 
+  res.clearCookie("tb_token", { path: "/" });
   res.json({ success: true });
 });
 
@@ -701,11 +757,18 @@ app.post("/api/workflows/merge/preview", async (req: Request, res: Response) => 
 
 // GET /api/activity - Transfer audit history
 app.get("/api/activity", (req: Request, res: Response) => {
-  const userId = (req as any).user?.id;
-  if (!userId) {
+  const user = (req as any).user;
+  if (!user) {
     return res.json([]);
   }
-  res.json(mergeEngine.getActivityLogs());
+  const allLogs = mergeEngine.getActivityLogs();
+  if (user.role === "admin") {
+    // Admin sees all activity across all users
+    return res.json(allLogs);
+  }
+  // Regular users strictly see only their own activity logs
+  const userLogs = allLogs.filter((log) => log.userId === user.id);
+  res.json(userLogs);
 });
 
 // GET /api/transfer/progress
@@ -854,6 +917,8 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
 
     // Record audit activity log
     mergeEngine.logActivity({
+      userId: (req as any).user?.id,
+      username: (req as any).user?.username,
       workflowName: workflowName || playlistTitle,
       sourceAliases: sourceAliases.length > 0 ? sourceAliases : [sourcePlatform === "youtube" ? "YouTube Music" : "Apple Music"],
       destinationAlias: targetAcc.localAlias,

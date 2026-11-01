@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Reveal } from "./Reveal";
 import { SpotlightCard } from "./SpotlightCard";
+import { SanitizerPlayground } from "./SanitizerPlayground";
 import { useLanguage } from "../../context/LanguageContext";
 
 export const FeaturesSection: React.FC = () => {
@@ -128,6 +129,11 @@ export const FeaturesSection: React.FC = () => {
               : "Solusi mandiri untuk memindahkan playlist antar-ekosistem musik tanpa tracking cloud, tanpa batas kuota, dan sepenuhnya di bawah kendali Anda."}
           </p>
         </div>
+      </Reveal>
+
+      {/* Interactive Title Sanitizer Playground */}
+      <Reveal delay={200} className="mb-14">
+        <SanitizerPlayground />
       </Reveal>
 
       {/* Grid of 4 Cards */}

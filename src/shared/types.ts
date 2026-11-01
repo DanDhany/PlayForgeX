@@ -165,6 +165,8 @@ export interface MergeWorkflowConfig {
 export interface ActivityLogItem {
   id: string;
   timestamp: number;
+  userId?: string;
+  username?: string;
   workflowName: string;
   sourceAliases: string[];
   destinationAlias: string;
@@ -176,4 +178,13 @@ export interface ActivityLogItem {
   duplicatesRemoved: number;
   status: "completed" | "failed" | "partial";
   details?: string;
+}
+
+export interface ManagedUser {
+  id: string;
+  username: string;
+  role: "admin" | "user";
+  createdAt: number;
+  lastLoginAt?: number | null;
+  accountCount: number;
 }

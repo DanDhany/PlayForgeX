@@ -9,13 +9,14 @@ import {
   Disc3,
   Server,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 import { User } from "../../shared/types";
 import { UserProfileMenu } from "./auth/UserProfileMenu";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useLanguage } from "../context/LanguageContext";
 
-export type NavTab = "overview" | "transfer" | "library" | "accounts" | "activity" | "settings";
+export type NavTab = "overview" | "transfer" | "library" | "accounts" | "activity" | "settings" | "users";
 
 interface NavigationRailProps {
   activeTab: NavTab;
@@ -45,6 +46,9 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
     { id: "accounts", label: t("nav.accounts"), icon: Users },
     { id: "activity", label: t("nav.activity"), icon: History },
     { id: "settings", label: t("nav.settings"), icon: Settings },
+    ...(currentUser?.role === "admin"
+      ? [{ id: "users" as NavTab, label: t("nav.users"), icon: ShieldCheck }]
+      : []),
   ];
 
   const mobileTabItems: { id: NavTab; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -53,6 +57,9 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
     { id: "library", label: t("nav.library"), icon: ListMusic },
     { id: "accounts", label: t("nav.accounts"), icon: Users },
     { id: "activity", label: t("nav.activity"), icon: History },
+    ...(currentUser?.role === "admin"
+      ? [{ id: "users" as NavTab, label: t("nav.users"), icon: ShieldCheck }]
+      : []),
   ];
 
   return (

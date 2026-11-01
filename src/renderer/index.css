@@ -148,3 +148,28 @@
 .pt-safe {
   padding-top: max(12px, env(safe-area-inset-top, 12px));
 }
+
+/* Soundwave visualizer pulse animation */
+@keyframes soundwave-pulse {
+  0%, 100% {
+    transform: scaleY(0.2);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* Mobile & Tablet Landscape Adaptations (Devices with low vertical height) */
+@media (orientation: landscape) and (max-height: 540px) {
+  header.sticky {
+    height: 3rem !important;
+  }
+  .landscape-compact-p {
+    padding-top: 1rem !important;
+    padding-bottom: 1.5rem !important;
+  }
+  .landscape-dialog-scroll {
+    max-height: 82vh !important;
+    overflow-y: auto !important;
+  }
+}

@@ -236,45 +236,23 @@ export async function getUserByUsername(username: string): Promise<User | null> 
  * Ensure at least one admin exists. Creates 'admin' / 'tunebridge2026' if empty.
  */
 export async function ensureDefaultAdmin(): Promise<User> {
-  const [countRows] = await query<any[]>("SELECT COUNT(*) as count FROM users");
-  const count = Number(countRows?.[0]?.count || 0);
-
-  if (count === 0) {
-    try {
-      console.log("[AuthService] No users detected. Seeding default admin user ('admin')...");
-      return await register("admin", "tunebridge2026", "admin");
-    } catch (err: any) {
-      const existing = await getUserByUsername("admin");
-      if (existing) return existing;
-      throw err;
-    }
-  }
-
   const existingAdmin = await getUserByUsername("admin");
-  if (existingAdmin) return existingAdmin;
-
-  const [admins] = await query<any[]>("SELECT id, username, role, created_at, last_login_at FROM users WHERE role = 'admin' LIMIT 1");
-  if (admins && admins.length > 0) {
-    const a = admins[0];
-    return {
-      id: a.id,
-      username: a.username,
-      role: a.role,
-      createdAt: Number(a.created_at),
-      lastLoginAt: a.last_login_at ? Number(a.last_login_at) : null,
-    };
+  if (existingAdmin) {
+    if (existingAdmin.role !== "admin") {
+      await updateUserRole(existingAdmin.id, "admin");
+      existingAdmin.role = "admin";
+    }
+    return existingAdmin;
   }
 
-  // If users exist but none is admin, return first user
-  const [firstUser] = await query<any[]>("SELECT id, username, role, created_at, last_login_at FROM users ORDER BY created_at ASC LIMIT 1");
-  const u = firstUser[0];
-  return {
-    id: u.id,
-    username: u.username,
-    role: u.role,
-    createdAt: Number(u.created_at),
-    lastLoginAt: u.last_login_at ? Number(u.last_login_at) : null,
-  };
+  try {
+    console.log("[AuthService] Default root admin ('admin') not found. Seeding...");
+    return await register("admin", "tunebridge2026", "admin");
+  } catch (err: any) {
+    const fallback = await getUserByUsername("admin");
+    if (fallback) return fallback;
+    throw err;
+  }
 }
 
 /**
@@ -425,5 +403,109 @@ export async function migrateLegacyDataToAdmin(
     }
   }
 
+  // 4. Activity Logs
+  const activityFile = path.join(dataDir, "activity.json");
+  if (fs.existsSync(activityFile)) {
+    try {
+      const raw = fs.readFileSync(activityFile, "utf-8");
+      const logs = JSON.parse(raw);
+      let updated = false;
+      if (Array.isArray(logs)) {
+        for (const log of logs) {
+          if (!log.userId) {
+            log.userId = adminId;
+            log.username = "admin";
+            updated = true;
+          }
+        }
+        if (updated) {
+          fs.writeFileSync(activityFile, JSON.stringify(logs, null, 2));
+        }
+      }
+    } catch (err) {
+      console.warn("[AuthService] Warning reading activity.json during migration:", err);
+    }
+  }
+
   return summary;
+}
+
+/**
+ * List all registered users along with their connected accounts count.
+ */
+export async function listAllUsers(): Promise<(User & { accountCount: number })[]> {
+  try {
+    const [rows] = await query<any[]>(`
+      SELECT u.id, u.username, u.role, u.created_at, u.last_login_at,
+             COUNT(a.id) as accountCount
+      FROM users u
+      LEFT JOIN accounts a ON a.user_id = u.id
+      GROUP BY u.id, u.username, u.role, u.created_at, u.last_login_at
+      ORDER BY u.created_at DESC
+    `);
+    if (!rows || !Array.isArray(rows)) return [];
+    return rows.map((r: any) => ({
+      id: r.id,
+      username: r.username,
+      role: r.role,
+      createdAt: Number(r.created_at),
+      lastLoginAt: r.last_login_at ? Number(r.last_login_at) : null,
+      accountCount: Number(r.accountCount || 0),
+    }));
+  } catch (err) {
+    console.warn("[AuthService] Error listing all users:", err);
+    return [];
+  }
+}
+
+/**
+ * Delete a user and cascade all their accounts, secrets, and activity logs.
+ */
+export async function deleteUser(userId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getUserById(userId);
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+    if (user.username === "admin") {
+      return { success: false, error: "Cannot delete the default root administrator account" };
+    }
+
+    // 1. Delete sessions
+    await query("DELETE FROM sessions WHERE user_id = ?", [userId]);
+
+    // 2. Delete account secrets and accounts
+    const [userAccounts] = await query<any[]>("SELECT id FROM accounts WHERE user_id = ?", [userId]);
+    if (userAccounts && Array.isArray(userAccounts)) {
+      for (const acc of userAccounts) {
+        await query("DELETE FROM account_secrets WHERE account_id = ?", [acc.id]);
+      }
+    }
+    await query("DELETE FROM accounts WHERE user_id = ?", [userId]);
+
+    // 3. Delete snapshots and logs
+    await query("DELETE FROM snapshots WHERE user_id = ?", [userId]);
+    await query("DELETE FROM activity_logs WHERE user_id = ?", [userId]);
+
+    // 4. Delete user record
+    await query("DELETE FROM users WHERE id = ?", [userId]);
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[AuthService] Error deleting user:", err);
+    return { success: false, error: err.message || "Failed to delete user" };
+  }
+}
+
+/**
+ * Update a user's role (admin <-> user).
+ */
+export async function updateUserRole(userId: string, role: "admin" | "user"): Promise<User | null> {
+  const user = await getUserById(userId);
+  if (!user) return null;
+  if (user.username === "admin" && role !== "admin") {
+    throw new Error("Cannot demote the default root administrator account");
+  }
+  await query("UPDATE users SET role = ? WHERE id = ?", [role, userId]);
+  return await getUserById(userId);
 }

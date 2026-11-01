@@ -36,6 +36,20 @@
 
 ---
 
+## 🔑 Default Administrator Credentials
+
+When starting TuneBridge for the first time, a default administrator account is seeded:
+
+| Parameter | Value |
+| :--- | :--- |
+| **Username** | `admin` |
+| **Password** | `tunebridge2026` |
+| **Role** | `admin` (Full administrative privileges, user management, and cross-user activity audits) |
+
+> 🔒 *Security Note*: Change this password or manage other user accounts via the **Users** management tab once signed in. Regular users registering via the app only have access to their own connected accounts and activity logs.
+
+---
+
 ## 🗄️ Database Setup (MySQL)
 
 TuneBridge supports MySQL for persistent caching, playlist storage, and migration logs. You can run MySQL either via Homebrew (recommended for local macOS development) or via Docker Compose.

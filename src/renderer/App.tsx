@@ -13,7 +13,8 @@ import { TransferProgressModal } from "./components/TransferProgressModal";
 import { MusicPlayerBar } from "./components/MusicPlayerBar";
 import { LandingPage } from "./components/landing/LandingPage";
 import { AuthModal } from "./components/auth/AuthModal";
-import { AuthGateCard } from "./components/auth/AuthGateCard";
+import { AuthScreen } from "./components/auth/AuthScreen";
+import { UsersView } from "./components/views/UsersView";
 import { useLanguage } from "./context/LanguageContext";
 import {
   AccountConnection,
@@ -34,10 +35,14 @@ import {
 
 export const App: React.FC = () => {
   const { t } = useLanguage();
-  const [viewMode, setViewMode] = useState<"studio" | "landing">(() => {
+  const [viewMode, setViewMode] = useState<"studio" | "landing" | "auth">(() => {
     if (typeof window !== "undefined") {
+      if (window.location.hash.startsWith("#auth")) {
+        return "auth";
+      }
       if (window.location.hash.startsWith("#studio")) {
-        return "studio";
+        const token = localStorage.getItem("tunebridge_token");
+        return token ? "studio" : "auth";
       }
       if (window.location.hash.startsWith("#landing") || IS_PAGES_OR_STATIC) {
         return "landing";
@@ -119,12 +124,14 @@ export const App: React.FC = () => {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
+      const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
       if (hash.startsWith("#landing")) {
         setViewMode("landing");
+      } else if (hash.startsWith("#auth")) {
+        setViewMode("auth");
       } else if (hash.startsWith("#studio")) {
-        setViewMode("studio");
+        setViewMode(token ? "studio" : "auth");
       } else if (!hash) {
-        const token = localStorage.getItem("tunebridge_token");
         setViewMode(token ? "studio" : "landing");
       }
     };
@@ -133,8 +140,14 @@ export const App: React.FC = () => {
   }, []);
 
   const handleOpenStudio = () => {
-    setViewMode("studio");
-    window.location.hash = "#studio";
+    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    if (token) {
+      setViewMode("studio");
+      window.location.hash = "#studio";
+    } else {
+      setViewMode("auth");
+      window.location.hash = "#auth";
+    }
   };
 
   const handleOpenLanding = () => {
@@ -176,6 +189,8 @@ export const App: React.FC = () => {
     }
     setCurrentUser(user);
     setIsAuthModalOpen(false);
+    setViewMode("studio");
+    window.location.hash = "#studio";
     setSuccessBanner(t("auth.welcomeBack", { username: user.username }));
     setTimeout(() => setSuccessBanner(null), 4000);
     setTimeout(() => {
@@ -186,16 +201,16 @@ export const App: React.FC = () => {
 
   const handleLogoutUser = async () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: getAuthHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ token }),
-      });
-    } catch (err) {
-      console.warn("Logout error:", err);
-    }
-    if (typeof window !== "undefined") {
+    if (token) {
+      try {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: getAuthHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ token }),
+        });
+      } catch (err) {
+        console.warn("Logout error:", err);
+      }
       localStorage.removeItem("tunebridge_token");
     }
     setCurrentUser(null);
@@ -204,6 +219,8 @@ export const App: React.FC = () => {
     setActivityLogs([]);
     setSuccessBanner(t("auth.sessionClosed"));
     setTimeout(() => setSuccessBanner(null), 4000);
+    setViewMode("auth");
+    window.location.hash = "#auth";
   };
 
   const loadAccounts = async () => {
@@ -582,6 +599,16 @@ export const App: React.FC = () => {
     return <LandingPage onOpenStudio={handleOpenStudio} />;
   }
 
+  // Standalone AuthScreen: unauthenticated visitors NEVER see the dashboard sidebar!
+  if (!currentUser && !IS_PAGES_OR_STATIC) {
+    return (
+      <AuthScreen
+        onLoginSuccess={handleAuthSuccess}
+        onBackToLanding={handleOpenLanding}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] w-full bg-background overflow-hidden text-text-primary font-sans selection:bg-accent selection:text-background">
       {/* Linear-Style Navigation Rail on Desktop & Mobile Tabbar */}
@@ -628,20 +655,7 @@ export const App: React.FC = () => {
             </button>
           </div>
         )}
-        {!currentUser && !IS_PAGES_OR_STATIC ? (
-          <AuthGateCard
-            onOpenLogin={() => {
-              setAuthModalTab("login");
-              setIsAuthModalOpen(true);
-            }}
-            onOpenRegister={() => {
-              setAuthModalTab("register");
-              setIsAuthModalOpen(true);
-            }}
-            onOpenLanding={handleOpenLanding}
-          />
-        ) : (
-          <>
+        <>
             {activeTab === "overview" && (
               <OverviewView
                 accounts={accounts}
@@ -698,8 +712,11 @@ export const App: React.FC = () => {
             )}
 
             {activeTab === "settings" && <SettingsView onRefresh={loadAccounts} />}
-          </>
-        )}
+
+            {activeTab === "users" && currentUser?.role === "admin" && (
+              <UsersView currentUser={currentUser} onRefreshStats={loadAccounts} />
+            )}
+        </>
       </main>
 
       {/* Modals & Dialogs */}
