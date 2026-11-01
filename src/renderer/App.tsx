@@ -382,8 +382,8 @@ export const App: React.FC = () => {
     setActiveTab("transfer");
 
     const sourcePl = allPlaylists.find((p) => p.id === playlist.id);
-    const sourcePlatform = sourcePl?.platform || "youtube";
-    const targetPlatform = sourcePlatform === "youtube" ? "apple" : "youtube";
+    const sourcePlatform = sourcePl?.platform || playlist.platform || "youtube";
+    const targetPlatform = sourcePlatform === "apple" ? "youtube" : "apple";
 
     try {
       let draft: PlaylistDraft | null = null;
@@ -427,6 +427,7 @@ export const App: React.FC = () => {
         method: "POST",
         headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
+          sourceAccountId: sourcePl?.accountId,
           sourcePlatform,
           targetPlatform,
           playlist,
@@ -525,8 +526,8 @@ export const App: React.FC = () => {
     setIsExportModalOpen(false);
 
     const sourcePl = allPlaylists.find((p) => p.id === selectedPlaylist.id);
-    const sourcePlatform = sourcePl?.platform || "youtube";
-    const targetPlatform = sourcePlatform === "youtube" ? "apple" : "youtube";
+    const sourcePlatform = sourcePl?.platform || selectedPlaylist.platform || "youtube";
+    const targetPlatform = sourcePlatform === "apple" ? "youtube" : "apple";
 
     const job: TransferJob = {
       playlistId: selectedPlaylist.id,
@@ -605,8 +606,8 @@ export const App: React.FC = () => {
   const currentSourcePl = selectedPlaylist
     ? allPlaylists.find((p) => p.id === selectedPlaylist.id)
     : null;
-  const currentSourcePlatform = currentSourcePl?.platform || "youtube";
-  const currentTargetPlatform = currentSourcePlatform === "youtube" ? "apple" : "youtube";
+  const currentSourcePlatform = currentSourcePl?.platform || selectedPlaylist?.platform || "youtube";
+  const currentTargetPlatform = currentSourcePlatform === "apple" ? "youtube" : "apple";
 
   if (viewMode === "landing") {
     return <LandingPage onOpenStudio={handleOpenStudio} />;

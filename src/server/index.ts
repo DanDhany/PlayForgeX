@@ -828,6 +828,7 @@ app.post("/api/matching/start", async (req: Request, res: Response) => {
   };
 
   if (!playlist || !playlist.id) return res.status(400).json({ error: "playlist is required" });
+  const userId = (req as any).user?.id;
 
   const sourceAcc = sourceAccountId
     ? accountManager.getAccount(sourceAccountId)
@@ -850,6 +851,15 @@ app.post("/api/matching/start", async (req: Request, res: Response) => {
   let presetTracks: TrackMetadata[] | undefined = undefined;
   if (sourceAcc && accountManager.hasSnapshotTracks(sourceAcc.id, playlist.id)) {
     presetTracks = accountManager.getPlaylistTracks(sourceAcc.id, playlist.id);
+  } else {
+    // Fallback: search across all snapshot accounts for matching playlist id
+    const allAccs = accountManager.getAccounts(userId);
+    for (const acc of allAccs) {
+      if (accountManager.hasSnapshotTracks(acc.id, playlist.id)) {
+        presetTracks = accountManager.getPlaylistTracks(acc.id, playlist.id);
+        break;
+      }
+    }
   }
 
   try {

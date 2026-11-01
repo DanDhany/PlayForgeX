@@ -23,13 +23,13 @@ export class SpotifyAdapter implements PlatformAdapter {
   readonly provider = spotifyProvider;
 
   /**
-   * Extract playlist ID from a Spotify URL or raw ID.
+   * Extract playlist ID from a Spotify URL, URI, or raw ID.
    */
   public extractPlaylistId(input: string): string {
     const trimmed = input.trim();
-    const urlMatch = trimmed.match(/playlist\/([a-zA-Z0-9]+)/);
-    if (urlMatch) return urlMatch[1];
-    return trimmed;
+    const match = trimmed.match(/(?:playlist\/|playlist:)([a-zA-Z0-9]+)/);
+    if (match) return match[1];
+    return trimmed.split("?")[0];
   }
 
   /**

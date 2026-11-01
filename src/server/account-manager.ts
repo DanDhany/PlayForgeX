@@ -628,6 +628,10 @@ export class AccountManager {
       throw new Error("playlists array is required for snapshot import");
     }
 
+    for (const pl of playlists) {
+      pl.platform = (pl.platform || platform) as any;
+    }
+
     const trimmedAlias = alias?.trim() || `${platform} Library`;
     const existing = Array.from(this.accounts.values()).find(
       (a) => a.platform === platform && a.localAlias.toLowerCase() === trimmedAlias.toLowerCase()
@@ -728,6 +732,7 @@ export class AccountManager {
         description: p.description,
         trackCount: p.tracks?.length || p.trackCount || 0,
         thumbnailUrl: p.thumbnailUrl,
+        platform: p.platform || acc.platform,
       }));
     }
 
@@ -736,18 +741,21 @@ export class AccountManager {
       if (!client || !client.hasValidAuth()) {
         throw new Error(`YouTube Music account '${acc.localAlias}' is not authenticated`);
       }
-      return client.fetchPlaylists();
+      const pls = await client.fetchPlaylists();
+      return pls.map((p) => ({ ...p, platform: "youtube" }));
     } else if (acc.platform === "apple") {
       const client = this.appleClients.get(accountId);
       if (!client) {
         throw new Error(`Apple Music account '${acc.localAlias}' is not authenticated`);
       }
-      return client.getUserPlaylists();
+      const pls = await client.getUserPlaylists();
+      return pls.map((p) => ({ ...p, platform: "apple" }));
     } else {
       const adapter = PlatformRegistry.getAdapter(acc.platform as PlatformId);
       if (adapter && adapter.fetchPlaylists) {
         const sec = this.secrets.get(accountId);
-        return adapter.fetchPlaylists(sec);
+        const pls = await adapter.fetchPlaylists(sec);
+        return pls.map((p) => ({ ...p, platform: acc.platform }));
       }
       return [];
     }

@@ -1,3 +1,6 @@
+// Force isolated test database to protect development and Docker databases
+process.env.DB_NAME = process.env.TEST_DB_NAME || "playforgex_test";
+
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { app } from "../src/server/index.js";
 import {
@@ -13,13 +16,15 @@ describe("Authentication Express Endpoints & Session Management", () => {
   let baseUrl: string;
 
   beforeAll(async () => {
-    // Database connection check
+    // Ensure test database exists and schema is initialized
+    const initialized = await initDatabase();
+    expect(initialized).toBe(true);
+
     const connected = await checkDbConnection();
     expect(connected).toBe(true);
 
     await resetDatabaseForTesting();
-    const initialized = await initDatabase();
-    expect(initialized).toBe(true);
+    await initDatabase();
 
     // Ensure default admin is created
     await authService.ensureDefaultAdmin();

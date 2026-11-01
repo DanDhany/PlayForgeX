@@ -53,6 +53,7 @@ export interface PlaylistSummary {
   description?: string;
   trackCount: number;
   thumbnailUrl?: string;
+  platform?: PlatformType | string;
 }
 
 export interface TransferTrackItem {

@@ -1,3 +1,6 @@
+// Force isolated test database to protect development and Docker databases
+process.env.DB_NAME = process.env.TEST_DB_NAME || "playforgex_test";
+
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
@@ -25,13 +28,15 @@ import { AccountManager } from "../src/server/account-manager.js";
 
 describe("MySQL Database Schema, Connection Pool & Auth Service", () => {
   beforeAll(async () => {
-    // Ensure clean state before running tests
+    // Ensure database exists and schema is initialized
+    const initialized = await initDatabase();
+    expect(initialized).toBe(true);
+
     const connected = await checkDbConnection();
     expect(connected).toBe(true);
 
     await resetDatabaseForTesting();
-    const initialized = await initDatabase();
-    expect(initialized).toBe(true);
+    await initDatabase();
   });
 
   afterAll(async () => {

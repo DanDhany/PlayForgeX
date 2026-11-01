@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { PlaylistSummary } from "../../shared/types";
 import { useLanguage } from "../context/LanguageContext";
+import { getPlatformMeta } from "../utils/platform-meta";
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -48,7 +49,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const targetName = targetPlatform === "youtube" ? "YouTube Music" : "Apple Music";
+  const targetName = getPlatformMeta(targetPlatform).name;
 
   useEffect(() => {
     setPlaylistTitle(defaultTitle);

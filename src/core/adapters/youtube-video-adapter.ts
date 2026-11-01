@@ -38,25 +38,25 @@ export function sanitizeVideoTitle(raw: string, channelName?: string): Sanitized
 
   // Common bracketed garbage in video titles
   const noisePatterns = [
-    /\[\s*official\s*(music)?\s*video\s*\]/gi,
-    /\(\s*official\s*(music)?\s*video\s*\)/gi,
-    /\[\s*official\s*audio\s*\]/gi,
-    /\(\s*official\s*audio\s*\)/gi,
-    /\[\s*lyric\s*video\s*\]/gi,
-    /\(\s*lyric\s*video\s*\)/gi,
-    /\[\s*lyrics?\s*\]/gi,
-    /\(\s*lyrics?\s*\)/gi,
-    /\[\s*mv\s*\]/gi,
-    /\(\s*mv\s*\)/gi,
-    /\[\s*m\/v\s*\]/gi,
-    /\[\s*visualizer\s*\]/gi,
-    /\(\s*visualizer\s*\)/gi,
-    /\[\s*4k\s*(60fps)?\s*\]/gi,
-    /\(\s*4k\s*(60fps)?\s*\)/gi,
-    /\[\s*hd\s*\]/gi,
-    /\(\s*hd\s*\)/gi,
-    /\[\s*remastered\s*(\d{4})?\s*\]/gi,
-    /\(\s*remastered\s*(\d{4})?\s*\)/gi,
+    /\[\s*official\s*(music)?\s*video[^\]]*\]/gi,
+    /\(\s*official\s*(music)?\s*video[^\)]*\)/gi,
+    /\[\s*official\s*audio[^\]]*\]/gi,
+    /\(\s*official\s*audio[^\)]*\)/gi,
+    /\[\s*lyric\s*video[^\]]*\]/gi,
+    /\(\s*lyric\s*video[^\)]*\)/gi,
+    /\[\s*lyrics?[^\]]*\]/gi,
+    /\(\s*lyrics?[^\)]*\)/gi,
+    /\[\s*mv[^\]]*\]/gi,
+    /\(\s*mv[^\)]*\)/gi,
+    /\[\s*m\/v[^\]]*\]/gi,
+    /\[\s*visualizer[^\]]*\]/gi,
+    /\(\s*visualizer[^\)]*\)/gi,
+    /\[\s*4k[^\]]*\]/gi,
+    /\(\s*4k[^\)]*\)/gi,
+    /\[\s*hd[^\]]*\]/gi,
+    /\(\s*hd[^\)]*\)/gi,
+    /\[\s*remastered[^\]]*\]/gi,
+    /\(\s*remastered[^\)]*\)/gi,
     /\[\s*audio\s*\]/gi,
     /\|\s*official\s*video/gi,
   ];
@@ -113,16 +113,46 @@ export class YouTubeVideoAdapter implements PlatformAdapter {
     if (trimmed.startsWith("PL") || trimmed.startsWith("VLPL") || trimmed.startsWith("UU") || trimmed.startsWith("LL")) {
       return trimmed.replace(/^VL/, "");
     }
+    // Single watch URL fallback: extract videoId
+    const watchMatch = trimmed.match(/(?:watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (watchMatch) return watchMatch[1];
     return trimmed;
   }
 
   /**
-   * Fetch tracks from a YouTube video playlist using public Innertube web endpoint.
+   * Fetch tracks from a YouTube video playlist using public page scraping with Innertube fallback.
    */
   async fetchPlaylistTracks(playlistId: string, credentials?: unknown): Promise<TrackMetadata[]> {
     const normalizedId = this.normalizePlaylistId(playlistId);
-    const browseId = normalizedId.startsWith("VL") ? normalizedId : `VL${normalizedId}`;
 
+    // 1. Try public HTML playlist scraping first (most reliable, zero 400 errors)
+    if (normalizedId.startsWith("PL") || normalizedId.startsWith("UU") || normalizedId.startsWith("LL") || normalizedId.length > 15) {
+      try {
+        const url = `https://www.youtube.com/playlist?list=${normalizedId}`;
+        const res = await fetch(url, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9",
+          },
+        });
+
+        if (res.ok) {
+          const html = await res.text();
+          if (html.includes("var ytInitialData =")) {
+            const jsonStr = html.split("var ytInitialData =")[1].split(";</script>")[0];
+            const data = JSON.parse(jsonStr);
+            const tracks = this.parseInnertubeResponse(data);
+            if (tracks.length > 0) return tracks;
+          }
+        }
+      } catch (err: any) {
+        console.warn("[YouTubeVideoAdapter] Public HTML scrape warning:", err.message);
+      }
+    }
+
+    // 2. Try Innertube Web Browse endpoint
+    const browseId = normalizedId.startsWith("VL") ? normalizedId : `VL${normalizedId}`;
     const cookie = typeof credentials === "string" ? credentials : "";
 
     try {
@@ -130,6 +160,8 @@ export class YouTubeVideoAdapter implements PlatformAdapter {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           "X-YouTube-Client-Name": "1",
           "X-YouTube-Client-Version": "2.20240101.00.00",
           ...(cookie ? { Cookie: cookie } : {}),
@@ -147,20 +179,33 @@ export class YouTubeVideoAdapter implements PlatformAdapter {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error(`YouTube Innertube responded with HTTP ${res.status}`);
+      if (res.ok) {
+        const json = await res.json();
+        const tracks = this.parseInnertubeResponse(json);
+        if (tracks.length > 0) return tracks;
       }
-
-      const json = await res.json();
-      return this.parseInnertubeResponse(json);
     } catch (err: any) {
       console.warn("Failed fetching YouTube video playlist via Innertube:", err.message);
-      return [];
     }
+
+    // 3. Fallback: If it was a single video ID (11 chars), synthesize 1 track
+    if (normalizedId.length === 11 && !normalizedId.startsWith("PL")) {
+      return [
+        {
+          id: normalizedId,
+          videoId: normalizedId,
+          title: "YouTube Video",
+          artist: "Unknown Artist",
+          thumbnailUrl: `https://i.ytimg.com/vi/${normalizedId}/hqdefault.jpg`,
+        },
+      ];
+    }
+
+    return [];
   }
 
   /**
-   * Recursively extract video items from Innertube JSON.
+   * Recursively extract video items from Innertube JSON (supports legacy renderers & modern lockupViewModel).
    */
   public parseInnertubeResponse(json: any): TrackMetadata[] {
     const tracks: TrackMetadata[] = [];
@@ -169,16 +214,51 @@ export class YouTubeVideoAdapter implements PlatformAdapter {
     const traverse = (obj: any) => {
       if (!obj || typeof obj !== "object") return;
 
+      // Modern desktop lockupViewModel
+      const lockup = obj.lockupViewModel;
+      if (lockup && (lockup.contentType === "LOCKUP_CONTENT_TYPE_VIDEO" || lockup.contentId)) {
+        const videoId = lockup.contentId;
+        if (videoId && !seen.has(videoId)) {
+          seen.add(videoId);
+          const rawTitle =
+            lockup.metadata?.lockupMetadataViewModel?.title?.content ||
+            lockup.rendererContext?.accessibilityContext?.label ||
+            "Untitled";
+          const rows =
+            lockup.metadata?.lockupMetadataViewModel?.metadata?.contentMetadataViewModel?.metadataRows || [];
+          const channel = rows[0]?.metadataParts?.[0]?.text?.content || "";
+          const thumb =
+            lockup.contentImage?.thumbnailViewModel?.image?.sources?.[0]?.url ||
+            `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+          const sanitized = sanitizeVideoTitle(rawTitle, channel);
+
+          tracks.push({
+            id: videoId,
+            videoId,
+            title: sanitized.cleanTitle,
+            artist: sanitized.cleanArtist,
+            album: sanitized.cleanTitle,
+            thumbnailUrl: thumb,
+          });
+        }
+      }
+
+      // Legacy playlistVideoRenderer or playlistVideoListRenderer
       const renderer = obj.playlistVideoRenderer || obj.playlistVideoListRenderer;
       if (renderer) {
         const videoId = renderer.videoId;
         if (videoId && !seen.has(videoId)) {
           seen.add(videoId);
 
-          const rawTitle = renderer.title?.runs?.map((r: any) => r.text).join("") || renderer.title?.simpleText || "Untitled";
+          const rawTitle =
+            renderer.title?.runs?.map((r: any) => r.text).join("") ||
+            renderer.title?.simpleText ||
+            "Untitled";
           const channel = renderer.shortBylineText?.runs?.map((r: any) => r.text).join("") || "";
           const durSec = renderer.lengthSeconds ? parseInt(renderer.lengthSeconds, 10) : undefined;
-          const thumb = renderer.thumbnail?.thumbnails?.[0]?.url || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+          const thumb =
+            renderer.thumbnail?.thumbnails?.[0]?.url ||
+            `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 
           const sanitized = sanitizeVideoTitle(rawTitle, channel);
 

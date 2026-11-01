@@ -20,6 +20,7 @@ import {
 import { TrackRow } from "./TrackRow";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useLanguage } from "../context/LanguageContext";
+import { getPlatformMeta } from "../utils/platform-meta";
 
 interface ReviewStudioProps {
   selectedPlaylist: PlaylistSummary | null;
@@ -126,7 +127,9 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
     );
   }
 
-  const destinationName = targetPlatform === "youtube" ? "YouTube Music" : "Apple Music";
+  const sourceMeta = getPlatformMeta(sourcePlatform);
+  const targetMeta = getPlatformMeta(targetPlatform);
+  const destinationName = targetMeta.name;
 
   return (
     <main className="flex-1 w-full h-full min-h-0 flex flex-col bg-background select-none overflow-hidden relative">
@@ -152,8 +155,10 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                 <h2 className="text-sm md:text-base font-semibold text-text-primary tracking-tight truncate">
                   {selectedPlaylist.title}
                 </h2>
-                <span className="hidden sm:inline-block px-1.5 py-0.2 text-[9px] font-mono uppercase bg-surface-elevated text-text-secondary rounded border border-border">
-                  {sourcePlatform === "youtube" ? "YTM" : "Apple"} ➔ {targetPlatform === "youtube" ? "YTM" : "Apple"}
+                <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-mono uppercase bg-surface-elevated text-text-secondary rounded border border-border">
+                  <span className={sourceMeta.textColor}>{sourceMeta.shortCode}</span>
+                  <span>➔</span>
+                  <span className={targetMeta.textColor}>{targetMeta.shortCode}</span>
                 </span>
               </div>
               <p className="text-[11px] text-text-secondary mt-0.5 truncate">
@@ -319,9 +324,9 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
       {/* 3. Table Column Headers (Desktop Only) */}
       <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-2 text-[10px] uppercase font-semibold tracking-wider text-text-secondary border-b border-border bg-surface/30 flex-shrink-0 items-center">
         <div className="col-span-1">#</div>
-        <div className="col-span-4">{isEn ? "Source Track" : "Lagu Sumber"} ({sourcePlatform === "youtube" ? "YouTube" : "Apple"})</div>
+        <div className="col-span-4">{isEn ? "Source Track" : "Lagu Sumber"} ({sourceMeta.shortCode})</div>
         <div className="col-span-2 text-center">{isEn ? "Match Status" : "Status Kecocokan"}</div>
-        <div className="col-span-5 pl-3">{isEn ? "Destination Track" : "Lagu Tujuan"} ({targetPlatform === "youtube" ? "YouTube" : "Apple"})</div>
+        <div className="col-span-5 pl-3">{isEn ? "Destination Track" : "Lagu Tujuan"} ({targetMeta.shortCode})</div>
       </div>
 
       {/* 4. Tracks Scroll Area */}

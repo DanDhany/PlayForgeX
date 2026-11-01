@@ -4,6 +4,7 @@ import { TransferTrackItem, AppleMusicTrack } from "../../shared/types";
 import { formatMillis } from "../utils/ui-helpers";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useLanguage } from "../context/LanguageContext";
+import { getPlatformMeta } from "../utils/platform-meta";
 
 interface AlternativePickerModalProps {
   item: TransferTrackItem | null;
@@ -59,7 +60,7 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
     });
   };
 
-  const platformTitle = targetPlatform === "youtube" ? "YouTube Music" : "Apple Music";
+  const platformTitle = getPlatformMeta(targetPlatform).name;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4">
