@@ -8,6 +8,8 @@ release/
 data/*.json
 data/chrome-profile/
 data/drafts/
+data/snapshots/
+data/mysql/
 !data/.gitkeep
 .env
 

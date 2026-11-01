@@ -16,16 +16,21 @@
    - Strips exact duplicate tracks across aggregated sources.
    - Detects and preserves intentional song variants: Live, Acoustic, Remix, and Instrumental versions.
 
-3. **Original-Title-First Matching Engine**
+3. **User Authentication & Role-Based Access Control**
+   - Secure login & registration with pure scrypt password hashing and session tokens.
+   - Role-based permissions: `admin`, `editor`, and `viewer` with automatic default admin seeding.
+   - Multi-tenant data isolation for connected accounts, migration drafts, and activity logs.
+
+4. **Original-Title-First Matching Engine**
    - Built to resolve cross-platform matching failures on non-Latin characters (Japanese Kanji, Hiragana, Katakana, Korean Hangul, Arabic).
    - Cleans video metadata noise tags (`[Official Video]`, `MV`, `【Official MV】`, `(Audio)`) while keeping original song titles intact for catalog search.
 
-4. **Linear-Style Dark Interface**
-   - Responsive layout designed for desktop and mobile screens.
+5. **Linear-Style Dark Interface**
+   - Responsive layout designed for desktop and mobile screens with tab navigation and authentication modal.
    - Emil Kowalski micro-interactions and tactile feedback.
    - 6 functional modules: Overview, Transfer Studio, Library, Accounts, Activity Audit Log, Settings.
 
-5. **Rate-Limit & Session Protection**
+6. **Rate-Limit & Session Protection**
    - Built-in circuit breaker backoff upon receiving HTTP 429 status codes.
    - Natural request spacing to keep sessions healthy.
 
@@ -121,8 +126,11 @@ TuneBridge
 │   │   ├── ytmusic.ts          # SAPISIDHASH generator & YouTube Music API client
 │   │   ├── applemusic.ts       # MusicKit Web client, catalog search & playlist creator
 │   │   ├── stealth.ts          # Circuit breaker cooldown & rate limit guard
+│   │   ├── platform-registry.ts# Multi-platform adapter registry & capabilities
 │   │   └── lyric-validator.ts  # Lyric verification for disambiguation
 │   ├── server/
+│   │   ├── db.ts               # MySQL schema migrations, connection pooling & health checks
+│   │   ├── auth-service.ts     # Scrypt authentication, session tokens & role management
 │   │   ├── account-manager.ts  # Multi-account local connection and secrets manager
 │   │   ├── merge-engine.ts     # Cross-account aggregation, deduplication & audit trail
 │   │   ├── matcher-worker.ts   # Background matching engine & persistent draft store
@@ -130,6 +138,7 @@ TuneBridge
 │   ├── renderer/
 │   │   ├── components/
 │   │   │   ├── NavigationRail.tsx         # Linear-style navigation (desktop rail & mobile bottom bar)
+│   │   │   ├── auth/                      # Login, register, user profile & permissions dialogs
 │   │   │   ├── views/
 │   │   │   │   ├── OverviewView.tsx       # System health, metrics & quick start
 │   │   │   │   ├── TransferStudioView.tsx # 1:1 Transfer & Multi-Source Merge Studio
@@ -147,7 +156,7 @@ TuneBridge
 │   └── shared/
 │       ├── types.ts            # Shared domain types & multi-account models
 │       └── ipc.ts              # Electron IPC channel contracts
-├── tests/                      # Vitest test suites
+├── tests/                      # Vitest test suites (19 test suites, 95 tests)
 ├── docker-compose.yml          # Container configuration (with-db profile for MySQL)
 └── Dockerfile                  # Application container definition
 ```
