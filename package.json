@@ -10,7 +10,9 @@
     "server": "tsx src/server/index.ts",
     "start": "tsx src/server/index.ts",
     "auth:yt": "node scripts/auto-catch.js youtube",
+    "auth:yt:clean": "node scripts/auto-catch.js youtube --clean",
     "auth:apple": "node scripts/auto-catch.js apple",
+    "auth:reset": "node scripts/auto-catch.js reset",
     "test": "vitest run",
     "test:watch": "vitest"
   },

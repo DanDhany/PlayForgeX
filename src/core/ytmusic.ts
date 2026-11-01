@@ -191,11 +191,21 @@ export class YouTubeMusicClient {
   private sapisid: string;
 
   constructor(cookieString: string) {
-    this.cookieString = cookieString;
-    const match =
-      cookieString.match(/SAPISID=([^;]+)/) ||
-      cookieString.match(/__Secure-3PAPISID=([^;]+)/);
-    this.sapisid = match ? match[1].trim() : "";
+    // Deduplicate cookie pairs
+    const map = new Map<string, string>();
+    for (const part of cookieString.split(";")) {
+      const idx = part.indexOf("=");
+      if (idx !== -1) {
+        const k = part.slice(0, idx).trim();
+        const v = part.slice(idx + 1).trim();
+        if (k) map.set(k, v);
+      }
+    }
+    this.cookieString = Array.from(map.entries())
+      .map(([k, v]) => `${k}=${v}`)
+      .join("; ");
+
+    this.sapisid = map.get("SAPISID") || map.get("__Secure-3PAPISID") || "";
   }
 
   public hasValidAuth(): boolean {
@@ -213,6 +223,8 @@ export class YouTubeMusicClient {
       "X-Origin": origin,
       "X-YouTube-Client-Name": "67", // WEB_REMIX
       "X-YouTube-Client-Version": "1.20241028.01.00",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
     };
   }
 
@@ -221,7 +233,7 @@ export class YouTubeMusicClient {
       throw new Error("Missing YouTube Music SAPISID session cookie");
     }
 
-    const endpoints = ["FEmusic_library_playlists", "FEmusic_liked_playlists", "FEmusic_library_landing"];
+    const endpoints = ["FEmusic_liked_playlists", "FEmusic_library_playlists", "FEmusic_library_landing"];
     const allPlaylists: PlaylistSummary[] = [];
     const seenIds = new Set<string>();
 

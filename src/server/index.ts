@@ -162,6 +162,15 @@ app.post("/api/auth/logout", (req: Request, res: Response) => {
   if (service === "youtube" || service === "all") {
     ytClient = null;
     delete sessionData.ytCookieString;
+
+    const chromeProfile = path.resolve(DATA_DIR, "chrome-profile");
+    if (fs.existsSync(chromeProfile)) {
+      try {
+        fs.rmSync(chromeProfile, { recursive: true, force: true });
+      } catch (err) {
+        console.warn("Could not delete chrome-profile on logout:", err);
+      }
+    }
   }
   if (service === "apple" || service === "all") {
     appleClient = null;

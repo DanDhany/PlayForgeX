@@ -22,6 +22,24 @@ function findChromePath() {
 const service = (process.argv[2] || "youtube").toLowerCase();
 const DATA_DIR = path.resolve(process.cwd(), "data");
 const SESSION_FILE = path.join(DATA_DIR, "session.json");
+const CHROME_PROFILE_DIR = path.resolve(DATA_DIR, "chrome-profile");
+
+const shouldClean = process.argv.includes("--clean") || process.argv.includes("-c") || service === "reset";
+
+if (shouldClean && fs.existsSync(CHROME_PROFILE_DIR)) {
+  console.log("🧹 Membersihkan cache dan profil Chrome sebelumnya...");
+  try {
+    fs.rmSync(CHROME_PROFILE_DIR, { recursive: true, force: true });
+    console.log("✓ Profil Chrome berhasil dibersihkan.");
+  } catch (e) {
+    console.warn("Gagal menghapus profil:", e.message);
+  }
+}
+
+if (service === "reset") {
+  console.log("Reset selesai.");
+  process.exit(0);
+}
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -125,12 +143,15 @@ async function main() {
 
         if (hasLoginInfo && hasSapisid) {
           isCaptured = true;
-          const allCookies = await page.cookies(
-            "https://music.youtube.com",
-            "https://youtube.com",
-            "https://google.com"
-          );
-          const cookieString = allCookies.map((c) => `${c.name}=${c.value}`).join("; ");
+          // Capture deduplicated cookies strictly for music.youtube.com
+          const ytCookiesAll = await page.cookies("https://music.youtube.com");
+          const cookieMap = new Map();
+          for (const c of ytCookiesAll) {
+            cookieMap.set(c.name, c.value);
+          }
+          const cookieString = Array.from(cookieMap.entries())
+            .map(([k, v]) => `${k}=${v}`)
+            .join("; ");
 
           console.log(`\n🎉 Berhasil! Akun YouTube Music terverifikasi dan cookie sesi tertangkap!`);
           saveSession({ ytCookieString: cookieString });
