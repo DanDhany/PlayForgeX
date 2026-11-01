@@ -3,6 +3,7 @@ import { Disc3, ArrowRight, Menu, X } from "lucide-react";
 import { HeroSection } from "./HeroSection";
 import { FeaturesSection } from "./FeaturesSection";
 import { PlatformMatrixSection } from "./PlatformMatrixSection";
+import { FaqSection } from "./FaqSection";
 import { LandingFooter } from "./LandingFooter";
 
 const GithubIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
@@ -63,6 +64,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
               Platform
             </a>
             <a
+              href="#faq-section"
+              className="hover:text-text-primary transition-colors font-medium"
+            >
+              FAQ
+            </a>
+            <a
               href="https://github.com"
               target="_blank"
               rel="noreferrer"
@@ -119,6 +126,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
               Daftar Platform
             </a>
             <a
+              href="#faq-section"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
+            >
+              FAQ
+            </a>
+            <a
               href="https://github.com"
               target="_blank"
               rel="noreferrer"
@@ -137,6 +151,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
         <HeroSection onOpenStudio={onOpenStudio} />
         <FeaturesSection />
         <PlatformMatrixSection />
+        <FaqSection />
       </main>
 
       {/* Footer */}

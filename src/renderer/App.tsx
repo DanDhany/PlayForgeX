@@ -23,12 +23,21 @@ import {
   PlaylistDraft,
   User,
 } from "../shared/types";
+import {
+  IS_PAGES_OR_STATIC,
+  DEMO_ACCOUNTS,
+  DEMO_PLAYLISTS,
+  DEMO_ACTIVITY,
+} from "./demoData";
 
 export const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<"studio" | "landing">(() => {
-    return typeof window !== "undefined" && window.location.hash.startsWith("#landing")
-      ? "landing"
-      : "studio";
+    if (typeof window !== "undefined") {
+      if (window.location.hash.startsWith("#landing") || IS_PAGES_OR_STATIC) {
+        return "landing";
+      }
+    }
+    return "studio";
   });
   const [activeTab, setActiveTab] = useState<NavTab>("overview");
   const [accounts, setAccounts] = useState<AccountConnection[]>([]);
@@ -188,10 +197,14 @@ export const App: React.FC = () => {
         const data: AccountConnection[] = await res.json();
         setAccounts(data);
         loadAllPlaylists(data);
+        return;
       }
     } catch (err) {
-      console.warn("Failed fetching accounts:", err);
+      console.warn("Failed fetching accounts, falling back to static demo data:", err);
     }
+    // Fallback for GitHub Pages or offline static demo mode
+    setAccounts(DEMO_ACCOUNTS);
+    setAllPlaylists(DEMO_PLAYLISTS);
   };
 
   const loadActivity = async () => {
@@ -200,10 +213,12 @@ export const App: React.FC = () => {
       if (res.ok) {
         const data: ActivityLogItem[] = await res.json();
         setActivityLogs(data);
+        return;
       }
     } catch (err) {
-      console.warn("Failed fetching activity logs:", err);
+      console.warn("Failed fetching activity logs, falling back to demo logs:", err);
     }
+    setActivityLogs(DEMO_ACTIVITY);
   };
 
   const loadAllPlaylists = async (accList = accounts) => {
@@ -526,6 +541,22 @@ export const App: React.FC = () => {
 
       {/* Main Content Pane */}
       <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0 w-full relative">
+        {IS_PAGES_OR_STATIC && (
+          <div className="bg-accent/10 border-b border-accent/20 px-4 py-1.5 flex items-center justify-between text-xs text-accent select-none z-30">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+              <span>
+                <strong>Mode Demonstrasi GitHub Pages:</strong> Menampilkan simulasi studio interaktif. Unduh rilis Docker lokal untuk transfer riil.
+              </span>
+            </span>
+            <button
+              onClick={handleOpenLanding}
+              className="underline text-[11px] hover:text-text-primary ml-2 font-medium"
+            >
+              Kembali ke Landing Page
+            </button>
+          </div>
+        )}
         {successBanner && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-status-success/20 border border-status-success/40 text-status-success px-4 py-2.5 rounded-xl shadow-xl backdrop-blur-md flex items-center space-x-2 animate-dialog-in text-xs font-medium">
             <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" />

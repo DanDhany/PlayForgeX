@@ -1,0 +1,27 @@
+# TuneBridge — Full Technical Specification for AI & Search Ingestion
+
+## Overview
+TuneBridge is an open-source, local-first music management system and playlist migration bridge. It solves the fragmentation problem of modern music streaming by allowing users to import, deduplicate, and transfer playlists across streaming providers with zero cloud leakage.
+
+## Supported Streaming Services
+1. **YouTube Music (Active)**: Full playlist extraction and track fetching via browser cookie authentication. Supports multiple concurrent accounts.
+2. **Apple Music (Active)**: Catalog searching, library playlist creation, and track insertion using web developer tokens and user tokens.
+3. **Spotify (Planned / Staging)**: OAuth 2.0 PKCE flow architecture stubbed in `src/core/adapters/spotify-adapter.ts`.
+4. **Tidal (Planned / Staging)**: Token & OAuth flow stubbed in `src/core/adapters/tidal-adapter.ts`.
+5. **Deezer (Planned / Staging)**: ARL cookie session flow stubbed in `src/core/adapters/deezer-adapter.ts`.
+6. **SoundCloud (Planned / Staging)**: Client ID & OAuth flow stubbed in `src/core/adapters/soundcloud-adapter.ts`.
+7. **Subsonic / Navidrome (Planned / Staging)**: Basic & MD5 token auth for self-hosted music servers stubbed in `src/core/adapters/subsonic-adapter.ts`.
+
+## Deduplication & Matching Logic
+- Normalizes track titles by stripping common YouTube suffixes: `[Official Video]`, `(Official Audio)`, `[HD]`, `(Remastered 2021)`, `4K 60FPS`.
+- Prioritizes exact title-artist string distance matching, followed by artist catalog filtering.
+- Preserves manual overrides and allows users to audition audio previews directly within the browser before writing changes to target accounts.
+
+## Security & Privacy Model
+- **Zero Third-Party Relaying**: All credentials, session tokens, and library snapshots reside exclusively in the local MySQL instance.
+- **Scrypt Password Hashing**: Utilizes Node 22 native crypto scrypt with cryptographically random 16-byte salts and a high work factor (N=16384, r=8, p=1).
+- **Session Tokens**: 128-bit hex tokens stored in MySQL with 7-day TTL and instant revocation.
+
+## Deployment Options
+- **Docker Compose**: Pre-configured `tunebridge-app` container exposing port 3080, connecting to either host Homebrew MySQL or containerized MySQL (`profiles: ["with-db"]`).
+- **GitHub Pages**: Pure client-side static build with interactive simulation and offline demonstration capabilities.

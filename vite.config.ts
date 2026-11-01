@@ -4,37 +4,44 @@ import electron from "vite-plugin-electron";
 import renderer from "vite-plugin-electron-renderer";
 import path from "node:path";
 
+const isWebOnly = process.env.BUILD_TARGET === "web" || process.env.GITHUB_PAGES === "true";
+
 export default defineConfig({
+  base: "./",
   plugins: [
     react(),
-    electron([
-      {
-        entry: "electron/main.ts",
-        vite: {
-          build: {
-            outDir: "dist-electron",
-            rollupOptions: {
-              external: ["electron"],
+    ...(isWebOnly
+      ? []
+      : [
+          electron([
+            {
+              entry: "electron/main.ts",
+              vite: {
+                build: {
+                  outDir: "dist-electron",
+                  rollupOptions: {
+                    external: ["electron"],
+                  },
+                },
+              },
             },
-          },
-        },
-      },
-      {
-        entry: "electron/preload.ts",
-        onstart(options) {
-          options.reload();
-        },
-        vite: {
-          build: {
-            outDir: "dist-electron",
-            rollupOptions: {
-              external: ["electron"],
+            {
+              entry: "electron/preload.ts",
+              onstart(options) {
+                options.reload();
+              },
+              vite: {
+                build: {
+                  outDir: "dist-electron",
+                  rollupOptions: {
+                    external: ["electron"],
+                  },
+                },
+              },
             },
-          },
-        },
-      },
-    ]),
-    renderer(),
+          ]),
+          renderer(),
+        ]),
   ],
   resolve: {
     alias: {
