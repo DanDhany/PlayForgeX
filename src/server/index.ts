@@ -230,24 +230,48 @@ app.get("/api/playlists/:id/tracks", async (req: Request, res: Response) => {
   }
 });
 
-// 7. Match Tracks (Original Title Priority)
+// 7. Match Tracks (Original Title Priority - Bidirectional)
 app.post("/api/tracks/match", async (req: Request, res: Response) => {
-  if (!appleClient) {
-    return res.status(401).json({ error: "Apple Music not connected" });
-  }
+  const { tracks, targetPlatform = "apple" } = req.body as {
+    tracks: TrackMetadata[];
+    targetPlatform?: "apple" | "youtube";
+  };
 
-  const { tracks } = req.body as { tracks: TrackMetadata[] };
   if (!tracks || !Array.isArray(tracks)) {
     return res.status(400).json({ error: "tracks array is required" });
   }
 
-  const sf = await appleClient.getUserStorefront();
+  if (targetPlatform === "apple" && !appleClient) {
+    return res.status(401).json({ error: "Apple Music not connected" });
+  }
+
+  if (targetPlatform === "youtube" && (!ytClient || !ytClient.hasValidAuth())) {
+    return res.status(401).json({ error: "YouTube Music not connected" });
+  }
+
+  let sf = "us";
+  if (targetPlatform === "apple" && appleClient) {
+    sf = await appleClient.getUserStorefront();
+  }
+
   const results: TransferTrackItem[] = [];
 
   for (const track of tracks) {
     const sanitized = cleanTitle(track.title);
     try {
-      const { candidate, match } = await appleClient.searchWithOriginalPriority(track, sf);
+      let candidate: any;
+      let match: any;
+
+      if (targetPlatform === "apple") {
+        const resMatch = await appleClient!.searchWithOriginalPriority(track, sf);
+        candidate = resMatch.candidate;
+        match = resMatch.match;
+      } else {
+        const resMatch = await ytClient!.searchWithOriginalPriority(track);
+        candidate = resMatch.candidate;
+        match = resMatch.match;
+      }
+
       results.push({
         source: track,
         sanitizedTitle: sanitized,
@@ -256,7 +280,7 @@ app.post("/api/tracks/match", async (req: Request, res: Response) => {
         excluded: match.status === "NOT_FOUND",
       });
     } catch (err) {
-      console.error(`Error matching ${track.title}:`, err);
+      console.error(`Error matching ${track.title} on ${targetPlatform}:`, err);
       results.push({
         source: track,
         sanitizedTitle: sanitized,
@@ -276,13 +300,29 @@ app.post("/api/tracks/match", async (req: Request, res: Response) => {
   res.json(results);
 });
 
-// 8. Search Apple Catalog manually
-app.post("/api/search/apple", async (req: Request, res: Response) => {
+// 8. Search Catalog manually (Bidirectional)
+app.post(["/api/search", "/api/search/apple", "/api/search/youtube"], async (req: Request, res: Response) => {
+  const { query, targetPlatform = "apple" } = req.body;
+  if (!query) return res.json([]);
+
+  const isYt = targetPlatform === "youtube" || req.path.includes("youtube");
+
+  if (isYt) {
+    if (!ytClient || !ytClient.hasValidAuth()) {
+      return res.status(401).json({ error: "YouTube Music not connected" });
+    }
+    try {
+      const tracks = await ytClient.searchCatalog(query);
+      return res.json(tracks);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // Default: Apple Music
   if (!appleClient) {
     return res.status(401).json({ error: "Apple Music not connected" });
   }
-  const { query } = req.body;
-  if (!query) return res.json([]);
   try {
     const tracks = await appleClient.searchCatalog(query);
     res.json(tracks);
@@ -296,51 +336,96 @@ app.get("/api/transfer/progress", (_req: Request, res: Response) => {
   res.json(currentProgress);
 });
 
-// 10. Execute Transfer
+// 10. Execute Transfer (Bidirectional: yt2apple or apple2yt)
 app.post("/api/transfer", async (req: Request, res: Response) => {
-  if (!appleClient) {
-    return res.status(401).json({ error: "Apple Music not connected" });
-  }
-
-  const { playlistTitle, items } = req.body as {
+  const { playlistTitle, items, targetPlatform = "apple" } = req.body as {
     playlistTitle: string;
     items: TransferTrackItem[];
+    targetPlatform?: "apple" | "youtube";
   };
 
   const activeItems = (items || []).filter((item) => !item.excluded && item.selectedCandidate);
-  const songIds = activeItems.map((item) => item.selectedCandidate!.id);
+  const trackIds = activeItems.map((item) => item.selectedCandidate!.id);
 
-  if (songIds.length === 0) {
+  if (trackIds.length === 0) {
     return res.status(400).json({ error: "No tracks selected for transfer" });
   }
 
+  const total = trackIds.length;
+  let success = 0;
+  let failed = 0;
+  currentProgress = { current: 0, total, success: 0, failed: 0 };
+
   try {
-    const createdId = await appleClient.createPlaylist(playlistTitle);
-    const total = songIds.length;
-    let success = 0;
-    let failed = 0;
+    if (targetPlatform === "apple") {
+      if (!appleClient) {
+        return res.status(401).json({ error: "Apple Music not connected" });
+      }
 
-    currentProgress = { current: 0, total, success: 0, failed: 0 };
+      const createdId = await appleClient.createPlaylist(playlistTitle);
 
-    for (let i = 0; i < total; i += 25) {
-      const chunk = songIds.slice(i, i + 25);
-      const resChunk = await appleClient.addTracksToPlaylist(createdId, chunk);
-      success += resChunk.added;
-      failed += resChunk.failed;
+      for (let i = 0; i < total; i += 25) {
+        const chunk = trackIds.slice(i, i + 25);
+        const resChunk = await appleClient.addTracksToPlaylist(createdId, chunk);
+        success += resChunk.added;
+        failed += resChunk.failed;
+        currentProgress = {
+          current: Math.min(i + 25, total),
+          total,
+          success,
+          failed,
+        };
+      }
+
+      return res.json({
+        success: true,
+        targetPlatform: "apple",
+        createdPlaylistId: createdId,
+        added: success,
+        failed,
+      });
+    } else {
+      // targetPlatform === "youtube"
+      if (!ytClient || !ytClient.hasValidAuth()) {
+        return res.status(401).json({ error: "YouTube Music not connected" });
+      }
+
+      const initialBatch = trackIds.slice(0, 25);
+      const remaining = trackIds.slice(25);
+
+      const createdId = await ytClient.createPlaylist(
+        playlistTitle,
+        "Imported from Apple Music via MirrorSong",
+        initialBatch
+      );
+      success += initialBatch.length;
       currentProgress = {
-        current: Math.min(i + 25, total),
+        current: initialBatch.length,
         total,
         success,
-        failed,
+        failed: 0,
       };
-    }
 
-    res.json({
-      success: true,
-      createdPlaylistId: createdId,
-      added: success,
-      failed,
-    });
+      if (remaining.length > 0) {
+        const resChunk = await ytClient.addTracksToPlaylist(createdId, remaining);
+        success += resChunk.added;
+        failed += resChunk.failed;
+        currentProgress = {
+          current: total,
+          total,
+          success,
+          failed,
+        };
+      }
+
+      return res.json({
+        success: true,
+        targetPlatform: "youtube",
+        createdPlaylistId: createdId,
+        added: success,
+        failed,
+      });
+    }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

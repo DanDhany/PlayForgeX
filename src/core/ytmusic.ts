@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
-import { TrackMetadata, PlaylistSummary } from "../shared/types";
+import { TrackMetadata, PlaylistSummary, AppleMusicTrack, MatchResult } from "../shared/types";
+import { cleanTitle } from "./sanitizer";
+import { searchAndMatchTrack } from "./applemusic";
 
 export function generateSapisidHash(sapisid: string, origin = "https://music.youtube.com"): string {
   const timestamp = Math.floor(Date.now() / 1000);
@@ -292,5 +294,233 @@ export class YouTubeMusicClient {
 
     const json = await res.json();
     return parseYouTubeMusicTracks(json);
+  }
+
+  public async searchCatalog(query: string): Promise<AppleMusicTrack[]> {
+    const payload = {
+      context: {
+        client: {
+          clientName: "WEB_REMIX",
+          clientVersion: "1.20241028.01.00",
+          hl: "ja",
+          gl: "JP",
+        },
+      },
+      query,
+    };
+
+    try {
+      const res = await fetch("https://music.youtube.com/youtubei/v1/search", {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        return [];
+      }
+
+      const json = await res.json();
+      const results: AppleMusicTrack[] = [];
+      const seenIds = new Set<string>();
+
+      function findRenderers(obj: any, targetKey: string, out: any[] = []): any[] {
+        if (!obj || typeof obj !== "object") return out;
+        if (obj[targetKey]) {
+          out.push(obj[targetKey]);
+        }
+        if (Array.isArray(obj)) {
+          for (const el of obj) findRenderers(el, targetKey, out);
+        } else {
+          for (const k of Object.keys(obj)) findRenderers(obj[k], targetKey, out);
+        }
+        return out;
+      }
+
+      const items = findRenderers(json, "musicResponsiveListItemRenderer");
+
+      for (const renderer of items) {
+        const flexColumns = renderer.flexColumns || [];
+        if (flexColumns.length === 0) continue;
+
+        const titleRuns = flexColumns[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
+        const title = titleRuns.map((r: any) => r.text).join("").trim();
+
+        const videoId =
+          renderer.playlistItemData?.videoId ||
+          titleRuns[0]?.navigationEndpoint?.watchEndpoint?.videoId ||
+          renderer.navigationEndpoint?.watchEndpoint?.videoId;
+
+        // Skip non-song items (artists, playlists, albums without videoId)
+        if (!videoId || seenIds.has(videoId)) continue;
+        seenIds.add(videoId);
+
+        const subRuns = flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
+        const subParts = subRuns.map((r: any) => r.text).join("").split(" • ");
+
+        let artist = "";
+        let album = "";
+        if (subParts.length >= 1) artist = subParts[0].trim();
+        if (subParts.length >= 2) album = subParts[1].trim();
+
+        const thumbnails = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+        const artworkUrl = thumbnails[thumbnails.length - 1]?.url;
+
+        results.push({
+          id: videoId,
+          name: title,
+          artistName: artist,
+          albumName: album || undefined,
+          artworkUrl,
+        });
+      }
+
+      return results;
+    } catch (err) {
+      console.error("YouTube Music searchCatalog error:", err);
+      return [];
+    }
+  }
+
+  public async searchWithOriginalPriority(
+    track: TrackMetadata
+  ): Promise<{
+    candidate?: AppleMusicTrack;
+    match: MatchResult;
+    allResults: AppleMusicTrack[];
+  }> {
+    const sanitized = cleanTitle(track.title);
+    const candidateMap = new Map<string, AppleMusicTrack>();
+
+    // 1. Primary Query: Search original title first
+    const primaryResults = await this.searchCatalog(sanitized.originalTitle);
+    for (const item of primaryResults) {
+      candidateMap.set(item.id, item);
+    }
+
+    let bestMatch = searchAndMatchTrack(track, Array.from(candidateMap.values()));
+
+    // 2. Secondary Query: If not exact, search Original Title + Artist
+    if (bestMatch.status !== "EXACT_MATCH") {
+      const combinedQuery = `${sanitized.originalTitle} ${track.artist}`.trim();
+      const secondaryResults = await this.searchCatalog(combinedQuery);
+      for (const item of secondaryResults) {
+        candidateMap.set(item.id, item);
+      }
+      bestMatch = searchAndMatchTrack(track, Array.from(candidateMap.values()));
+    }
+
+    // 3. Tertiary Query: Subtitle if available
+    if (bestMatch.status !== "EXACT_MATCH" && sanitized.subtitle) {
+      const subResults = await this.searchCatalog(sanitized.subtitle);
+      for (const item of subResults) {
+        candidateMap.set(item.id, item);
+      }
+      bestMatch = searchAndMatchTrack(track, Array.from(candidateMap.values()));
+    }
+
+    const allResults = Array.from(candidateMap.values());
+    return {
+      candidate: bestMatch.candidate,
+      match: bestMatch,
+      allResults,
+    };
+  }
+
+  public async createPlaylist(
+    title: string,
+    description = "Imported from Apple Music via MirrorSong",
+    videoIds: string[] = []
+  ): Promise<string> {
+    if (!this.hasValidAuth()) {
+      throw new Error("Missing YouTube Music authentication");
+    }
+
+    const payload = {
+      context: {
+        client: {
+          clientName: "WEB_REMIX",
+          clientVersion: "1.20241028.01.00",
+          hl: "en",
+          gl: "US",
+        },
+      },
+      title,
+      description,
+      privacyStatus: "PRIVATE",
+      videoIds,
+    };
+
+    const res = await fetch("https://music.youtube.com/youtubei/v1/playlist/create", {
+      method: "POST",
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to create YouTube Music playlist (${res.status}): ${await res.text()}`);
+    }
+
+    const json = await res.json();
+    const createdId = json?.playlistId;
+    if (!createdId) {
+      throw new Error("YouTube Music API did not return created playlist ID");
+    }
+
+    return createdId;
+  }
+
+  public async addTracksToPlaylist(
+    playlistId: string,
+    videoIds: string[]
+  ): Promise<{ added: number; failed: number }> {
+    if (!this.hasValidAuth()) {
+      throw new Error("Missing YouTube Music authentication");
+    }
+
+    let added = 0;
+    let failed = 0;
+    const chunkSize = 25;
+
+    for (let i = 0; i < videoIds.length; i += chunkSize) {
+      const chunk = videoIds.slice(i, i + chunkSize);
+      const payload = {
+        context: {
+          client: {
+            clientName: "WEB_REMIX",
+            clientVersion: "1.20241028.01.00",
+            hl: "en",
+            gl: "US",
+          },
+        },
+        playlistId,
+        actions: chunk.map((videoId) => ({
+          action: "ACTION_ADD_VIDEO",
+          addedVideoId: videoId,
+        })),
+      };
+
+      try {
+        const res = await fetch("https://music.youtube.com/youtubei/v1/browse/edit_playlist", {
+          method: "POST",
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          added += chunk.length;
+        } else {
+          failed += chunk.length;
+        }
+      } catch (err) {
+        failed += chunk.length;
+      }
+
+      if (i + chunkSize < videoIds.length) {
+        await new Promise((r) => setTimeout(r, 300));
+      }
+    }
+
+    return { added, failed };
   }
 }

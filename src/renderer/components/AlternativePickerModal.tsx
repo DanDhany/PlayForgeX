@@ -8,6 +8,7 @@ interface AlternativePickerModalProps {
   onClose: () => void;
   onSelectAlternative: (item: TransferTrackItem, candidate: AppleMusicTrack) => void;
   onSearchCatalog: (query: string) => Promise<AppleMusicTrack[]>;
+  targetPlatform?: "apple" | "youtube";
 }
 
 export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
@@ -15,6 +16,7 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
   onClose,
   onSelectAlternative,
   onSearchCatalog,
+  targetPlatform = "apple",
 }) => {
   if (!item) return null;
 
@@ -76,7 +78,7 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
         <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between bg-card/60">
           <div>
             <h3 className="text-sm md:text-base font-bold text-white">
-              Cari & Ganti Versi Lagu
+              Cari & Ganti Versi Lagu ({targetPlatform === "youtube" ? "YouTube Music" : "Apple Music"})
             </h3>
             <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs md:max-w-md">
               Asal: <span className="text-white font-semibold">{item.sanitizedTitle.originalTitle}</span> — {item.source.artist}
@@ -108,7 +110,7 @@ export const AlternativePickerModal: React.FC<AlternativePickerModalProps> = ({
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ketik judul lagu, artist, atau Kanji..."
+                placeholder={`Ketik judul lagu, artist, atau Kanji di ${targetPlatform === "youtube" ? "YouTube Music" : "Apple Music"}...`}
                 className="w-full bg-surface border border-white/[0.1] rounded-xl pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-primary transition shadow-inner"
               />
             </div>

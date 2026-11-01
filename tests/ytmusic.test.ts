@@ -121,4 +121,49 @@ describe("YouTube Music Client Helpers", () => {
     expect(tracks[0].videoId).toBe("v123");
     expect(tracks[0].durationSeconds).toBe(261);
   });
+
+  it("parses nested itemSectionRenderer playlists in modern YouTubei layout", () => {
+    const mockNestedResponse = {
+      contents: {
+        singleColumnBrowseResultsRenderer: {
+          tabs: [
+            {
+              tabRenderer: {
+                content: {
+                  sectionListRenderer: {
+                    contents: [
+                      {
+                        itemSectionRenderer: {
+                          contents: [
+                            {
+                              gridRenderer: {
+                                items: [
+                                  {
+                                    musicTwoRowItemRenderer: {
+                                      title: { runs: [{ text: "VTuber Favorites" }] },
+                                      navigationEndpoint: { browseEndpoint: { browseId: "VLPL999" } },
+                                      subtitle: { runs: [{ text: "Playlist • 12 songs" }] },
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    };
+    const playlists = parseYouTubeMusicPlaylists(mockNestedResponse);
+    expect(playlists).toHaveLength(1);
+    expect(playlists[0].id).toBe("VLPL999");
+    expect(playlists[0].title).toBe("VTuber Favorites");
+    expect(playlists[0].trackCount).toBe(12);
+  });
 });

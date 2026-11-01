@@ -30,6 +30,8 @@ interface ReviewStudioProps {
   onStartTransfer: () => void;
   onReMatch: () => void;
   onOpenMobileSidebar?: () => void;
+  sourcePlatform?: "youtube" | "apple";
+  targetPlatform?: "apple" | "youtube";
 }
 
 export const ReviewStudio: React.FC<ReviewStudioProps> = ({
@@ -42,6 +44,8 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
   onStartTransfer,
   onReMatch,
   onOpenMobileSidebar,
+  sourcePlatform = "youtube",
+  targetPlatform = "apple",
 }) => {
   const [filter, setFilter] = useState<FilterTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,8 +101,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
               Pilih Playlist untuk Mulai
             </h2>
             <p className="text-xs md:text-sm text-slate-400 leading-relaxed">
-              Pilih salah satu playlist YouTube Music dari menu di samping. MirrorSong akan
-              mencocokkan judul original non-Latin (Jepang / Kanji) ke katalog Apple Music secara akurat.
+              Pilih salah satu playlist dari menu di samping. MirrorSong akan mencocokkan judul original non-Latin (Jepang / Kanji) antar platform secara presisi.
             </p>
           </div>
 
@@ -140,10 +143,13 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                 <span className="px-2 py-0.5 text-[10px] font-mono bg-white/[0.06] text-slate-300 rounded-md border border-white/[0.08]">
                   {items.length} tracks
                 </span>
+                <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-mono uppercase bg-primary/10 text-primary border border-primary/20 rounded-md">
+                  {sourcePlatform === "youtube" ? "YTM" : "Apple"} ➔ {targetPlatform === "youtube" ? "YTM" : "Apple"}
+                </span>
               </div>
               <p className="text-[11px] md:text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                Siap diekspor ke Apple Music Library
+                Siap diekspor ke {targetPlatform === "youtube" ? "YouTube Music" : "Apple Music"}
               </p>
             </div>
           </div>
@@ -166,7 +172,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
               className="flex-1 sm:flex-none px-4 py-2 bg-primary hover:bg-primary-hover disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 btn-press transition"
             >
               <ArrowRight className="w-4 h-4" />
-              <span>Transfer ({stats.activeForImport})</span>
+              <span>Transfer ke {targetPlatform === "youtube" ? "YouTube" : "Apple"} ({stats.activeForImport})</span>
             </button>
           </div>
         </div>
@@ -356,7 +362,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
           >
             <div className="flex items-center space-x-2">
               <CheckCheck className="w-4 h-4" />
-              <span>Transfer ke Apple Music</span>
+              <span>Transfer ke {targetPlatform === "youtube" ? "YouTube Music" : "Apple Music"}</span>
             </div>
             <span className="px-2 py-0.5 rounded-full bg-white/20 font-mono text-[11px]">
               {stats.activeForImport} Lagu

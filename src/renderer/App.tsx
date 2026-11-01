@@ -186,48 +186,18 @@ export const App: React.FC = () => {
     setSelectedPlaylist(playlist);
     setIsMatching(true);
 
+    const targetPlatform = playlistSource === "youtube" ? "apple" : "youtube";
+
     if (!isElectron) {
       try {
         const tracksRes = await fetch(`/api/playlists/${playlist.id}/tracks?source=${playlistSource}`);
         if (!tracksRes.ok) throw new Error("Failed to fetch tracks");
         const tracks = await tracksRes.json();
 
-        if (playlistSource === "apple") {
-          // It is an Apple Music playlist: map directly into view
-          const items: TransferTrackItem[] = tracks.map((t: any) => ({
-            source: t,
-            sanitizedTitle: {
-              rawTitle: t.title,
-              originalTitle: t.title,
-              cleanTitle: t.title,
-              hasNonLatin: /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(t.title),
-            },
-            match: {
-              status: "EXACT_MATCH",
-              totalScore: 100,
-              titleScore: 100,
-              artistScore: 100,
-              albumScore: 100,
-            },
-            selectedCandidate: {
-              id: t.videoId,
-              name: t.title,
-              artistName: t.artist,
-              albumName: t.album,
-              durationInMillis: t.durationSeconds ? t.durationSeconds * 1000 : undefined,
-              artworkUrl: t.thumbnailUrl,
-            },
-            excluded: false,
-          }));
-          setTrackItems(items);
-          setIsMatching(false);
-          return;
-        }
-
         const matchRes = await fetch("/api/tracks/match", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tracks }),
+          body: JSON.stringify({ tracks, targetPlatform }),
         });
         if (!matchRes.ok) throw new Error("Failed to match tracks");
         const matched = await matchRes.json();
@@ -278,13 +248,14 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleSearchAppleCatalog = async (query: string): Promise<AppleMusicTrack[]> => {
+  const handleSearchCandidateCatalog = async (query: string): Promise<AppleMusicTrack[]> => {
+    const targetPlatform = playlistSource === "youtube" ? "apple" : "youtube";
     if (!isElectron) {
       try {
-        const res = await fetch("/api/search/apple", {
+        const res = await fetch("/api/search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query }),
+          body: JSON.stringify({ query, targetPlatform }),
         });
         if (res.ok) return await res.json();
       } catch (err) {
@@ -297,6 +268,8 @@ export const App: React.FC = () => {
 
   const handleStartTransfer = async () => {
     if (!selectedPlaylist) return;
+
+    const targetPlatform = playlistSource === "youtube" ? "apple" : "youtube";
 
     const job: TransferJob = {
       playlistId: selectedPlaylist.id,
@@ -331,6 +304,7 @@ export const App: React.FC = () => {
           body: JSON.stringify({
             playlistTitle: selectedPlaylist.title,
             items: trackItems,
+            targetPlatform,
           }),
         });
         const data = await res.json();
@@ -412,6 +386,8 @@ export const App: React.FC = () => {
           onStartTransfer={handleStartTransfer}
           onReMatch={() => selectedPlaylist && handleSelectPlaylist(selectedPlaylist)}
           onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          sourcePlatform={playlistSource}
+          targetPlatform={playlistSource === "youtube" ? "apple" : "youtube"}
         />
       </div>
 
@@ -420,7 +396,8 @@ export const App: React.FC = () => {
         item={editingItem}
         onClose={() => setEditingItem(null)}
         onSelectAlternative={handleSelectAlternative}
-        onSearchCatalog={handleSearchAppleCatalog}
+        onSearchCatalog={handleSearchCandidateCatalog}
+        targetPlatform={playlistSource === "youtube" ? "apple" : "youtube"}
       />
 
       {/* Transfer Execution Modal */}

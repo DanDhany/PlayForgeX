@@ -54,7 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
             </h1>
           </div>
           <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
-            Original Title Priority • YTM ➔ Apple Music
+            Original Title Priority • YTM ⇄ Apple Music (Bidirectional)
           </p>
         </div>
       </div>
