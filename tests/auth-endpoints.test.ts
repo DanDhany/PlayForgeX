@@ -219,13 +219,11 @@ describe("Authentication Express Endpoints & Session Management", () => {
       expect(meData.user).toBeNull();
     });
 
-    it("falls back to default admin user when no authorization header is passed", async () => {
+    it("returns user: null when no authorization header is passed (unauthenticated guest)", async () => {
       const meRes = await fetch(`${baseUrl}/api/auth/me`);
       expect(meRes.status).toBe(200);
       const meData = await meRes.json();
-      expect(meData.user).not.toBeNull();
-      expect(meData.user.username).toBe("admin");
-      expect(meData.user.role).toBe("admin");
+      expect(meData.user).toBeNull();
     });
   });
 
@@ -325,6 +323,64 @@ describe("Authentication Express Endpoints & Session Management", () => {
       const aliceAccounts = accounts.filter((a: any) => a.userId === aliceUser.id);
       expect(aliceAccounts.length).toBeGreaterThanOrEqual(1);
       expect(aliceAccounts.some((a: any) => a.localAlias === "Alice's Chill Tracks")).toBe(true);
+    });
+  });
+
+  describe("Private Data Isolation & Admin Migration Access", () => {
+    it("returns empty accounts array and unauthenticated status when no token is supplied", async () => {
+      const accountsRes = await fetch(`${baseUrl}/api/accounts`);
+      expect(accountsRes.status).toBe(200);
+      const accounts = await accountsRes.json();
+      expect(accounts).toEqual([]);
+
+      const statusRes = await fetch(`${baseUrl}/api/status`);
+      expect(statusRes.status).toBe(200);
+      const statusData = await statusRes.json();
+      expect(statusData.authenticated).toBe(false);
+      expect(statusData.youtube.connected).toBe(false);
+      expect(statusData.apple.connected).toBe(false);
+
+      const activityRes = await fetch(`${baseUrl}/api/activity`);
+      expect(activityRes.status).toBe(200);
+      expect(await activityRes.json()).toEqual([]);
+
+      const playlistsRes = await fetch(`${baseUrl}/api/playlists`);
+      expect(playlistsRes.status).toBe(401);
+    });
+
+    it("allows admin user to access migrated accounts and private data when authenticated", async () => {
+      // 1. Login as admin
+      const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: "admin",
+          password: "tunebridge2026",
+        }),
+      });
+      expect(loginRes.status).toBe(200);
+      const { user: adminUser, token: adminToken } = await loginRes.json();
+      expect(adminUser.role).toBe("admin");
+
+      // 2. Fetch status with admin Bearer token
+      const statusRes = await fetch(`${baseUrl}/api/status`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      expect(statusRes.status).toBe(200);
+      const statusData = await statusRes.json();
+      expect(statusData.authenticated).toBe(true);
+
+      // 3. Fetch accounts with admin Bearer token
+      const accountsRes = await fetch(`${baseUrl}/api/accounts`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      expect(accountsRes.status).toBe(200);
+      const accounts = await accountsRes.json();
+      expect(Array.isArray(accounts)).toBe(true);
+      // All returned accounts should belong to the admin user
+      for (const acc of accounts) {
+        expect(acc.userId).toBe(adminUser.id);
+      }
     });
   });
 });

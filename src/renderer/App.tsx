@@ -13,6 +13,7 @@ import { TransferProgressModal } from "./components/TransferProgressModal";
 import { MusicPlayerBar } from "./components/MusicPlayerBar";
 import { LandingPage } from "./components/landing/LandingPage";
 import { AuthModal } from "./components/auth/AuthModal";
+import { AuthGateCard } from "./components/auth/AuthGateCard";
 import {
   AccountConnection,
   ActivityLogItem,
@@ -131,11 +132,19 @@ export const App: React.FC = () => {
     window.location.hash = "#landing";
   };
 
+  const getAuthHeaders = (extra: Record<string, string> = {}) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    return {
+      ...extra,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
   const checkUserSession = async () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
     try {
       const res = await fetch("/api/auth/me", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -159,8 +168,10 @@ export const App: React.FC = () => {
     setIsAuthModalOpen(false);
     setSuccessBanner(`Selamat datang kembali, ${user.username}!`);
     setTimeout(() => setSuccessBanner(null), 4000);
-    loadAccounts();
-    loadActivity();
+    setTimeout(() => {
+      loadAccounts();
+      loadActivity();
+    }, 50);
   };
 
   const handleLogoutUser = async () => {
@@ -168,10 +179,7 @@ export const App: React.FC = () => {
     try {
       await fetch("/api/auth/logout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ token }),
       });
     } catch (err) {
@@ -181,17 +189,23 @@ export const App: React.FC = () => {
       localStorage.removeItem("tunebridge_token");
     }
     setCurrentUser(null);
-    await checkUserSession();
-    await loadAccounts();
+    setAccounts([]);
+    setAllPlaylists([]);
+    setActivityLogs([]);
     setSuccessBanner("Sesi akun Anda telah ditutup.");
     setTimeout(() => setSuccessBanner(null), 4000);
   };
 
   const loadAccounts = async () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    if (!token && !IS_PAGES_OR_STATIC) {
+      setAccounts([]);
+      setAllPlaylists([]);
+      return;
+    }
     try {
       const res = await fetch("/api/accounts", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data: AccountConnection[] = await res.json();
@@ -203,13 +217,25 @@ export const App: React.FC = () => {
       console.warn("Failed fetching accounts, falling back to static demo data:", err);
     }
     // Fallback for GitHub Pages or offline static demo mode
-    setAccounts(DEMO_ACCOUNTS);
-    setAllPlaylists(DEMO_PLAYLISTS);
+    if (IS_PAGES_OR_STATIC) {
+      setAccounts(DEMO_ACCOUNTS);
+      setAllPlaylists(DEMO_PLAYLISTS);
+    } else {
+      setAccounts([]);
+      setAllPlaylists([]);
+    }
   };
 
   const loadActivity = async () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    if (!token && !IS_PAGES_OR_STATIC) {
+      setActivityLogs([]);
+      return;
+    }
     try {
-      const res = await fetch("/api/activity");
+      const res = await fetch("/api/activity", {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data: ActivityLogItem[] = await res.json();
         setActivityLogs(data);
@@ -218,16 +244,27 @@ export const App: React.FC = () => {
     } catch (err) {
       console.warn("Failed fetching activity logs, falling back to demo logs:", err);
     }
-    setActivityLogs(DEMO_ACTIVITY);
+    if (IS_PAGES_OR_STATIC) {
+      setActivityLogs(DEMO_ACTIVITY);
+    } else {
+      setActivityLogs([]);
+    }
   };
 
   const loadAllPlaylists = async (accList = accounts) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("tunebridge_token") : null;
+    if (!token && !IS_PAGES_OR_STATIC) {
+      setAllPlaylists([]);
+      return;
+    }
     setIsLoadingPlaylists(true);
     const combined: (PlaylistSummary & { accountId?: string; accountAlias?: string; platform?: "youtube" | "apple" })[] = [];
 
     for (const acc of accList) {
       try {
-        const res = await fetch(`/api/accounts/${acc.id}/playlists`);
+        const res = await fetch(`/api/accounts/${acc.id}/playlists`, {
+          headers: getAuthHeaders(),
+        });
         if (res.ok) {
           const list: PlaylistSummary[] = await res.json();
           for (const item of list) {
@@ -250,7 +287,10 @@ export const App: React.FC = () => {
 
   const handleTestAccount = async (id: string) => {
     try {
-      const res = await fetch(`/api/accounts/${id}/test`, { method: "POST" });
+      const res = await fetch(`/api/accounts/${id}/test`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
       const data = await res.json();
       if (res.ok) {
         alert(`Koneksi akun "${data.localAlias}" berhasil dan aktif!`);
@@ -267,7 +307,7 @@ export const App: React.FC = () => {
     try {
       const res = await fetch(`/api/accounts/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ localAlias: newAlias }),
       });
       if (res.ok) {
@@ -280,7 +320,10 @@ export const App: React.FC = () => {
 
   const handleDeleteAccount = async (id: string) => {
     try {
-      const res = await fetch(`/api/accounts/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/accounts/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         await loadAccounts();
       }
@@ -308,7 +351,9 @@ export const App: React.FC = () => {
 
       if (!force) {
         try {
-          const draftRes = await fetch(`/api/drafts/${sourcePlatform}/${playlist.id}`);
+          const draftRes = await fetch(`/api/drafts/${sourcePlatform}/${playlist.id}`, {
+            headers: getAuthHeaders(),
+          });
           if (draftRes.ok) {
             const data = await draftRes.json();
             draft = data.draft;
@@ -340,7 +385,7 @@ export const App: React.FC = () => {
 
       const startRes = await fetch("/api/matching/start", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           sourcePlatform,
           targetPlatform,
@@ -352,7 +397,9 @@ export const App: React.FC = () => {
       if (startRes.ok) {
         const poller = setInterval(async () => {
           try {
-            const pRes = await fetch(`/api/drafts/${sourcePlatform}/${playlist.id}`);
+            const pRes = await fetch(`/api/drafts/${sourcePlatform}/${playlist.id}`, {
+              headers: getAuthHeaders(),
+            });
             if (pRes.ok) {
               const data = await pRes.json();
               if (data.draft?.items) {
@@ -405,7 +452,7 @@ export const App: React.FC = () => {
       const sourcePlatform = sourcePl?.platform || "youtube";
       fetch(`/api/drafts/${sourcePlatform}/${selectedPlaylist.id}/item`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ item: updated }),
       }).catch(console.error);
     }
@@ -418,7 +465,7 @@ export const App: React.FC = () => {
     try {
       const res = await fetch("/api/search", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ query, targetPlatform }),
       });
       if (res.ok) return await res.json();
@@ -463,7 +510,9 @@ export const App: React.FC = () => {
 
     const interval = setInterval(async () => {
       try {
-        const pRes = await fetch("/api/transfer/progress");
+        const pRes = await fetch("/api/transfer/progress", {
+          headers: getAuthHeaders(),
+        });
         if (pRes.ok) {
           const p = await pRes.json();
           setTransferJob((prev) => (prev ? { ...prev, progress: p } : null));
@@ -474,7 +523,7 @@ export const App: React.FC = () => {
     try {
       const res = await fetch("/api/transfer", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           playlistTitle: options.playlistTitle,
           items: trackItems,
@@ -569,62 +618,78 @@ export const App: React.FC = () => {
             </button>
           </div>
         )}
-        {activeTab === "overview" && (
-          <OverviewView
-            accounts={accounts}
-            activityLogs={activityLogs}
-            onNavigate={setActiveTab}
-            onOpenAddAccount={() => setIsAddAccountModalOpen(true)}
-            onTestAccount={handleTestAccount}
+        {!currentUser && !IS_PAGES_OR_STATIC ? (
+          <AuthGateCard
+            onOpenLogin={() => {
+              setAuthModalTab("login");
+              setIsAuthModalOpen(true);
+            }}
+            onOpenRegister={() => {
+              setAuthModalTab("register");
+              setIsAuthModalOpen(true);
+            }}
+            onOpenLanding={handleOpenLanding}
           />
-        )}
+        ) : (
+          <>
+            {activeTab === "overview" && (
+              <OverviewView
+                accounts={accounts}
+                activityLogs={activityLogs}
+                onNavigate={setActiveTab}
+                onOpenAddAccount={() => setIsAddAccountModalOpen(true)}
+                onTestAccount={handleTestAccount}
+              />
+            )}
 
-        {activeTab === "transfer" && (
-          <TransferStudioView
-            accounts={accounts}
-            allPlaylists={allPlaylists}
-            selectedPlaylist={selectedPlaylist}
-            trackItems={trackItems}
-            isMatching={isMatching}
-            totalTracksToMatch={totalTracksToMatch}
-            isTransferring={transferJob?.status === "processing"}
-            sourcePlatform={currentSourcePlatform}
-            targetPlatform={currentTargetPlatform}
-            onSelectPlaylist={handleSelectPlaylistForTransfer}
-            onToggleExclude={handleToggleExclude}
-            onOpenAlternativePicker={setEditingItem}
-            onStartTransfer={() => setIsExportModalOpen(true)}
-            onReMatch={() => selectedPlaylist && handleSelectPlaylistForTransfer(selectedPlaylist, true)}
-            onNavigateAccounts={() => setActiveTab("accounts")}
-          />
-        )}
+            {activeTab === "transfer" && (
+              <TransferStudioView
+                accounts={accounts}
+                allPlaylists={allPlaylists}
+                selectedPlaylist={selectedPlaylist}
+                trackItems={trackItems}
+                isMatching={isMatching}
+                totalTracksToMatch={totalTracksToMatch}
+                isTransferring={transferJob?.status === "processing"}
+                sourcePlatform={currentSourcePlatform}
+                targetPlatform={currentTargetPlatform}
+                onSelectPlaylist={handleSelectPlaylistForTransfer}
+                onToggleExclude={handleToggleExclude}
+                onOpenAlternativePicker={setEditingItem}
+                onStartTransfer={() => setIsExportModalOpen(true)}
+                onReMatch={() => selectedPlaylist && handleSelectPlaylistForTransfer(selectedPlaylist, true)}
+                onNavigateAccounts={() => setActiveTab("accounts")}
+              />
+            )}
 
-        {activeTab === "library" && (
-          <LibraryView
-            accounts={accounts}
-            playlists={allPlaylists}
-            isLoading={isLoadingPlaylists}
-            onRefresh={() => loadAllPlaylists(accounts)}
-            onSelectForTransfer={(pl) => handleSelectPlaylistForTransfer(pl)}
-          />
-        )}
+            {activeTab === "library" && (
+              <LibraryView
+                accounts={accounts}
+                playlists={allPlaylists}
+                isLoading={isLoadingPlaylists}
+                onRefresh={() => loadAllPlaylists(accounts)}
+                onSelectForTransfer={(pl) => handleSelectPlaylistForTransfer(pl)}
+              />
+            )}
 
-        {activeTab === "accounts" && (
-          <AccountsView
-            accounts={accounts}
-            onOpenAddAccount={() => setIsAddAccountModalOpen(true)}
-            onTestAccount={handleTestAccount}
-            onRenameAccount={handleRenameAccount}
-            onDeleteAccount={handleDeleteAccount}
-            onViewPlaylists={() => setActiveTab("library")}
-          />
-        )}
+            {activeTab === "accounts" && (
+              <AccountsView
+                accounts={accounts}
+                onOpenAddAccount={() => setIsAddAccountModalOpen(true)}
+                onTestAccount={handleTestAccount}
+                onRenameAccount={handleRenameAccount}
+                onDeleteAccount={handleDeleteAccount}
+                onViewPlaylists={() => setActiveTab("library")}
+              />
+            )}
 
-        {activeTab === "activity" && (
-          <ActivityView activityLogs={activityLogs} onRefresh={loadActivity} />
-        )}
+            {activeTab === "activity" && (
+              <ActivityView activityLogs={activityLogs} onRefresh={loadActivity} />
+            )}
 
-        {activeTab === "settings" && <SettingsView onRefresh={loadAccounts} />}
+            {activeTab === "settings" && <SettingsView onRefresh={loadAccounts} />}
+          </>
+        )}
       </main>
 
       {/* Modals & Dialogs */}

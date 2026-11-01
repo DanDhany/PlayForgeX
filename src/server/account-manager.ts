@@ -191,16 +191,15 @@ export class AccountManager {
     const list = Array.from(this.accounts.values());
     const targetUser = userId || this.userId;
     if (!targetUser) return list;
-    return list.filter((a) => !a.userId || a.userId === targetUser);
+    return list.filter((a) => a.userId === targetUser);
   }
 
   public async loadFromDb(userId?: string): Promise<AccountConnection[]> {
     const targetUserId = userId || this.userId;
-    if (!targetUserId) {
-      return this.getAccounts();
-    }
-
     const isConnected = await isDbConnected();
+    if (!isConnected || !targetUserId) {
+      return this.getAccounts(targetUserId);
+    }
     if (!isConnected) {
       return this.getAccounts(targetUserId);
     }
@@ -388,15 +387,22 @@ export class AccountManager {
     return this.accounts.get(id);
   }
 
-  public getPrimaryAccount(platform: "youtube" | "apple"): AccountConnection | undefined {
+  public getPrimaryAccount(platform: "youtube" | "apple", userId?: string): AccountConnection | undefined {
+    const targetUser = userId || this.userId;
     for (const acc of this.accounts.values()) {
       if (acc.platform === platform && acc.status === "connected") {
-        return acc;
+        if (!targetUser || acc.userId === targetUser) {
+          return acc;
+        }
       }
     }
     // Fallback: return any account of that platform
     for (const acc of this.accounts.values()) {
-      if (acc.platform === platform) return acc;
+      if (acc.platform === platform) {
+        if (!targetUser || acc.userId === targetUser) {
+          return acc;
+        }
+      }
     }
     return undefined;
   }

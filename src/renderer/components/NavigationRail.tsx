@@ -176,13 +176,15 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
             onLogout={onUserLogout || (() => {})}
           />
 
-          <button
-            onClick={() => onChangeTab("accounts")}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-[11px] text-text-secondary font-mono btn-press"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-            <span>{connectedCount} Akun</span>
-          </button>
+          {connectedCount > 0 && (
+            <button
+              onClick={() => onChangeTab("accounts")}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-[11px] text-text-secondary font-mono btn-press"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+              <span>{connectedCount} Akun</span>
+            </button>
+          )}
 
           <button
             onClick={() => onChangeTab("settings")}

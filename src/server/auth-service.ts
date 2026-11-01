@@ -296,14 +296,27 @@ export async function migrateLegacyDataToAdmin(
     migratedSnapshots: 0,
   };
 
+  // Re-assign any existing unassigned or orphaned accounts/snapshots to admin
+  try {
+    await query("UPDATE accounts SET user_id = ? WHERE user_id IS NULL OR user_id = ''", [adminId]);
+    await query("UPDATE snapshots SET user_id = ? WHERE user_id IS NULL OR user_id = ''", [adminId]);
+  } catch (err) {
+    console.warn("[AuthService] Warning syncing existing orphaned DB accounts:", err);
+  }
+
   // 1. Accounts
   if (fs.existsSync(accountsFile)) {
     try {
       const raw = fs.readFileSync(accountsFile, "utf-8");
       const accountsList = JSON.parse(raw);
+      let fileUpdated = false;
       if (Array.isArray(accountsList)) {
         for (const acc of accountsList) {
           if (!acc || !acc.id) continue;
+          if (!acc.userId) {
+            acc.userId = adminId;
+            fileUpdated = true;
+          }
           const [exists] = await query<any[]>("SELECT id FROM accounts WHERE id = ? LIMIT 1", [acc.id]);
           if (!exists || exists.length === 0) {
             const metadata = JSON.stringify({
@@ -330,6 +343,9 @@ export async function migrateLegacyDataToAdmin(
             );
             summary.migratedAccounts++;
           }
+        }
+        if (fileUpdated) {
+          fs.writeFileSync(accountsFile, JSON.stringify(accountsList, null, 2));
         }
       }
     } catch (err) {

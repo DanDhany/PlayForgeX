@@ -72,18 +72,11 @@ const authMiddleware = async (req: Request, _res: Response, next: any) => {
         (req as any).user = user;
         return next();
       }
-      (req as any).user = null;
-      return next();
-    }
-
-    // Fallback to default admin for single-user local development mode
-    const defaultAdmin = await authService.getUserByUsername("admin");
-    if (defaultAdmin) {
-      (req as any).user = defaultAdmin;
     }
   } catch (err) {
     // fallback gracefully
   }
+  (req as any).user = null;
   next();
 };
 
@@ -145,7 +138,10 @@ app.get("/api/auth/me", (req: Request, res: Response) => {
 // GET /api/accounts - List all connected accounts (sanitized, zero secrets exposed)
 app.get("/api/accounts", async (req: Request, res: Response) => {
   const userId = (req as any).user?.id;
-  if (userId && (await isDbConnected())) {
+  if (!userId) {
+    return res.json([]);
+  }
+  if (await isDbConnected()) {
     const dbAccounts = await accountManager.loadFromDb(userId);
     return res.json(dbAccounts);
   }
@@ -216,7 +212,15 @@ app.delete("/api/accounts/:id", (req: Request, res: Response) => {
 
 // GET /api/accounts/:id/playlists - Get playlists for specific account
 app.get("/api/accounts/:id/playlists", async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  if (!userId) {
+    return res.status(401).json({ error: "Silakan masuk terlebih dahulu untuk mengakses playlist." });
+  }
   const accountId = String(req.params.id);
+  const acc = accountManager.getAccount(accountId);
+  if (!acc || (acc.userId && acc.userId !== userId)) {
+    return res.status(404).json({ error: `Account ${accountId} not found` });
+  }
   try {
     const playlists = await accountManager.getPlaylists(accountId);
     res.json(playlists);
@@ -245,23 +249,36 @@ app.post("/api/accounts/import-snapshot", (req: Request, res: Response) => {
 // ==========================================
 
 // GET /api/status - Returns primary accounts status for backward compatibility
-app.get("/api/status", async (_req: Request, res: Response) => {
-  const accounts = accountManager.getAccounts();
-  const primaryYt = accountManager.getPrimaryAccount("youtube");
-  const primaryApple = accountManager.getPrimaryAccount("apple");
+app.get("/api/status", async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  if (!userId) {
+    return res.json({
+      youtube: { connected: false, playlistCount: 0, totalAccounts: 0 },
+      apple: { connected: false, storefront: "id", playlistCount: 0, totalAccounts: 0 },
+      authenticated: false,
+    });
+  }
+
+  const accounts = (await isDbConnected())
+    ? await accountManager.loadFromDb(userId)
+    : accountManager.getAccounts(userId);
+
+  const primaryYt = accounts.find((a) => a.platform === "youtube" && a.status === "connected");
+  const primaryApple = accounts.find((a) => a.platform === "apple" && a.status === "connected");
 
   res.json({
     youtube: {
-      connected: !!primaryYt && primaryYt.status === "connected",
+      connected: !!primaryYt,
       playlistCount: primaryYt?.playlistCount || 0,
       totalAccounts: accounts.filter((a) => a.platform === "youtube").length,
     },
     apple: {
-      connected: !!primaryApple && primaryApple.status === "connected",
-      storefront: primaryApple?.storefront || "us",
+      connected: !!primaryApple,
+      storefront: primaryApple?.storefront || "id",
       playlistCount: primaryApple?.playlistCount || 0,
       totalAccounts: accounts.filter((a) => a.platform === "apple").length,
     },
+    authenticated: true,
   });
 });
 
@@ -408,14 +425,18 @@ app.post("/api/auth/logout", async (req: Request, res: Response) => {
 
 // GET /api/playlists (supports optional accountId query)
 app.get("/api/playlists", async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  if (!userId) {
+    return res.status(401).json({ error: "Silakan masuk terlebih dahulu untuk mengakses playlist." });
+  }
   const accountId = req.query.accountId as string;
   const source = (req.query.source as string) || "youtube";
 
   let targetAcc = accountId
     ? accountManager.getAccount(accountId)
-    : accountManager.getPrimaryAccount(source as "youtube" | "apple");
+    : accountManager.getPrimaryAccount(source as "youtube" | "apple", userId);
 
-  if (!targetAcc) {
+  if (!targetAcc || (targetAcc.userId && targetAcc.userId !== userId)) {
     return res.status(401).json({ error: `No connected ${source} account available` });
   }
 
@@ -679,7 +700,11 @@ app.post("/api/workflows/merge/preview", async (req: Request, res: Response) => 
 });
 
 // GET /api/activity - Transfer audit history
-app.get("/api/activity", (_req: Request, res: Response) => {
+app.get("/api/activity", (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  if (!userId) {
+    return res.json([]);
+  }
   res.json(mergeEngine.getActivityLogs());
 });
 
