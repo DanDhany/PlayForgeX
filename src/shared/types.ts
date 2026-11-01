@@ -120,6 +120,7 @@ export interface AccountConnection {
   storefront?: string;
   errorMessage?: string;
   syncType?: "live" | "snapshot";
+  userId?: string;
 }
 
 export type MergeStrategy = "preserve" | "merge_one" | "append_existing";

@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { YouTubeMusicClient } from "../core/ytmusic.js";
 import { AppleMusicClient } from "../core/applemusic.js";
 import { AccountConnection, PlaylistSummary, TrackMetadata } from "../shared/types.js";
+import { query, isDbConnected } from "./db.js";
 
 interface AccountSecret {
   id: string;
@@ -22,6 +23,7 @@ export class AccountManager {
   private secretsFile: string;
   private legacySessionFile: string;
   private snapshotsDir: string;
+  private userId?: string;
 
   private accounts: Map<string, AccountConnection> = new Map();
   private secrets: Map<string, AccountSecret> = new Map();
@@ -29,8 +31,9 @@ export class AccountManager {
   private appleClients: Map<string, AppleMusicClient> = new Map();
   private snapshots: Map<string, SnapshotPlaylist[]> = new Map();
 
-  constructor(dataDir: string) {
+  constructor(dataDir: string, userId?: string) {
     this.dataDir = dataDir;
+    this.userId = userId;
     this.accountsFile = path.join(dataDir, "accounts.json");
     this.secretsFile = path.join(dataDir, "secrets.json");
     this.legacySessionFile = path.join(dataDir, "session.json");
@@ -176,8 +179,209 @@ export class AccountManager {
     }
   }
 
-  public getAccounts(): AccountConnection[] {
-    return Array.from(this.accounts.values());
+  public setUserId(userId: string): void {
+    this.userId = userId;
+  }
+
+  public getUserId(): string | undefined {
+    return this.userId;
+  }
+
+  public getAccounts(userId?: string): AccountConnection[] {
+    const list = Array.from(this.accounts.values());
+    const targetUser = userId || this.userId;
+    if (!targetUser) return list;
+    return list.filter((a) => !a.userId || a.userId === targetUser);
+  }
+
+  public async loadFromDb(userId?: string): Promise<AccountConnection[]> {
+    const targetUserId = userId || this.userId;
+    if (!targetUserId) {
+      return this.getAccounts();
+    }
+
+    const isConnected = await isDbConnected();
+    if (!isConnected) {
+      return this.getAccounts(targetUserId);
+    }
+
+    try {
+      const [rows] = await query<any[]>(
+        "SELECT id, user_id, platform, label, is_active, metadata, created_at, updated_at FROM accounts WHERE user_id = ? AND is_active = 1",
+        [targetUserId]
+      );
+
+      if (!rows || rows.length === 0) {
+        return this.getAccounts(targetUserId);
+      }
+
+      const accountIds: string[] = [];
+      for (const row of rows) {
+        let meta: any = {};
+        try {
+          meta = typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata || {};
+        } catch {}
+
+        const acc: AccountConnection = {
+          id: row.id,
+          platform: row.platform,
+          localAlias: row.label,
+          status: meta.status || "connected",
+          storefront: meta.storefront,
+          playlistCount: meta.playlistCount || 0,
+          syncType: meta.syncType || "live",
+          errorMessage: meta.errorMessage,
+          createdAt: Number(row.created_at),
+          lastVerifiedAt: meta.lastVerifiedAt ? Number(meta.lastVerifiedAt) : Number(row.updated_at),
+          userId: row.user_id,
+        };
+        this.accounts.set(acc.id, acc);
+        accountIds.push(acc.id);
+      }
+
+      if (accountIds.length > 0) {
+        const placeholders = accountIds.map(() => "?").join(",");
+        const [secretsRows] = await query<any[]>(
+          `SELECT id, account_id, cookies, developer_token, user_token, updated_at FROM account_secrets WHERE account_id IN (${placeholders})`,
+          accountIds
+        );
+
+        for (const sec of secretsRows || []) {
+          this.secrets.set(sec.account_id, {
+            id: sec.account_id,
+            ytCookieString: sec.cookies || undefined,
+            appleUserToken: sec.user_token || undefined,
+            appleDevToken: sec.developer_token || undefined,
+          });
+        }
+
+        const [snapRows] = await query<any[]>(
+          `SELECT account_id, snapshot_data FROM snapshots WHERE account_id IN (${placeholders})`,
+          accountIds
+        );
+
+        for (const s of snapRows || []) {
+          try {
+            const data = JSON.parse(s.snapshot_data);
+            this.snapshots.set(s.account_id, data);
+          } catch {}
+        }
+      }
+
+      this.initializeClients();
+      return this.getAccounts(targetUserId);
+    } catch (err) {
+      console.warn("[AccountManager] Failed loading from database, fallback to cache:", err);
+      return this.getAccounts(targetUserId);
+    }
+  }
+
+  public async saveAccountToDb(
+    account: AccountConnection,
+    secret?: AccountSecret,
+    targetUserId?: string
+  ): Promise<void> {
+    const uid = targetUserId || account.userId || this.userId;
+    if (!uid) return;
+
+    const connected = await isDbConnected();
+    if (!connected) return;
+
+    try {
+      const metadata = JSON.stringify({
+        status: account.status,
+        storefront: account.storefront,
+        playlistCount: account.playlistCount,
+        syncType: account.syncType,
+        errorMessage: account.errorMessage,
+        lastVerifiedAt: account.lastVerifiedAt,
+      });
+
+      await query(
+        `INSERT INTO accounts (id, user_id, platform, label, is_active, metadata, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           label = VALUES(label),
+           metadata = VALUES(metadata),
+           updated_at = VALUES(updated_at)`,
+        [
+          account.id,
+          uid,
+          account.platform,
+          account.localAlias,
+          metadata,
+          account.createdAt,
+          account.lastVerifiedAt || Date.now(),
+        ]
+      );
+
+      const sec = secret || this.secrets.get(account.id);
+      if (sec) {
+        await query(
+          `INSERT INTO account_secrets (id, account_id, cookies, developer_token, user_token, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             cookies = VALUES(cookies),
+             developer_token = VALUES(developer_token),
+             user_token = VALUES(user_token),
+             updated_at = VALUES(updated_at)`,
+          [
+            `sec_${account.id}`,
+            account.id,
+            sec.ytCookieString || null,
+            sec.appleDevToken || null,
+            sec.appleUserToken || null,
+            Date.now(),
+          ]
+        );
+      }
+    } catch (err) {
+      console.warn("[AccountManager] Failed saving account to DB:", err);
+    }
+  }
+
+  public async removeAccountFromDb(accountId: string): Promise<boolean> {
+    const connected = await isDbConnected();
+    if (!connected) return false;
+    try {
+      const [res] = await query<any>("DELETE FROM accounts WHERE id = ?", [accountId]);
+      return Boolean(res?.affectedRows && res.affectedRows > 0);
+    } catch (err) {
+      console.warn("[AccountManager] Failed removing account from DB:", err);
+      return false;
+    }
+  }
+
+  public static async getAccountsByUserId(userId: string): Promise<AccountConnection[]> {
+    const connected = await isDbConnected();
+    if (!connected) return [];
+    try {
+      const [rows] = await query<any[]>(
+        "SELECT id, user_id, platform, label, is_active, metadata, created_at, updated_at FROM accounts WHERE user_id = ? AND is_active = 1",
+        [userId]
+      );
+      return (rows || []).map((row) => {
+        let meta: any = {};
+        try {
+          meta = typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata || {};
+        } catch {}
+        return {
+          id: row.id,
+          platform: row.platform,
+          localAlias: row.label,
+          status: meta.status || "connected",
+          storefront: meta.storefront,
+          playlistCount: meta.playlistCount || 0,
+          syncType: meta.syncType || "live",
+          errorMessage: meta.errorMessage,
+          createdAt: Number(row.created_at),
+          lastVerifiedAt: meta.lastVerifiedAt ? Number(meta.lastVerifiedAt) : Number(row.updated_at),
+          userId: row.user_id,
+        };
+      });
+    } catch {
+      return [];
+    }
   }
 
   public getAccount(id: string): AccountConnection | undefined {
@@ -246,13 +450,18 @@ export class AccountManager {
       createdAt: existing ? existing.createdAt : Date.now(),
       lastVerifiedAt: Date.now(),
       playlistCount,
+      userId: this.userId,
     };
 
+    const sec = { id, ytCookieString: cookieString };
     this.accounts.set(id, acc);
-    this.secrets.set(id, { id, ytCookieString: cookieString });
+    this.secrets.set(id, sec);
     this.ytmClients.set(id, client);
 
     this.persist();
+    if (this.userId) {
+      this.saveAccountToDb(acc, sec).catch(() => {});
+    }
     return acc;
   }
 
@@ -296,13 +505,18 @@ export class AccountManager {
       createdAt: existing ? existing.createdAt : Date.now(),
       lastVerifiedAt: Date.now(),
       playlistCount: count,
+      userId: this.userId,
     };
 
+    const sec = { id, appleUserToken: musicUserToken, appleDevToken: developerToken };
     this.accounts.set(id, acc);
-    this.secrets.set(id, { id, appleUserToken: musicUserToken, appleDevToken: developerToken });
+    this.secrets.set(id, sec);
     this.appleClients.set(id, client);
 
     this.persist();
+    if (this.userId) {
+      this.saveAccountToDb(acc, sec).catch(() => {});
+    }
     return acc;
   }
 
@@ -313,6 +527,9 @@ export class AccountManager {
     }
     acc.localAlias = newAlias.trim() || acc.localAlias;
     this.persist();
+    if (this.userId || acc.userId) {
+      this.saveAccountToDb(acc).catch(() => {});
+    }
     return acc;
   }
 
@@ -396,6 +613,7 @@ export class AccountManager {
       createdAt: existing ? existing.createdAt : Date.now(),
       lastVerifiedAt: Date.now(),
       playlistCount: playlists.length,
+      userId: this.userId,
     };
 
     this.accounts.set(id, acc);
@@ -409,6 +627,9 @@ export class AccountManager {
     }
 
     this.persist();
+    if (this.userId) {
+      this.saveAccountToDb(acc).catch(() => {});
+    }
     return acc;
   }
 
@@ -456,6 +677,7 @@ export class AccountManager {
 
     if (existed) {
       this.persist();
+      this.removeAccountFromDb(id).catch(() => {});
     }
     return existed;
   }
