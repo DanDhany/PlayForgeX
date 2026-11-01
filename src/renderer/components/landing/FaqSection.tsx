@@ -1,46 +1,62 @@
 import React, { useState } from "react";
 import { ChevronDown, HelpCircle } from "lucide-react";
-
-interface FaqItem {
-  question: string;
-  answer: string;
-}
-
-const FAQ_DATA: FaqItem[] = [
-  {
-    question: "Bagaimana TuneBridge memindahkan playlist dari YouTube Music ke Apple Music?",
-    answer:
-      "TuneBridge mengambil daftar lagu dari playlist YouTube Music Anda, lalu mencocokkannya ke katalog Apple Music menggunakan algoritma pencarian cerdas dengan prioritas judul asli dan filter kata kunci non-musik (seperti 'Official Video' atau '4K'). Anda dapat mereview dan mendengarkan preview sebelum transfer disetujui.",
-  },
-  {
-    question: "Apakah saya perlu akun Apple Developer yang berbayar?",
-    answer:
-      "Tidak. TuneBridge menggunakan token autentikasi web resmi yang dihasilkan saat Anda login di browser (music.apple.com), sehingga tidak memerlukan pendaftaran akun Apple Developer seharga $99/tahun.",
-  },
-  {
-    question: "Apakah saya bisa menghubungkan beberapa akun YouTube Music sekaligus?",
-    answer:
-      "Ya. Anda bisa menghubungkan akun pribadi, akun kantor, atau akun kiriman teman secara bersamaan. TuneBridge menggabungkan lagu dan membersihkan duplikat secara otomatis.",
-  },
-  {
-    question: "Di mana data akun, token, dan playlist saya disimpan?",
-    answer:
-      "Semua data tersimpan di komputer lokal Anda menggunakan database MySQL. TuneBridge adalah aplikasi self-hosted tanpa tracking pihak ketiga atau server perantara di cloud.",
-  },
-  {
-    question: "Bagaimana cara menghubungkan akun dari browser HP (iPhone / Android)?",
-    answer:
-      "Anda dapat membuka dashboard TuneBridge melalui jaringan Wi-Fi lokal, lalu menggunakan bookmarklet atau form input cookie yang tersedia untuk menyalin token langsung dari browser HP tanpa menyentuh terminal.",
-  },
-  {
-    question: "Platform musik apa saja yang akan didukung selanjutnya?",
-    answer:
-      "Saat ini YouTube Music dan Apple Music aktif penuh. Arsitektur adapter modular TuneBridge telah disiapkan untuk Spotify, Tidal, Deezer, SoundCloud, dan server self-hosted seperti Navidrome/Subsonic.",
-  },
-];
+import { useLanguage } from "../../context/LanguageContext";
 
 export const FaqSection: React.FC = () => {
   const [openIndices, setOpenIndices] = useState<number[]>([0]);
+  const { lang, t } = useLanguage();
+  const isEn = lang === "en";
+
+  const faqData = [
+    {
+      question: isEn
+        ? "How does TuneBridge transfer playlists between YouTube Music and Apple Music?"
+        : "Bagaimana TuneBridge memindahkan playlist dari YouTube Music ke Apple Music?",
+      answer: isEn
+        ? "TuneBridge fetches track listings from your source YouTube Music playlists, sanitizes video noise (such as 'Official 4K', 'Lyrics', or remux tags), and matches them to official Apple Music catalog releases. You can audit matches and listen to 30-second audio previews before confirming."
+        : "TuneBridge mengambil daftar lagu dari playlist YouTube Music Anda, lalu mencocokkannya ke katalog Apple Music menggunakan algoritma pencarian cerdas dengan prioritas judul asli dan filter kata kunci non-musik. Anda dapat mereview dan mendengarkan preview sebelum transfer disetujui.",
+    },
+    {
+      question: isEn
+        ? "Do I need a paid Apple Developer subscription?"
+        : "Apakah saya perlu akun Apple Developer yang berbayar?",
+      answer: isEn
+        ? "No. TuneBridge connects through standard authenticated browser sessions (music.apple.com), completely removing the need to register for an Apple Developer subscription ($99/year)."
+        : "Tidak. TuneBridge menggunakan token autentikasi web resmi yang dihasilkan saat Anda login di browser (music.apple.com), sehingga tidak memerlukan pendaftaran akun Apple Developer seharga $99/tahun.",
+    },
+    {
+      question: isEn
+        ? "Can I connect multiple accounts and merge their playlists?"
+        : "Apakah saya bisa menghubungkan beberapa akun YouTube Music sekaligus?",
+      answer: isEn
+        ? "Yes. Connect work, personal, and friends' accounts concurrently. TuneBridge's deduplication engine automatically detects duplicate recordings across playlists while preserving authentic live and remix versions."
+        : "Ya. Anda bisa menghubungkan akun pribadi, akun kantor, atau akun kiriman teman secara bersamaan. TuneBridge menggabungkan lagu dan membersihkan duplikat secara otomatis.",
+    },
+    {
+      question: isEn
+        ? "Where are my accounts, tokens, and playlists stored?"
+        : "Di mana data akun, token, dan playlist saya disimpan?",
+      answer: isEn
+        ? "All credentials and playlists are encrypted strictly inside your private local storage vault on your own computer. TuneBridge operates with zero cloud tracking and zero remote telemetry."
+        : "Semua data tersimpan aman di komputer lokal Anda menggunakan vault terenkripsi pribadi. TuneBridge adalah aplikasi mandiri tanpa tracking pihak ketiga atau server perantara di cloud.",
+    },
+    {
+      question: isEn
+        ? "How do I connect accounts directly from my phone (iPhone or Android)?"
+        : "Bagaimana cara menghubungkan akun dari browser HP (iPhone / Android)?",
+      answer: isEn
+        ? "Simply open your local TuneBridge address in mobile Safari or Chrome over your home Wi-Fi, then tap the one-touch bookmarklet to securely link your accounts without typing raw cookies."
+        : "Anda dapat membuka antarmuka TuneBridge melalui jaringan Wi-Fi lokal di browser HP Anda, lalu menggunakan bookmarklet satu sentuhan untuk menghubungkan akun dengan praktis.",
+    },
+    {
+      question: isEn
+        ? "Which music platforms are planned next?"
+        : "Platform musik apa saja yang akan didukung selanjutnya?",
+      answer: isEn
+        ? "YouTube Music and Apple Music are fully active today. Extended support for Spotify, Tidal Hi-Fi, Deezer, SoundCloud, and self-hosted media servers (Navidrome/Subsonic/Jellyfin) is actively on the roadmap."
+        : "Saat ini YouTube Music dan Apple Music aktif penuh. Dukungan lanjutan untuk Spotify, Tidal Hi-Fi, Deezer, SoundCloud, dan server musik mandiri (Navidrome/Subsonic) sedang disiapkan di roadmap.",
+    },
+  ];
 
   const toggleAccordion = (index: number) => {
     if (openIndices.includes(index)) {
@@ -56,19 +72,21 @@ export const FaqSection: React.FC = () => {
       <div className="flex flex-col items-center text-center mb-12">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-elevated border border-white/[0.08] text-xs font-medium text-accent mb-3">
           <HelpCircle className="w-3.5 h-3.5" />
-          <span>Pertanyaan Umum</span>
+          <span>{isEn ? "Common Questions" : "Pertanyaan Umum"}</span>
         </div>
         <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-text-primary">
-          Hal yang Sering Ditanyakan
+          {t("landing.faqHeading")}
         </h2>
         <p className="mt-2 text-sm text-text-secondary max-w-xl">
-          Jawaban lugas seputar cara kerja, privasi data lokal, dan dukungan platform di TuneBridge.
+          {isEn
+            ? "Clear, transparent answers on workflow, data privacy, and supported platforms."
+            : "Jawaban lugas seputar cara kerja, privasi data lokal, dan dukungan platform di TuneBridge."}
         </p>
       </div>
 
       {/* Accordion List */}
       <div className="space-y-3">
-        {FAQ_DATA.map((item, idx) => {
+        {faqData.map((item, idx) => {
           const isOpen = openIndices.includes(idx);
           return (
             <article

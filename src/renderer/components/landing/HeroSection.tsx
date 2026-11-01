@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { InteractiveMigrationPreview } from "./InteractiveMigrationPreview";
 import { Reveal } from "./Reveal";
+import { useLanguage } from "../../context/LanguageContext";
 
 interface HeroSectionProps {
   onOpenStudio: () => void;
@@ -18,6 +19,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onOpenStudio,
   onExploreFeatures,
 }) => {
+  const { t } = useLanguage();
+
   const handleScrollToFeatures = () => {
     if (onExploreFeatures) {
       onExploreFeatures();
@@ -36,7 +39,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       <div className="absolute top-20 right-1/4 w-72 h-72 bg-service-apple/10 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse" />
       <div className="absolute top-32 left-1/4 w-80 h-80 bg-status-success/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
-      {/* Top Release & Architecture Kicker Badge */}
+      {/* Top Release Badge (No raw tech stacks or architectures) */}
       <Reveal direction="down">
         <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-surface-elevated/90 border border-white/[0.1] backdrop-blur-md mb-6 shadow-lg shadow-black/40 hover:border-accent/40 transition-all">
           <div className="flex items-center gap-0.5">
@@ -45,7 +48,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <span className="w-1 h-4 bg-service-apple rounded-full animate-eq-3" />
           </div>
           <span className="text-xs font-medium text-text-secondary">
-            TuneBridge v1.2 • Multi-Akun &amp; MySQL Lokal
+            {t("landing.badge")}
           </span>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/20 text-accent font-semibold font-mono">
             LIVE
@@ -56,18 +59,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       {/* Main Headline */}
       <Reveal delay={100}>
         <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight text-text-primary max-w-4xl leading-[1.08]">
-          Perpustakaan Musik Anda.{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-text-primary via-accent to-status-success">
-            Tersambung, Bersih, dan Utuh.
-          </span>
+          {t("landing.heroTitle")}
         </h1>
       </Reveal>
 
-      {/* Subheadline (Humanized, natural Indonesian) */}
+      {/* Subheadline */}
       <Reveal delay={200}>
         <p className="mt-5 sm:mt-6 text-sm sm:text-base md:text-lg text-text-secondary max-w-2xl leading-relaxed mx-auto">
-          Pindahkan dan gabungkan playlist dari banyak akun YouTube Music ke Apple Music langsung dari
-          browser laptop atau HP Anda. Data tersimpan aman di server lokal komputer Anda sendiri.
+          {t("landing.heroDesc")}
         </p>
       </Reveal>
 
@@ -78,7 +77,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             onClick={onOpenStudio}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 sm:px-7 py-3 rounded-xl bg-accent text-background font-bold text-sm transition-all hover:bg-accent-hover hover:shadow-xl hover:shadow-accent/25 hover:scale-[1.02] active:scale-[0.98] btn-press"
           >
-            <span>Buka Studio</span>
+            <span>{t("landing.ctaOpenStudio")}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
 
@@ -86,26 +85,26 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             onClick={handleScrollToFeatures}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-surface-elevated border border-white/[0.08] text-text-primary font-semibold text-sm transition-all hover:bg-surface-hover hover:border-white/[0.15] active:scale-[0.98] btn-press"
           >
-            <span>Pelajari Alur Kerja</span>
+            <span>{t("landing.ctaLearnMore")}</span>
             <ChevronDown className="w-4 h-4 text-text-secondary" />
           </button>
         </div>
       </Reveal>
 
-      {/* Trust & Spec Chips */}
+      {/* Trust & Privacy Chips (Clean, benefit-focused) */}
       <Reveal delay={400}>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4 text-xs text-text-muted">
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-elevated/40 border border-white/[0.05]">
             <ShieldCheck className="w-3.5 h-3.5 text-status-success" />
-            <span>100% Bebas Kuota Cloud</span>
+            <span>{t("landing.pillZeroCloud")}</span>
           </span>
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-elevated/40 border border-white/[0.05]">
             <Server className="w-3.5 h-3.5 text-accent" />
-            <span>Database MySQL Host / Docker</span>
+            <span>{t("landing.pillPrivateVault")}</span>
           </span>
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-elevated/40 border border-white/[0.05]">
             <Smartphone className="w-3.5 h-3.5 text-amber-400" />
-            <span>Akses iPhone &amp; Android Siap</span>
+            <span>{t("landing.pillMobileReady")}</span>
           </span>
         </div>
       </Reveal>

@@ -1,5 +1,6 @@
 import React from "react";
 import { Disc3, Server, ArrowRight, ShieldCheck } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
 const GithubIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -16,6 +17,9 @@ interface LandingFooterProps {
 }
 
 export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenStudio }) => {
+  const { lang, t } = useLanguage();
+  const isEn = lang === "en";
+
   return (
     <footer className="w-full border-t border-white/[0.08] bg-[#0B0C0F] py-12 md:py-16 px-4 sm:px-6 md:px-8 text-left">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
@@ -35,18 +39,19 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenStudio }) =>
             </div>
           </div>
           <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
-            Perpustakaan musik terintegrasi mandiri (self-hosted). Menggabungkan banyak akun
-            YouTube Music ke Apple Music langsung dari server lokal Anda.
+            {isEn
+              ? "Private, self-hosted music library bridge. Consolidate and sync playlists across YouTube Music and Apple Music with zero cloud retention."
+              : "Perpustakaan musik terintegrasi mandiri (self-hosted). Menggabungkan banyak akun YouTube Music ke Apple Music langsung dari komputer lokal Anda."}
           </p>
           <div className="flex items-center gap-3 mt-4 text-xs text-text-muted">
             <span className="inline-flex items-center gap-1.5">
               <Server className="w-3.5 h-3.5 text-status-success" />
-              100% Berjalan Lokal
+              {isEn ? "100% Private Local Vault" : "100% Berjalan Lokal"}
             </span>
             <span>•</span>
             <span className="inline-flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
-              Lisensi MIT
+              MIT License
             </span>
           </div>
         </div>
@@ -55,31 +60,31 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenStudio }) =>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8 w-full md:w-auto">
           <div className="flex flex-col space-y-2 text-xs">
             <span className="font-semibold text-text-primary uppercase tracking-wider text-[11px]">
-              Navigasi Cepat
+              {isEn ? "Quick Navigation" : "Navigasi Cepat"}
             </span>
             <button
               onClick={onOpenStudio}
               className="text-left text-text-secondary hover:text-accent transition-colors"
             >
-              Buka Studio Migrasi
+              {t("app.openStudio")}
             </button>
             <a
               href="#interactive-preview"
               className="text-text-secondary hover:text-accent transition-colors"
             >
-              Demo Interaktif
+              {isEn ? "Interactive Demo" : "Demo Interaktif"}
             </a>
             <a
               href="#features-section"
               className="text-text-secondary hover:text-accent transition-colors"
             >
-              Fitur & Keunggulan
+              {isEn ? "Key Features" : "Fitur & Keunggulan"}
             </a>
             <a
               href="#platform-matrix-section"
               className="text-text-secondary hover:text-accent transition-colors"
             >
-              Daftar Platform
+              {isEn ? "Platform Matrix" : "Daftar Platform"}
             </a>
           </div>
 
@@ -88,12 +93,12 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenStudio }) =>
               onClick={onOpenStudio}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-background font-semibold text-xs hover:bg-accent-hover transition-all btn-press shadow-md shadow-accent/20"
             >
-              <span>Buka Studio</span>
+              <span>{t("app.openStudio")}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
 
             <a
-              href="https://github.com"
+              href="https://github.com/DanDhany/music2anywhere"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-elevated border border-white/[0.08] text-text-secondary hover:text-text-primary text-xs hover:border-white/[0.15] transition-all btn-press"
@@ -107,8 +112,16 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenStudio }) =>
 
       {/* Bottom Legal / Note */}
       <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-text-muted">
-        <p>© 2026 TuneBridge Project. Dibuat untuk privasi dan kepemilikan data musik mandiri.</p>
-        <p>YouTube Music & Apple Music adalah merek dagang dari masing-masing pemiliknya.</p>
+        <p>
+          {isEn
+            ? "© 2026 TuneBridge Project. Built for music privacy and personal data sovereignty."
+            : "© 2026 TuneBridge Project. Dibuat untuk privasi dan kepemilikan data musik mandiri."}
+        </p>
+        <p>
+          {isEn
+            ? "YouTube Music & Apple Music are trademarks of their respective owners."
+            : "YouTube Music & Apple Music adalah merek dagang dari masing-masing pemiliknya."}
+        </p>
       </div>
     </footer>
   );

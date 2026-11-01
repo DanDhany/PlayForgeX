@@ -19,6 +19,7 @@ import {
 } from "../utils/ui-helpers";
 import { TrackRow } from "./TrackRow";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
+import { useLanguage } from "../context/LanguageContext";
 
 interface ReviewStudioProps {
   selectedPlaylist: PlaylistSummary | null;
@@ -49,6 +50,8 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
   sourcePlatform = "youtube",
   targetPlatform = "apple",
 }) => {
+  const { t, lang } = useLanguage();
+  const isEn = lang === "en";
   const [filter, setFilter] = useState<FilterTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const { currentTrack, isPlaying, togglePlay } = useAudioPlayer();
@@ -100,10 +103,12 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
 
           <div className="space-y-1.5">
             <h2 className="text-base font-semibold text-text-primary tracking-tight">
-              Pilih Playlist untuk Ditinjau
+              {isEn ? "Select a Playlist to Review" : "Pilih Playlist untuk Ditinjau"}
             </h2>
             <p className="text-xs text-text-secondary leading-relaxed">
-              Pilih playlist dari daftar untuk memulai pencocokan judul original non-Latin secara presisi ke platform tujuan.
+              {isEn
+                ? "Choose a playlist from the left panel to begin precise matching and migration to the destination platform."
+                : "Pilih playlist dari daftar untuk memulai pencocokan judul original non-Latin secara presisi ke platform tujuan."}
             </p>
           </div>
 
@@ -113,7 +118,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
               className="md:hidden px-4 py-2 bg-accent text-background rounded-xl text-xs font-semibold flex items-center gap-2 btn-press shadow-sm"
             >
               <ListMusic className="w-4 h-4" />
-              <span>Buka Daftar Playlist</span>
+              <span>{isEn ? "Open Playlist Drawer" : "Buka Daftar Playlist"}</span>
             </button>
           )}
         </div>
@@ -152,7 +157,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-text-secondary mt-0.5 truncate">
-                {items.length} lagu · Ekspor ke {destinationName}
+                {items.length} {isEn ? "tracks" : "lagu"} · {isEn ? "Export to" : "Ekspor ke"} {destinationName}
               </p>
             </div>
           </div>
@@ -162,7 +167,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
             <button
               onClick={onReMatch}
               disabled={isMatching || isTransferring}
-              title="Cari ulang semua kecocokan lagu"
+              title={isEn ? "Re-search all track matches" : "Cari ulang semua kecocokan lagu"}
               className="px-3 py-1.5 bg-surface-elevated hover:bg-surface-hover border border-border rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary flex items-center gap-1.5 btn-press transition-colors"
             >
               <RotateCcw className={`w-3.5 h-3.5 ${isMatching ? "animate-spin text-accent" : ""}`} />
@@ -186,11 +191,13 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
             <div className="flex items-center space-x-2">
               <Loader2 className="w-3.5 h-3.5 text-accent animate-spin" />
               <span className="text-text-primary text-[11px]">
-                Mencocokkan lagu di latar belakang ({items.length}{totalTracksToMatch > 0 ? ` / ${totalTracksToMatch}` : ""} lagu)...
+                {isEn
+                  ? `Matching tracks in background (${items.length}${totalTracksToMatch > 0 ? ` / ${totalTracksToMatch}` : ""} tracks)...`
+                  : `Mencocokkan lagu di latar belakang (${items.length}${totalTracksToMatch > 0 ? ` / ${totalTracksToMatch}` : ""} lagu)...`}
               </span>
             </div>
             <span className="text-[10px] font-mono text-accent hidden sm:inline">
-              Otomatis tersimpan
+              {isEn ? "Auto-saved" : "Otomatis tersimpan"}
             </span>
           </div>
         )}
@@ -200,7 +207,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
           <div className="flex items-center space-x-1.5 flex-shrink-0">
             <span className="w-2 h-2 rounded-full bg-status-success" />
             <span className="text-text-primary font-medium tabular-nums">{stats.exact}</span>
-            <span className="text-text-secondary">Cocok</span>
+            <span className="text-text-secondary">{isEn ? "Exact" : "Cocok"}</span>
           </div>
 
           <div className="flex items-center space-x-1.5 flex-shrink-0">
@@ -212,11 +219,11 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
           <div className="flex items-center space-x-1.5 flex-shrink-0">
             <span className="w-2 h-2 rounded-full bg-status-danger" />
             <span className="text-text-primary font-medium tabular-nums">{stats.unmatched}</span>
-            <span className="text-text-secondary">Belum Ada</span>
+            <span className="text-text-secondary">{isEn ? "Unmatched" : "Belum Ada"}</span>
           </div>
 
           <div className="flex items-center space-x-1.5 flex-shrink-0 ml-auto font-mono text-[11px] text-text-secondary">
-            <span>Siap:</span>
+            <span>{isEn ? "Ready:" : "Siap:"}</span>
             <span className="text-text-primary font-semibold tabular-nums">{stats.activeForImport}</span>
             <span>/</span>
             <span className="tabular-nums">{items.length}</span>
@@ -226,7 +233,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
 
       {/* 2. Filter Tabs & Search Bar */}
       <div className="px-4 md:px-6 py-2 border-b border-border bg-surface/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs flex-shrink-0">
-        <div className="flex items-center space-x-1 overflow-x-auto pb-0.5 sm:pb-0 scrollbar-none">
+        <div className="flex items-center space-x-1 overflow-x-auto pb-0.5 sm:pb-0 scrollbar-none touch-pan-x">
           <button
             onClick={() => setFilter("all")}
             className={`px-2.5 py-1 rounded-md font-medium transition-colors flex-shrink-0 btn-press ${
@@ -235,7 +242,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
-            Semua ({stats.total})
+            {t("transfer.filterAll")} ({stats.total})
           </button>
           <button
             onClick={() => setFilter("exact")}
@@ -245,7 +252,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                 : "text-text-secondary hover:text-status-success"
             }`}
           >
-            Cocok ({stats.exact})
+            {t("transfer.filterExact")} ({stats.exact})
           </button>
           <button
             onClick={() => setFilter("covers")}
@@ -255,7 +262,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                 : "text-text-secondary hover:text-status-warning"
             }`}
           >
-            Cover ({stats.covers})
+            {t("transfer.filterCovers")} ({stats.covers})
           </button>
           <button
             onClick={() => setFilter("unmatched")}
@@ -265,25 +272,25 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                 : "text-text-secondary hover:text-status-danger"
             }`}
           >
-            Belum Ada ({stats.unmatched})
+            {t("transfer.filterUnmatched")} ({stats.unmatched})
           </button>
         </div>
 
         {/* Search & Select All */}
         <div className="flex items-center space-x-2">
           <div className="relative flex-1 sm:w-56">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-text-secondary" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-text-secondary" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari lagu / artis..."
-              className="w-full pl-8 pr-7 py-1 bg-surface-elevated border border-border rounded-md text-xs text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent"
+              placeholder={isEn ? "Search tracks / artist..." : "Cari lagu / artis..."}
+              className="w-full pl-8 pr-7 py-1 bg-surface-elevated border border-border rounded-lg text-base sm:text-xs text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1.5 text-text-secondary hover:text-text-primary"
+                className="absolute right-2 top-2 text-text-secondary hover:text-text-primary"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -293,14 +300,14 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
           <div className="flex items-center space-x-0.5 border-l border-border pl-2">
             <button
               onClick={() => handleToggleSelectAll(true)}
-              title="Pilih semua lagu yang cocok"
+              title={isEn ? "Select all matched tracks" : "Pilih semua lagu yang cocok"}
               className="p-1 rounded text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors btn-press"
             >
               <CheckSquare className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => handleToggleSelectAll(false)}
-              title="Batalkan pilihan semua lagu"
+              title={isEn ? "Deselect all tracks" : "Batalkan pilihan semua lagu"}
               className="p-1 rounded text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors btn-press"
             >
               <Square className="w-3.5 h-3.5" />
@@ -312,9 +319,9 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
       {/* 3. Table Column Headers (Desktop Only) */}
       <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-2 text-[10px] uppercase font-semibold tracking-wider text-text-secondary border-b border-border bg-surface/30 flex-shrink-0 items-center">
         <div className="col-span-1">#</div>
-        <div className="col-span-4">Lagu Sumber ({sourcePlatform === "youtube" ? "YouTube" : "Apple"})</div>
-        <div className="col-span-2 text-center">Status Kecocokan</div>
-        <div className="col-span-5 pl-3">Lagu Tujuan ({targetPlatform === "youtube" ? "YouTube" : "Apple"})</div>
+        <div className="col-span-4">{isEn ? "Source Track" : "Lagu Sumber"} ({sourcePlatform === "youtube" ? "YouTube" : "Apple"})</div>
+        <div className="col-span-2 text-center">{isEn ? "Match Status" : "Status Kecocokan"}</div>
+        <div className="col-span-5 pl-3">{isEn ? "Destination Track" : "Lagu Tujuan"} ({targetPlatform === "youtube" ? "YouTube" : "Apple"})</div>
       </div>
 
       {/* 4. Tracks Scroll Area */}
@@ -324,16 +331,20 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
             <RefreshCw className="w-6 h-6 text-accent animate-spin" />
             <div className="space-y-1">
               <p className="font-semibold text-text-primary text-sm">
-                Mencocokkan lagu di latar belakang...
+                {isEn ? "Matching tracks in background..." : "Mencocokkan lagu di latar belakang..."}
               </p>
               <p className="text-[11px] text-text-secondary max-w-sm">
-                Lagu akan otomatis muncul satu per satu dan tersimpan ke draft lokal.
+                {isEn
+                  ? "Tracks will automatically appear and persist into local drafts."
+                  : "Lagu akan otomatis muncul satu per satu dan tersimpan ke draft lokal."}
               </p>
             </div>
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="py-16 text-center text-xs text-text-secondary">
-            {isMatching ? "Sedang memproses lagu pertama..." : "Tidak ada lagu yang cocok dengan filter ini."}
+            {isMatching
+              ? (isEn ? "Processing first track..." : "Sedang memproses lagu pertama...")
+              : (isEn ? "No tracks match this filter." : "Tidak ada lagu yang cocok dengan filter ini.")}
           </div>
         ) : (
           filteredItems.map((item, idx) => (
@@ -362,10 +373,10 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
           <div className="bg-surface-elevated/95 border border-border backdrop-blur-xl p-2.5 rounded-2xl shadow-2xl flex items-center justify-between gap-3">
             <div className="min-w-0 pl-1">
               <p className="text-[11px] font-medium text-text-primary truncate">
-                {stats.activeForImport} lagu terpilih
+                {stats.activeForImport} {isEn ? "tracks selected" : "lagu terpilih"}
               </p>
               <p className="text-[10px] text-text-secondary truncate">
-                Ke {destinationName}
+                {isEn ? "To" : "Ke"} {destinationName}
               </p>
             </div>
 

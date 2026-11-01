@@ -8,6 +8,8 @@ import { PlatformMatrixSection } from "./PlatformMatrixSection";
 import { FaqSection } from "./FaqSection";
 import { LandingFooter } from "./LandingFooter";
 import { FloatingDock } from "./FloatingDock";
+import { LanguageSwitcher } from "../LanguageSwitcher";
+import { useLanguage } from "../../context/LanguageContext";
 
 const GithubIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -27,6 +29,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { lang, t } = useLanguage();
+  const isEn = lang === "en";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -85,31 +89,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
               href="#interactive-preview"
               className="hover:text-text-primary transition-colors font-medium"
             >
-              Demo
+              {isEn ? "Demo" : "Demo"}
             </a>
             <a
               href="#how-it-works"
               className="hover:text-text-primary transition-colors font-medium"
             >
-              Cara Kerja
+              {isEn ? "How it Works" : "Cara Kerja"}
             </a>
             <a
               href="#features-section"
               className="hover:text-text-primary transition-colors font-medium"
             >
-              Fitur
+              {isEn ? "Features" : "Fitur"}
             </a>
             <a
               href="#comparison-section"
               className="hover:text-text-primary transition-colors font-medium"
             >
-              Perbandingan
+              {isEn ? "Comparison" : "Perbandingan"}
             </a>
             <a
               href="#platform-matrix-section"
               className="hover:text-text-primary transition-colors font-medium"
             >
-              Platform
+              {isEn ? "Platforms" : "Platform"}
             </a>
             <a
               href="#faq-section"
@@ -118,7 +122,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
               FAQ
             </a>
             <a
-              href="https://github.com"
+              href="https://github.com/DanDhany/music2anywhere"
               target="_blank"
               rel="noreferrer"
               className="hover:text-text-primary transition-colors flex items-center gap-1 font-medium"
@@ -128,13 +132,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
             </a>
           </nav>
 
-          {/* CTA Group */}
-          <div className="flex items-center gap-3">
+          {/* CTA & Language Switcher Group */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <LanguageSwitcher compact />
+
             <button
               onClick={onOpenStudio}
-              className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 rounded-xl bg-accent text-background font-semibold text-xs transition-all hover:bg-accent-hover hover:shadow-lg hover:shadow-accent/20 btn-press"
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 rounded-xl bg-accent text-background font-semibold text-xs transition-all hover:bg-accent-hover hover:shadow-lg hover:shadow-accent/20 btn-press flex-shrink-0"
             >
-              <span>Buka Studio</span>
+              <span>{t("app.openStudio")}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
 
@@ -157,35 +163,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
             >
-              Demo Interaktif
+              {isEn ? "Interactive Demo" : "Demo Interaktif"}
             </a>
             <a
               href="#how-it-works"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
             >
-              Cara Kerja
+              {isEn ? "How it Works" : "Cara Kerja"}
             </a>
             <a
               href="#features-section"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
             >
-              Fitur Utama
+              {isEn ? "Key Features" : "Fitur Utama"}
             </a>
             <a
               href="#comparison-section"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
             >
-              Perbandingan
+              {isEn ? "Comparison" : "Perbandingan"}
             </a>
             <a
               href="#platform-matrix-section"
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
             >
-              Daftar Platform
+              {isEn ? "Platform Matrix" : "Daftar Platform"}
             </a>
             <a
               href="#faq-section"
@@ -195,7 +201,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenStudio }) => {
               FAQ
             </a>
             <a
-              href="https://github.com"
+              href="https://github.com/DanDhany/music2anywhere"
               target="_blank"
               rel="noreferrer"
               onClick={() => setMobileMenuOpen(false)}

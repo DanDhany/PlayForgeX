@@ -8,6 +8,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { User } from "../../../shared/types";
+import { useLanguage } from "../../context/LanguageContext";
 
 interface UserProfileMenuProps {
   currentUser?: User | null;
@@ -22,6 +23,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
   onLogout,
   compact = false,
 }) => {
+  const { t, lang } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -53,11 +55,13 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
     return (
       <button
         onClick={() => onOpenAuth("login")}
-        className="px-3 py-1.5 rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-xs font-medium text-text-primary flex items-center gap-2 btn-press transition-colors shadow-sm"
-        title="Masuk atau Daftar Akun TuneBridge"
+        className={`rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-xs font-medium text-text-primary flex items-center gap-2 btn-press transition-colors shadow-sm ${
+          compact ? "p-1.5" : "px-3 py-1.5"
+        }`}
+        title={t("auth.loginOrRegister")}
       >
         <LogIn className="w-3.5 h-3.5 text-accent" />
-        <span>Masuk / Daftar</span>
+        {!compact && <span>{t("auth.loginOrRegister")}</span>}
       </button>
     );
   }
@@ -70,12 +74,12 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
   const isAdmin = currentUser.role === "admin";
 
   const formattedDate = currentUser.createdAt
-    ? new Date(Number(currentUser.createdAt)).toLocaleDateString("id-ID", {
+    ? new Date(Number(currentUser.createdAt)).toLocaleDateString(lang === "en" ? "en-US" : "id-ID", {
         year: "numeric",
         month: "short",
         day: "numeric",
       })
-    : "Baru saja";
+    : t("auth.justNow");
 
   return (
     <div className="relative inline-block text-left" ref={menuRef}>
@@ -87,7 +91,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
             ? "bg-surface-elevated border-accent/40 shadow-sm shadow-accent/10"
             : "bg-surface-elevated/70 hover:bg-surface-elevated border-border"
         } ${compact ? "p-1.5" : "px-2.5 py-1.5"}`}
-        title={`Akun: ${currentUser.username} (${isAdmin ? "Admin" : "Pengguna"})`}
+        title={`${t("auth.signedInAs")}: ${currentUser.username} (${isAdmin ? "Admin" : "User"})`}
       >
         {/* Avatar badge */}
         <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-accent/30 to-accent/10 border border-accent/30 flex items-center justify-center text-[11px] font-bold text-accent font-mono flex-shrink-0">
@@ -138,10 +142,10 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
                         : "bg-white/[0.08] text-text-secondary border-border"
                     }`}
                   >
-                    {isAdmin ? "Administrator" : "Pengguna"}
+                    {isAdmin ? "Admin" : "User"}
                   </span>
                 </div>
-                <p className="text-[11px] text-text-secondary truncate mt-0.5">
+                <p className="text-[11px] text-text-secondary truncate mt-0.5 font-mono">
                   ID: {currentUser.id.slice(0, 14)}...
                 </p>
               </div>
@@ -151,7 +155,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
             <div className="mt-3 pt-2.5 border-t border-border/70 flex items-center justify-between text-[11px] text-text-secondary">
               <span className="flex items-center gap-1.5">
                 <Calendar className="w-3 h-3 text-text-secondary/70" />
-                <span>Terdaftar</span>
+                <span>{t("auth.registered")}</span>
               </span>
               <span className="font-mono text-text-primary">{formattedDate}</span>
             </div>
@@ -167,7 +171,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
               className="w-full px-3 py-2 rounded-xl text-left text-text-primary hover:bg-surface-hover flex items-center gap-2.5 transition-colors btn-press"
             >
               <UserCheck className="w-3.5 h-3.5 text-accent" />
-              <span>Ganti Akun</span>
+              <span>{t("auth.switchAccount")}</span>
             </button>
 
             <button
@@ -178,7 +182,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
               className="w-full px-3 py-2 rounded-xl text-left text-text-primary hover:bg-surface-hover flex items-center gap-2.5 transition-colors btn-press"
             >
               <UserPlus className="w-3.5 h-3.5 text-accent" />
-              <span>Daftar Akun Baru</span>
+              <span>{t("auth.register")}</span>
             </button>
 
             <div className="h-px bg-border my-1" />
@@ -191,7 +195,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
               className="w-full px-3 py-2 rounded-xl text-left text-rose-300 hover:bg-rose-500/15 flex items-center gap-2.5 transition-colors btn-press"
             >
               <LogOut className="w-3.5 h-3.5 text-rose-400" />
-              <span>Keluar (Logout)</span>
+              <span>{t("auth.logout")}</span>
             </button>
           </div>
         </div>

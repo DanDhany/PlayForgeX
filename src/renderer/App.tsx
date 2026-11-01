@@ -14,6 +14,7 @@ import { MusicPlayerBar } from "./components/MusicPlayerBar";
 import { LandingPage } from "./components/landing/LandingPage";
 import { AuthModal } from "./components/auth/AuthModal";
 import { AuthGateCard } from "./components/auth/AuthGateCard";
+import { useLanguage } from "./context/LanguageContext";
 import {
   AccountConnection,
   ActivityLogItem,
@@ -32,9 +33,17 @@ import {
 } from "./demoData";
 
 export const App: React.FC = () => {
+  const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<"studio" | "landing">(() => {
     if (typeof window !== "undefined") {
+      if (window.location.hash.startsWith("#studio")) {
+        return "studio";
+      }
       if (window.location.hash.startsWith("#landing") || IS_PAGES_OR_STATIC) {
+        return "landing";
+      }
+      const token = localStorage.getItem("tunebridge_token");
+      if (!token) {
         return "landing";
       }
     }
@@ -112,8 +121,11 @@ export const App: React.FC = () => {
       const hash = window.location.hash;
       if (hash.startsWith("#landing")) {
         setViewMode("landing");
-      } else if (hash.startsWith("#studio") || !hash) {
+      } else if (hash.startsWith("#studio")) {
         setViewMode("studio");
+      } else if (!hash) {
+        const token = localStorage.getItem("tunebridge_token");
+        setViewMode(token ? "studio" : "landing");
       }
     };
     window.addEventListener("hashchange", handleHashChange);
@@ -122,9 +134,7 @@ export const App: React.FC = () => {
 
   const handleOpenStudio = () => {
     setViewMode("studio");
-    if (window.location.hash.startsWith("#landing")) {
-      window.history.pushState(null, "", window.location.pathname);
-    }
+    window.location.hash = "#studio";
   };
 
   const handleOpenLanding = () => {
@@ -166,7 +176,7 @@ export const App: React.FC = () => {
     }
     setCurrentUser(user);
     setIsAuthModalOpen(false);
-    setSuccessBanner(`Selamat datang kembali, ${user.username}!`);
+    setSuccessBanner(t("auth.welcomeBack", { username: user.username }));
     setTimeout(() => setSuccessBanner(null), 4000);
     setTimeout(() => {
       loadAccounts();
@@ -192,7 +202,7 @@ export const App: React.FC = () => {
     setAccounts([]);
     setAllPlaylists([]);
     setActivityLogs([]);
-    setSuccessBanner("Sesi akun Anda telah ditutup.");
+    setSuccessBanner(t("auth.sessionClosed"));
     setTimeout(() => setSuccessBanner(null), 4000);
   };
 
@@ -595,14 +605,14 @@ export const App: React.FC = () => {
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
               <span>
-                <strong>Mode Demonstrasi GitHub Pages:</strong> Menampilkan simulasi studio interaktif. Unduh rilis Docker lokal untuk transfer riil.
+                {t("app.pagesDemoNotice")}
               </span>
             </span>
             <button
               onClick={handleOpenLanding}
-              className="underline text-[11px] hover:text-text-primary ml-2 font-medium"
+              className="underline text-[11px] hover:text-text-primary ml-2 font-medium flex-shrink-0"
             >
-              Kembali ke Landing Page
+              {t("app.backToLanding")}
             </button>
           </div>
         )}

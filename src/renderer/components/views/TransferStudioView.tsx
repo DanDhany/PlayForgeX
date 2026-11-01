@@ -14,6 +14,7 @@ import {
   SourcePlaylistSelection,
 } from "../../../shared/types";
 import { ReviewStudio } from "../ReviewStudio";
+import { useLanguage } from "../../context/LanguageContext";
 
 interface TransferStudioViewProps {
   accounts: AccountConnection[];
@@ -50,8 +51,16 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
   onReMatch,
   onNavigateAccounts,
 }) => {
+  const { t, lang } = useLanguage();
+  const isEn = lang === "en";
   const [studioMode, setStudioMode] = useState<"quick" | "merge">("quick");
   const [mobileQuickTab, setMobileQuickTab] = useState<"picker" | "review">("picker");
+
+  useEffect(() => {
+    if (selectedPlaylist) {
+      setMobileQuickTab("review");
+    }
+  }, [selectedPlaylist?.id]);
 
   // Merge Mode States
   const [selectedPlaylistSelections, setSelectedPlaylistSelections] = useState<SourcePlaylistSelection[]>([]);
@@ -186,7 +195,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
               }`}
             >
               <ArrowRightLeft className="w-3.5 h-3.5" />
-              <span>Transfer 1:1</span>
+              <span>{t("transfer.mode1to1")}</span>
             </button>
             <button
               onClick={() => setStudioMode("merge")}
@@ -197,7 +206,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Merge Koleksi Multi-Akun</span>
+              <span>{t("transfer.modeMerge")}</span>
               <span className="text-[10px] px-1 py-0.2 bg-white/20 rounded font-bold">
                 NEW
               </span>
@@ -207,7 +216,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
 
         {selectedPlaylist && (
           <div className="hidden md:flex items-center gap-2 text-xs font-mono text-text-secondary">
-            <span>Aktif:</span>
+            <span>{t("transfer.sourceTracks")}:</span>
             <span className="text-text-primary font-medium truncate max-w-xs">
               {selectedPlaylist.title}
             </span>
@@ -230,7 +239,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                Pilih Playlist ({allPlaylists.length})
+                {t("transfer.selectSource")} ({allPlaylists.length})
               </button>
               <button
                 onClick={() => setMobileQuickTab("review")}
@@ -241,21 +250,21 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                     : "text-text-secondary disabled:opacity-40"
                 }`}
               >
-                Review Lagu {selectedPlaylist ? `(${trackItems.length})` : ""}
+                {t("transfer.reviewTracks")} {selectedPlaylist ? `(${trackItems.length})` : ""}
               </button>
             </div>
           </div>
 
           {/* Quick Playlist Picker Sidebar */}
           <div
-            className={`w-full md:w-72 bg-surface/80 border-r border-border flex-col h-full flex-shrink-0 pb-24 md:pb-0 ${
+            className={`w-full md:w-72 bg-surface/80 border-r border-border flex-col h-full flex-shrink-0 pb-32 md:pb-0 ${
               mobileQuickTab === "picker" ? "flex" : "hidden md:flex"
             }`}
           >
             <div className="p-3 border-b border-border flex items-center justify-between text-xs">
               <span className="font-semibold text-text-primary flex items-center gap-1.5">
                 <ListMusic className="w-4 h-4 text-accent" />
-                <span>Pilih Playlist Sumber</span>
+                <span>{t("transfer.selectSource")}</span>
               </span>
               <span className="text-[11px] text-text-secondary font-mono">
                 {allPlaylists.length}
@@ -308,6 +317,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
               onOpenAlternativePicker={onOpenAlternativePicker}
               onStartTransfer={onStartTransfer}
               onReMatch={onReMatch}
+              onOpenMobileSidebar={() => setMobileQuickTab("picker")}
               sourcePlatform={sourcePlatform}
               targetPlatform={targetPlatform}
             />
@@ -315,13 +325,13 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
         </div>
       ) : (
         // Mode 2: Multi-Source Merge Workflow Wizard
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-5xl mx-auto w-full pb-24 md:pb-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-5xl mx-auto w-full pb-32 md:pb-8">
           <div className="space-y-1">
             <h2 className="text-xl font-semibold text-text-primary">
-              Gabungkan Koleksi Multi-Akun ke Satu Tujuan
+              {t("transfer.mergeTitle")}
             </h2>
             <p className="text-xs text-text-secondary leading-relaxed">
-              Pilih playlist dari berbagai akun sumber (misal: Orang A + Orang B + Orang C), sistem akan mengeliminasi duplikat lagu dengan tetap mempertahankan versi live/remix, lalu memindahkannya ke akun tujuan Anda.
+              {t("transfer.mergeDesc")}
             </p>
           </div>
 
@@ -332,10 +342,10 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                 <span className="w-5 h-5 rounded-full bg-accent text-background text-xs font-bold flex items-center justify-center">
                   1
                 </span>
-                <span>Pilih Playlist dari Akun Sumber</span>
+                <span>{t("transfer.step1")}</span>
               </h3>
               <span className="text-xs text-accent font-medium">
-                {selectedPlaylistSelections.length} playlist dipilih
+                {selectedPlaylistSelections.length} {isEn ? "playlists selected" : "playlist dipilih"}
               </span>
             </div>
 

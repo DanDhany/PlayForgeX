@@ -13,3 +13,5 @@ data/mysql/
 !data/.gitkeep
 .env
 
+screenshots/
+scratch-verify.mjs
