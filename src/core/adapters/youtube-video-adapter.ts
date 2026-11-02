@@ -103,6 +103,30 @@ export function sanitizeVideoTitle(raw: string, channelName?: string): Sanitized
 export interface ParsedYouTubeInput {
   playlistId: string;
   videoId?: string;
+  videoIds?: string[];
+  isSingleVideo?: boolean;
+}
+
+export function extractVideoIdsFromText(input: string): string[] {
+  if (!input) return [];
+  const matches = Array.from(
+    input.matchAll(/(?:v=|\/v\/|youtu\.be\/|\/shorts\/|\/embed\/|^|\s)([a-zA-Z0-9_-]{11})(?:\s|&|\?|$)/g)
+  );
+  const ids = new Set<string>();
+  for (const m of matches) {
+    const candidate = m[1];
+    if (
+      candidate &&
+      candidate.length === 11 &&
+      !candidate.startsWith("PL") &&
+      !candidate.startsWith("RD") &&
+      !candidate.startsWith("UU") &&
+      !candidate.startsWith("LL")
+    ) {
+      ids.add(candidate);
+    }
+  }
+  return Array.from(ids);
 }
 
 /**
@@ -135,17 +159,21 @@ export function extractYtInitialData(html: string): any {
 }
 
 /**
- * Universal YouTube input parser extracting both playlist ID and video ID.
+ * Universal YouTube input parser extracting playlist ID, single video ID, or collection of video IDs.
  */
 export function parseYouTubeInput(input: string): ParsedYouTubeInput {
   const trimmed = input.trim();
   const listMatch = trimmed.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+  const videoIds = extractVideoIdsFromText(trimmed);
   const watchMatch = trimmed.match(/(?:watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  const videoId = watchMatch ? watchMatch[1] : undefined;
+  const videoId = watchMatch ? watchMatch[1] : (videoIds.length === 1 ? videoIds[0] : undefined);
 
   let playlistId = "";
+  let isSingleVideo = false;
+
   if (listMatch) {
     playlistId = listMatch[1];
+    isSingleVideo = false;
   } else if (
     trimmed.startsWith("PL") ||
     trimmed.startsWith("VLPL") ||
@@ -155,13 +183,16 @@ export function parseYouTubeInput(input: string): ParsedYouTubeInput {
     trimmed.startsWith("OLAK5uy_")
   ) {
     playlistId = trimmed.replace(/^VL/, "");
-  } else if (videoId) {
+    isSingleVideo = false;
+  } else if (videoId && videoIds.length <= 1) {
     playlistId = videoId;
+    isSingleVideo = true;
   } else {
     playlistId = trimmed;
+    isSingleVideo = false;
   }
 
-  return { playlistId, videoId };
+  return { playlistId, videoId, videoIds, isSingleVideo };
 }
 
 export class YouTubeVideoAdapter implements PlatformAdapter {
@@ -175,12 +206,93 @@ export class YouTubeVideoAdapter implements PlatformAdapter {
   }
 
   /**
+   * Fetch single YouTube video metadata via public oEmbed endpoint with fallback to watch HTML.
+   */
+  async fetchSingleVideoTrack(videoId: string, cookie?: string): Promise<TrackMetadata | null> {
+    if (!videoId) return null;
+    const cleanId = videoId.trim();
+
+    // 1. Try public oEmbed
+    try {
+      const oembedRes = await fetch(
+        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${cleanId}&format=json`
+      );
+      if (oembedRes.ok) {
+        const oembed = await oembedRes.json();
+        const sanitized = sanitizeVideoTitle(oembed.title, oembed.author_name);
+        return {
+          id: cleanId,
+          videoId: cleanId,
+          title: sanitized.cleanTitle,
+          artist: sanitized.cleanArtist,
+          album: sanitized.cleanTitle,
+          thumbnailUrl: oembed.thumbnail_url || `https://i.ytimg.com/vi/${cleanId}/hqdefault.jpg`,
+        };
+      }
+    } catch (e: any) {
+      console.warn(`[YouTubeVideoAdapter] oEmbed fetch failed for ${cleanId}:`, e.message);
+    }
+
+    // 2. Try HTML watch scraping
+    try {
+      const res = await fetch(`https://www.youtube.com/watch?v=${cleanId}`, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+          "Accept-Language": "en-US,en;q=0.9",
+          Cookie: cookie
+            ? cookie
+            : "SOCS=CAESEwgDEgk2ODE4NDI5MjgacBIOCIC7tbmzBhDw1-XABhoNCAMSAggB; CONSENT=PENDING+999; PREF=hl=en&gl=US",
+        },
+      });
+      if (res.ok) {
+        const html = await res.text();
+        const data = extractYtInitialData(html);
+        if (data) {
+          const tracks = this.parseInnertubeResponse(data);
+          const found = tracks.find((t) => t.id === cleanId || t.videoId === cleanId);
+          if (found) return found;
+        }
+      }
+    } catch {}
+
+    // Fallback: minimal track
+    return {
+      id: cleanId,
+      videoId: cleanId,
+      title: "YouTube Video",
+      artist: "Unknown Artist",
+      thumbnailUrl: `https://i.ytimg.com/vi/${cleanId}/hqdefault.jpg`,
+    };
+  }
+
+  /**
    * Fetch tracks from a YouTube video playlist using public page scraping with Innertube fallback.
    */
   async fetchPlaylistTracks(playlistId: string, credentials?: unknown): Promise<TrackMetadata[]> {
     const parsed = parseYouTubeInput(playlistId);
     const cleanId = parsed.playlistId;
     const cookie = typeof credentials === "string" ? credentials : "";
+
+    // If multiple video IDs are detected and not a standard playlist:
+    if (
+      parsed.videoIds &&
+      parsed.videoIds.length > 1 &&
+      !parsed.playlistId.startsWith("PL") &&
+      !parsed.playlistId.startsWith("RD") &&
+      !parsed.playlistId.startsWith("OLAK5uy_")
+    ) {
+      const tracks = await Promise.all(
+        parsed.videoIds.map(async (vid) => this.fetchSingleVideoTrack(vid, cookie))
+      );
+      return tracks.filter((t): t is TrackMetadata => t !== null);
+    }
+
+    // If it's a single video (watch or youtu.be link):
+    if (parsed.isSingleVideo && parsed.videoId) {
+      const single = await this.fetchSingleVideoTrack(parsed.videoId, cookie);
+      return single ? [single] : [];
+    }
 
     // Candidate URLs to fetch HTML from:
     const candidateUrls: string[] = [];
@@ -489,7 +601,26 @@ export class YouTubeVideoAdapter implements PlatformAdapter {
   }
 
   async fetchPlaylists(credentials?: unknown): Promise<PlaylistSummary[]> {
-    if (typeof credentials === "string" && credentials.includes("list=")) {
+    if (typeof credentials === "string" && credentials.trim().length > 0) {
+      const parsed = parseYouTubeInput(credentials);
+      if (parsed.isSingleVideo && parsed.videoId) {
+        return [
+          {
+            id: parsed.videoId,
+            title: `YouTube Video (${parsed.videoId})`,
+            trackCount: 1,
+          },
+        ];
+      }
+      if (parsed.videoIds && parsed.videoIds.length > 1) {
+        return [
+          {
+            id: parsed.videoId || `yt-collection-${parsed.videoIds.length}`,
+            title: `YouTube Video Collection (${parsed.videoIds.length} videos)`,
+            trackCount: parsed.videoIds.length,
+          },
+        ];
+      }
       const plId = this.normalizePlaylistId(credentials);
       return [
         {

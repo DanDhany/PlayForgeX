@@ -211,13 +211,13 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
       {/* Studio Top Control Ribbon */}
-      <div className="h-13 bg-surface border-b border-border px-4 md:px-6 flex items-center justify-between flex-shrink-0 select-none">
-        <div className="flex items-center gap-3">
+      <div className="min-h-[48px] py-1.5 bg-surface border-b border-border px-3 sm:px-6 flex items-center justify-between gap-2 flex-shrink-0 select-none overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {/* Mode Switcher */}
           <div className="flex items-center p-0.5 bg-surface-elevated rounded-lg border border-border text-xs">
             <button
               onClick={() => setStudioMode("quick")}
-              className={`px-3 py-1 rounded-md font-medium transition-colors flex items-center gap-1.5 btn-press ${
+              className={`px-2.5 sm:px-3 py-1 rounded-md font-medium transition-colors flex items-center gap-1.5 btn-press ${
                 studioMode === "quick"
                   ? "bg-accent/20 text-accent font-semibold shadow-sm"
                   : "text-text-secondary hover:text-text-primary"
@@ -228,7 +228,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
             </button>
             <button
               onClick={() => setStudioMode("merge")}
-              className={`px-3 py-1 rounded-md font-medium transition-colors flex items-center gap-1.5 btn-press ${
+              className={`px-2.5 sm:px-3 py-1 rounded-md font-medium transition-colors flex items-center gap-1.5 btn-press ${
                 studioMode === "merge"
                   ? "bg-accent text-background font-semibold shadow-sm"
                   : "text-text-secondary hover:text-text-primary"
@@ -242,10 +242,10 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
             </button>
           </div>
 
-          {/* Prominent Export Target Destination Selector */}
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-elevated border border-border text-xs">
-            <span className="text-[11px] font-medium text-text-secondary">
-              {isEn ? "Export Target:" : "Tujuan Ekspor:"}
+          {/* Prominent Export Target Destination Selector (Visible across mobile & desktop) */}
+          <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-surface-elevated border border-border text-xs flex-shrink-0">
+            <span className="text-[10px] sm:text-[11px] font-medium text-text-secondary whitespace-nowrap">
+              {isEn ? "Target:" : "Tujuan:"}
             </span>
             <select
               value={targetPlatform}

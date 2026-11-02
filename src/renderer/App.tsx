@@ -490,7 +490,7 @@ export const App: React.FC = () => {
           }
         }, 1200);
         matchingPollerRef.current = poller;
-      } else if (IS_PAGES_OR_STATIC || !startRes.ok) {
+      } else if (IS_PAGES_OR_STATIC) {
         const demoTitles = [
           { title: "Midnight City", artist: "M83", album: "Hurry Up, We're Dreaming", dur: 244 },
           { title: "Starboy", artist: "The Weeknd", album: "Starboy", dur: 230 },
@@ -536,6 +536,42 @@ export const App: React.FC = () => {
         setTrackItems(generated);
         setTotalTracksToMatch(generated.length);
         setIsMatching(false);
+      } else {
+        // Live server mode: never inject dummy mock tracks on failure
+        const errJson = await startRes.json().catch(() => ({}));
+        console.error("Failed to start matching session:", errJson);
+        setIsMatching(false);
+        if (options?.presetTracks && options.presetTracks.length > 0) {
+          const generated: TransferTrackItem[] = options.presetTracks.map((t, idx) => ({
+            source: {
+              id: t.id || `src_trk_${idx}`,
+              videoId: t.videoId || `src_vid_${idx}`,
+              title: t.title,
+              artist: t.artist,
+              album: t.album || playlist.title,
+              durationSeconds: t.durationSeconds,
+            },
+            sanitizedTitle: {
+              originalTitle: t.title,
+              cleanTitle: t.title,
+              hasNonLatin: false,
+            },
+            selectedCandidate: undefined,
+            match: {
+              status: "NOT_FOUND",
+              totalScore: 0,
+              titleScore: 0,
+              artistScore: 0,
+              albumScore: 0,
+            },
+            excluded: false,
+          }));
+          setTrackItems(generated);
+          setTotalTracksToMatch(generated.length);
+        } else {
+          setTrackItems([]);
+          setTotalTracksToMatch(0);
+        }
       }
     } catch (err) {
       console.error("Failed starting matching:", err);

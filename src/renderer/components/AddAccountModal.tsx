@@ -248,7 +248,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
     platform === "youtube"
       ? "YouTube Music"
       : platform === "youtube_video"
-      ? "YouTube Video Playlists"
+      ? (isEn ? "YouTube Video (Playlist / Single Video / Multi Links)" : "YouTube Video (Playlist, Video Tunggal, atau Kumpulan Link)")
       : platform === "apple"
       ? "Apple Music"
       : platform === "spotify"
@@ -557,28 +557,42 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   <div className="space-y-2">
                     <label className="text-[11px] font-medium text-text-secondary">
                       {platform === "youtube_video"
-                        ? isEn ? "YouTube Video Playlist Link or ID" : "Tautan Playlist Video YouTube atau ID"
+                        ? isEn
+                          ? "YouTube Playlist URL, Single Video URL, or Multi-line Video URLs"
+                          : "Tautan Playlist, Video Tunggal (watch?v=...), atau Kumpulan Link Video YouTube"
                         : platform === "spotify"
                         ? isEn ? "Spotify Playlist Link or Access Token" : "Tautan Playlist Spotify atau Token Akses"
                         : platform === "soundcloud"
                         ? isEn ? "SoundCloud Set or Track URL" : "Tautan Set atau Playlist SoundCloud"
                         : isEn ? "Deezer Playlist URL or ID" : "Tautan Playlist Deezer atau ID"}
                     </label>
-                    <input
-                      type="text"
-                      placeholder={
-                        platform === "youtube_video"
-                          ? "https://www.youtube.com/playlist?list=PL..."
-                          : platform === "spotify"
-                          ? "https://open.spotify.com/playlist/... atau Token"
-                          : platform === "soundcloud"
-                          ? "https://soundcloud.com/artist/sets/..."
-                          : "https://www.deezer.com/playlist/... atau ID"
-                      }
-                      value={urlInput}
-                      onChange={(e) => setUrlInput(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
-                    />
+                    {platform === "youtube_video" ? (
+                      <textarea
+                        rows={3}
+                        placeholder={
+                          isEn
+                            ? "Paste playlist link (playlist?list=PL...), single video (watch?v=... / youtu.be/...), or multiple URLs (one per line)..."
+                            : "Tempel link playlist (list=PL...), video tunggal (watch?v=... / youtu.be/...), atau beberapa URL video sekaligus (satu per baris)..."
+                        }
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        className="w-full px-3 py-2.5 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent resize-y"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder={
+                          platform === "spotify"
+                            ? "https://open.spotify.com/playlist/... atau Token"
+                            : platform === "soundcloud"
+                            ? "https://soundcloud.com/artist/sets/..."
+                            : "https://www.deezer.com/playlist/... atau ID"
+                        }
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        className="w-full px-3 py-2.5 bg-surface-elevated border border-border rounded-lg text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
+                      />
+                    )}
                     <p className="text-[11px] text-text-secondary">
                       {platform === "youtube_video"
                         ? (isEn

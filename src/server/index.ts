@@ -20,6 +20,7 @@ import {
 import { AccountManager } from "./account-manager.js";
 import { MergeEngine } from "./merge-engine.js";
 import { PlatformRegistry } from "../core/platform-registry.js";
+import { parseYouTubeInput } from "../core/adapters/youtube-video-adapter.js";
 import { initDatabase, isDbConnected } from "./db.js";
 import * as authService from "./auth-service.js";
 
@@ -260,16 +261,21 @@ app.post("/api/accounts", async (req: Request, res: Response) => {
       return res.json({ success: true, account: acc });
     } else if (platform === "youtube_video") {
       const targetInput = playlistUrl || playlistId || cookieString;
-      if (!targetInput) return res.status(400).json({ error: "playlistUrl or playlistId is required for YouTube Video" });
+      if (!targetInput) return res.status(400).json({ error: "playlistUrl, playlistId, or video URL is required for YouTube Video" });
       const adapter = PlatformRegistry.getAdapter("youtube_video") as any;
-      const normId = adapter.normalizePlaylistId(targetInput);
-      const tracks = await adapter.fetchPlaylistTracks(normId);
+      const parsed = parseYouTubeInput(targetInput);
+      const normId = parsed.isSingleVideo && parsed.videoId ? parsed.videoId : adapter.normalizePlaylistId(targetInput);
+      const tracks = await adapter.fetchPlaylistTracks(targetInput);
+      const defaultTitle = tracks.length === 1 && tracks[0]?.title
+        ? tracks[0].title
+        : (tracks.length > 1 ? `Koleksi YouTube (${tracks.length} video)` : "YouTube Video Playlist");
+      const playlistTitle = cleanAlias || defaultTitle;
       const acc = accountManager.importSnapshotAccount(
-        cleanAlias,
+        cleanAlias || playlistTitle,
         [
           {
-            id: normId,
-            title: cleanAlias,
+            id: normId || `yt-custom-${Date.now()}`,
+            title: playlistTitle,
             trackCount: tracks.length,
             tracks,
             thumbnailUrl: tracks[0]?.thumbnailUrl,

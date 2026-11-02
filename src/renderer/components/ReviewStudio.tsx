@@ -83,7 +83,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
       id: trackId,
       previewUrl,
       title: metadata?.title || "Audio Preview",
-      artist: metadata?.artist || "Apple Music",
+      artist: metadata?.artist || destinationName || "Music Player",
       artworkUrl: metadata?.artworkUrl,
     });
   };
@@ -157,7 +157,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                 <h2 className="text-sm md:text-base font-semibold text-text-primary tracking-tight truncate">
                   {selectedPlaylist.title}
                 </h2>
-                <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono bg-surface-elevated text-text-secondary rounded-lg border border-border">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono bg-surface-elevated text-text-secondary rounded-lg border border-border">
                   <span className={sourceMeta.textColor}>{sourceMeta.shortCode}</span>
                   <span>➔</span>
                   <button
@@ -174,6 +174,38 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                 {items.length} {isEn ? "tracks" : "lagu"} · {isEn ? "Export to" : "Ekspor ke"} {destinationName}
               </p>
             </div>
+          </div>
+
+          {/* Mobile Actions Header (Visible < 640px) */}
+          <div className="flex sm:hidden items-center gap-1.5 flex-shrink-0">
+            {/* Target Platform Selector on Mobile */}
+            <div className="flex items-center gap-1 px-2 py-1 bg-surface-elevated border border-border rounded-lg text-xs">
+              <span className="text-[10px] font-medium text-text-secondary">
+                {isEn ? "To:" : "Ke:"}
+              </span>
+              <select
+                value={targetPlatform}
+                onChange={(e) => onChangeTargetPlatform?.(e.target.value)}
+                className="bg-transparent text-xs font-semibold text-accent focus:outline-none cursor-pointer"
+              >
+                <option value="spotify" className="bg-surface text-text-primary">Spotify</option>
+                <option value="apple" className="bg-surface text-text-primary">Apple Music</option>
+                <option value="youtube" className="bg-surface text-text-primary">YouTube Music</option>
+                <option value="file" className="bg-surface text-text-primary">File Snapshot</option>
+                <option value="youtube_video" className="bg-surface text-text-primary">YouTube Video</option>
+                <option value="deezer" className="bg-surface text-text-primary">Deezer</option>
+                <option value="soundcloud" className="bg-surface text-text-primary">SoundCloud</option>
+              </select>
+            </div>
+
+            <button
+              onClick={onReMatch}
+              disabled={isMatching || isTransferring}
+              title={isEn ? "Re-search all track matches" : "Cari ulang semua kecocokan lagu"}
+              className="p-1.5 bg-surface-elevated hover:bg-surface-hover border border-border rounded-lg text-text-secondary hover:text-text-primary flex items-center justify-center btn-press"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${isMatching ? "animate-spin text-accent" : ""}`} />
+            </button>
           </div>
 
           {/* Desktop Actions */}
@@ -361,7 +393,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
       </div>
 
       {/* 4. Tracks Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-2 pb-36 md:pb-6">
+      <div className={`flex-1 overflow-y-auto p-3 md:p-6 space-y-2 ${currentTrack ? "pb-64 md:pb-6" : "pb-44 md:pb-6"}`}>
         {isMatching && items.length === 0 ? (
           <div className="py-20 text-center text-xs text-text-secondary flex flex-col items-center gap-3">
             <RefreshCw className="w-6 h-6 text-accent animate-spin" />
@@ -406,13 +438,29 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
               : "bottom-[calc(78px+env(safe-area-inset-bottom,0px))]"
           }`}
         >
-          <div className="bg-surface-elevated/95 border border-border backdrop-blur-xl p-2.5 rounded-2xl shadow-2xl flex items-center justify-between gap-3">
-            <div className="min-w-0 pl-1">
-              <p className="text-[11px] font-medium text-text-primary truncate">
-                {stats.activeForImport} {isEn ? "tracks selected" : "lagu terpilih"}
-              </p>
-              <p className="text-[10px] text-text-secondary truncate">
-                {isEn ? "To" : "Ke"} {destinationName}
+          <div className="bg-surface-elevated/95 border border-border backdrop-blur-xl p-2.5 rounded-2xl shadow-2xl flex items-center justify-between gap-2.5">
+            <div className="min-w-0 flex-1 pl-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-medium text-text-primary truncate">
+                  {stats.activeForImport} {isEn ? "tracks" : "lagu"}
+                </span>
+                <span className="text-text-muted text-[10px]">➔</span>
+                <select
+                  value={targetPlatform}
+                  onChange={(e) => onChangeTargetPlatform?.(e.target.value)}
+                  className="bg-surface px-1.5 py-0.5 rounded text-[10px] font-semibold text-accent border border-border focus:outline-none"
+                >
+                  <option value="spotify" className="bg-surface text-text-primary">Spotify</option>
+                  <option value="apple" className="bg-surface text-text-primary">Apple Music</option>
+                  <option value="youtube" className="bg-surface text-text-primary">YouTube Music</option>
+                  <option value="file" className="bg-surface text-text-primary">File Snapshot</option>
+                  <option value="youtube_video" className="bg-surface text-text-primary">YouTube Video</option>
+                  <option value="deezer" className="bg-surface text-text-primary">Deezer</option>
+                  <option value="soundcloud" className="bg-surface text-text-primary">SoundCloud</option>
+                </select>
+              </div>
+              <p className="text-[10px] text-text-secondary truncate mt-0.5">
+                {isEn ? `Ready to export to ${destinationName}` : `Siap diekspor ke ${destinationName}`}
               </p>
             </div>
 
@@ -421,7 +469,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
               disabled={isTransferring || stats.activeForImport === 0}
               className="px-4 py-2 bg-accent text-background rounded-xl text-xs font-semibold flex items-center gap-1.5 btn-press shadow-md flex-shrink-0"
             >
-              <span>Transfer</span>
+              <span>{isEn ? "Export" : "Ekspor"}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
