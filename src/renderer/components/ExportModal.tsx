@@ -15,6 +15,7 @@ import {
 import { PlaylistSummary, PlatformType, AccountConnection } from "../../shared/types";
 import { useLanguage } from "../context/LanguageContext";
 import { getPlatformMeta } from "../utils/platform-meta";
+import { getSelectableExportPlatforms } from "../utils/export-guardrails";
 
 export interface ExportModalProps {
   isOpen: boolean;
@@ -29,10 +30,12 @@ export interface ExportModalProps {
   }) => void;
   defaultTitle: string;
   targetPlatform: PlatformType | string;
+  targetAccountId?: string;
   availableAccounts?: AccountConnection[];
   trackCount: number;
   isMatching?: boolean;
   onChangeTargetPlatform?: (platform: PlatformType | string) => void;
+  onChangeTargetAccount?: (accountId: string, platform?: string) => void;
 }
 
 export const SELECTABLE_EXPORT_PLATFORMS: { id: PlatformType; name: string }[] = [
@@ -51,20 +54,32 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   onConfirm,
   defaultTitle,
   targetPlatform,
+  targetAccountId,
   availableAccounts = [],
   trackCount,
   isMatching = false,
   onChangeTargetPlatform,
+  onChangeTargetAccount,
 }) => {
   if (!isOpen) return null;
 
   const { t, lang } = useLanguage();
   const isEn = lang === "en";
 
-  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType | string>(targetPlatform);
+  const selectableDestinations = getSelectableExportPlatforms(availableAccounts);
+
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType | string>(() => {
+    if (selectableDestinations.length > 0) {
+      const match = selectableDestinations.find((d) => d.platform === targetPlatform);
+      return match ? match.platform : selectableDestinations[0].platform;
+    }
+    return targetPlatform;
+  });
+
   const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>(() => {
+    if (targetAccountId) return targetAccountId;
     const acc = availableAccounts.find((a) => a.platform === targetPlatform);
-    return acc?.id;
+    return acc?.id || selectableDestinations[0]?.primaryAccount?.id;
   });
 
   const [mode, setMode] = useState<"create" | "existing">("create");
@@ -78,10 +93,21 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const targetName = targetMeta.name;
 
   useEffect(() => {
-    setSelectedPlatform(targetPlatform);
-    const acc = availableAccounts.find((a) => a.platform === targetPlatform);
-    setSelectedAccountId(acc?.id);
-  }, [targetPlatform, availableAccounts]);
+    if (selectableDestinations.length > 0) {
+      const match = selectableDestinations.find((d) => d.platform === targetPlatform);
+      const plat = match ? match.platform : selectableDestinations[0].platform;
+      setSelectedPlatform(plat);
+      if (targetAccountId) {
+        setSelectedAccountId(targetAccountId);
+      } else {
+        const acc = availableAccounts.find((a) => a.platform === plat);
+        setSelectedAccountId(acc?.id || match?.primaryAccount?.id);
+      }
+    } else {
+      setSelectedPlatform(targetPlatform);
+      setSelectedAccountId(targetAccountId);
+    }
+  }, [targetPlatform, targetAccountId, availableAccounts]);
 
   useEffect(() => {
     setPlaylistTitle(defaultTitle);
@@ -133,6 +159,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       setMode("create");
     }
     onChangeTargetPlatform?.(platId);
+    if (acc?.id) {
+      onChangeTargetAccount?.(acc.id, platId);
+    }
   };
 
   const filteredPlaylists = existingPlaylists.filter((p) =>
@@ -215,76 +244,95 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
           )}
 
-          {/* 1. Destination Platform Selector */}
+          {/* 1. Destination Platform Selector (Guardrail: Only platforms with connected accounts) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
                 {isEn ? "Destination Platform" : "Platform Tujuan"}
               </label>
               <span className="text-[10px] text-text-secondary/70">
-                {isEn ? "Select target platform" : "Pilih target tujuan"}
+                {isEn ? "Only connected platforms shown" : "Hanya platform terhubung"}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-              {SELECTABLE_EXPORT_PLATFORMS.map((plat) => {
-                const isSelected = selectedPlatform === plat.id;
-                const meta = getPlatformMeta(plat.id);
-                const accCount = availableAccounts.filter((a) => a.platform === plat.id).length;
+            {selectableDestinations.length === 0 ? (
+              <div className="p-4 rounded-xl bg-surface-elevated border border-dashed border-border text-center space-y-1.5">
+                <p className="text-xs font-semibold text-text-primary">
+                  {isEn ? "No destination accounts connected" : "Belum ada akun tujuan terhubung"}
+                </p>
+                <p className="text-[11px] text-text-secondary">
+                  {isEn
+                    ? "Please add an account first to enable exporting."
+                    : "Silakan tambahkan akun musik terlebih dahulu agar dapat mengekspor playlist."}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {selectableDestinations.map((dest) => {
+                  const plat = dest.platform;
+                  const isSelected = selectedPlatform === plat;
+                  const meta = dest.meta;
+                  const accCount = dest.accounts.length;
 
-                return (
-                  <button
-                    key={plat.id}
-                    type="button"
-                    onClick={() => handleSelectPlatform(plat.id)}
-                    className={`p-2 rounded-xl border text-left flex items-center justify-between transition-all btn-press ${
-                      isSelected
-                        ? "bg-accent/15 border-accent text-text-primary shadow-sm ring-1 ring-accent/30"
-                        : "bg-surface-elevated/60 hover:bg-surface-elevated border-border text-text-secondary hover:text-text-primary"
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2 min-w-0">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-sm"
-                        style={{ backgroundColor: meta.brandColor }}
-                      />
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium truncate">{meta.name}</p>
-                        <p className="text-[9px] text-text-secondary truncate">
-                          {plat.id === "file"
-                            ? (isEn ? "Offline snapshot" : "File snapshot")
-                            : accCount > 0
-                            ? `${accCount} ${isEn ? "account" : "akun"}`
-                            : (isEn ? "Snapshot export" : "Ekspor snapshot")}
-                        </p>
+                  return (
+                    <button
+                      key={plat}
+                      type="button"
+                      onClick={() => handleSelectPlatform(plat)}
+                      className={`p-2 rounded-xl border text-left flex items-center justify-between transition-all btn-press ${
+                        isSelected
+                          ? "bg-accent/15 border-accent text-text-primary shadow-sm ring-1 ring-accent/30"
+                          : "bg-surface-elevated/60 hover:bg-surface-elevated border-border text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2 min-w-0">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-sm"
+                          style={{ backgroundColor: meta.brandColor }}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">{meta.name}</p>
+                          <p className="text-[9px] text-text-secondary truncate">
+                            {accCount} {isEn ? "account" : "akun"}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-accent flex-shrink-0" />}
-                  </button>
-                );
-              })}
-            </div>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-accent flex-shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* 2. Destination Account Picker (if multiple accounts exist) */}
-          {accountsForCurrentPlatform.length > 1 && (
+          {/* 2. Destination Account Picker (Select specific account for the chosen platform) */}
+          {accountsForCurrentPlatform.length > 0 && (
             <div className="space-y-1.5 p-2.5 rounded-xl bg-surface-elevated border border-border">
-              <label className="text-[11px] font-medium text-text-secondary block">
-                {isEn ? "Destination Account" : "Akun Tujuan"}
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-medium text-text-secondary block">
+                  {isEn ? "Destination Account" : "Pilih Akun Tujuan"}
+                </label>
+                <span className="text-[10px] text-accent font-medium">
+                  {accountsForCurrentPlatform.find((a) => a.id === selectedAccountId)?.localAlias || ""}
+                </span>
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {accountsForCurrentPlatform.map((acc) => (
                   <button
                     key={acc.id}
                     type="button"
-                    onClick={() => setSelectedAccountId(acc.id)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors btn-press ${
+                    onClick={() => {
+                      setSelectedAccountId(acc.id);
+                      onChangeTargetAccount?.(acc.id, selectedPlatform);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors btn-press flex items-center gap-1.5 ${
                       selectedAccountId === acc.id
                         ? "bg-accent text-background border-accent font-semibold shadow-sm"
                         : "bg-surface border-border text-text-secondary hover:text-text-primary"
                     }`}
                   >
-                    {acc.localAlias}
+                    <span>{acc.localAlias}</span>
+                    {selectedAccountId === acc.id && <Check className="w-3 h-3" />}
                   </button>
                 ))}
               </div>
@@ -443,7 +491,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </button>
           <button
             onClick={handleStart}
-            disabled={mode === "existing" && !selectedPlaylistId && selectedPlatform !== "file"}
+            disabled={
+              selectableDestinations.length === 0 ||
+              (mode === "existing" && !selectedPlaylistId && selectedPlatform !== "file")
+            }
             className="px-4 py-2 rounded-lg bg-accent text-background text-xs font-semibold hover:bg-accent/90 disabled:opacity-50 flex items-center space-x-1.5 btn-press shadow-sm"
           >
             <span>

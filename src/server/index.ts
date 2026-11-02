@@ -1069,7 +1069,7 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
     ? accountManager.getAccount(targetAccountId)
     : accountManager.getPrimaryAccount(targetPlatform, (req as any).user?.id);
 
-  if (!targetAcc && (targetPlatform === "apple" || targetPlatform === "youtube")) {
+  if (!targetAcc && (targetPlatform === "apple" || targetPlatform === "youtube" || targetPlatform === "spotify")) {
     return res.status(401).json({ error: `Target ${targetPlatform} account not connected` });
   }
 

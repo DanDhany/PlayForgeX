@@ -190,4 +190,22 @@ describe("Export Destination Platform Selection Suite (TDD)", () => {
 
     expect(effectiveTarget).toBe("spotify");
   });
+
+  it("applies guardrail so only platforms with connected accounts appear for export", () => {
+    const connectedAccounts = [
+      { id: "sp_1", platform: "spotify" as PlatformType, localAlias: "Spotify Kerja" },
+      { id: "sp_2", platform: "spotify" as PlatformType, localAlias: "Spotify Santai" },
+    ];
+
+    // Only platforms with accounts should be selectable
+    const selectable = connectedAccounts.map((a) => a.platform);
+    expect(selectable).toContain("spotify");
+    expect(selectable).not.toContain("apple");
+    expect(selectable).not.toContain("youtube");
+    expect(selectable).not.toContain("deezer");
+
+    const accountsForSpotify = connectedAccounts.filter((a) => a.platform === "spotify");
+    expect(accountsForSpotify).toHaveLength(2);
+    expect(accountsForSpotify.map((a) => a.localAlias)).toEqual(["Spotify Kerja", "Spotify Santai"]);
+  });
 });

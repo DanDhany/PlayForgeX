@@ -16,6 +16,7 @@ import {
 import { ReviewStudio } from "../ReviewStudio";
 import { useLanguage } from "../../context/LanguageContext";
 import { getPlatformMeta } from "../../utils/platform-meta";
+import { getSelectableExportPlatforms } from "../../utils/export-guardrails";
 
 interface TransferStudioViewProps {
   accounts: AccountConnection[];
@@ -27,6 +28,7 @@ interface TransferStudioViewProps {
   isTransferring: boolean;
   sourcePlatform: string;
   targetPlatform: string;
+  targetAccountId?: string;
   onSelectPlaylist: (
     playlist: PlaylistSummary,
     force?: boolean,
@@ -38,6 +40,7 @@ interface TransferStudioViewProps {
   onReMatch: () => void;
   onNavigateAccounts: () => void;
   onChangeTargetPlatform?: (platform: string) => void;
+  onChangeTargetAccount?: (accountId: string, platform?: string) => void;
 }
 
 export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
@@ -50,6 +53,7 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
   isTransferring,
   sourcePlatform,
   targetPlatform,
+  targetAccountId,
   onSelectPlaylist,
   onToggleExclude,
   onOpenAlternativePicker,
@@ -57,9 +61,15 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
   onReMatch,
   onNavigateAccounts,
   onChangeTargetPlatform,
+  onChangeTargetAccount,
 }) => {
   const { t, lang } = useLanguage();
   const isEn = lang === "en";
+
+  const selectableDestinations = getSelectableExportPlatforms(accounts);
+  const currentPlatformAccounts = accounts.filter((a) => a.platform === targetPlatform);
+  const activeTargetAccount =
+    accounts.find((a) => a.id === targetAccountId) || currentPlatformAccounts[0];
   const [studioMode, setStudioMode] = useState<"quick" | "merge">("quick");
   const [mobileQuickTab, setMobileQuickTab] = useState<"picker" | "review">("picker");
 
@@ -242,24 +252,53 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
             </button>
           </div>
 
-          {/* Prominent Export Target Destination Selector (Visible across mobile & desktop) */}
-          <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-surface-elevated border border-border text-xs flex-shrink-0">
+          {/* Prominent Export Target Destination & Account Selector (Guardrailed: only connected accounts) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1 rounded-lg bg-surface-elevated border border-border text-xs flex-shrink-0">
             <span className="text-[10px] sm:text-[11px] font-medium text-text-secondary whitespace-nowrap">
               {isEn ? "Target:" : "Tujuan:"}
             </span>
             <select
               value={targetPlatform}
-              onChange={(e) => onChangeTargetPlatform?.(e.target.value)}
-              className="bg-transparent text-xs font-semibold text-accent focus:outline-none cursor-pointer"
+              onChange={(e) => {
+                const newPlat = e.target.value;
+                const firstAcc = accounts.find((a) => a.platform === newPlat);
+                if (firstAcc) {
+                  onChangeTargetAccount?.(firstAcc.id, newPlat);
+                } else {
+                  onChangeTargetPlatform?.(newPlat);
+                }
+              }}
+              className="bg-transparent text-xs font-semibold text-accent focus:outline-none cursor-pointer max-w-[110px] sm:max-w-none truncate"
             >
-              <option value="spotify" className="bg-surface text-text-primary">Spotify</option>
-              <option value="apple" className="bg-surface text-text-primary">Apple Music</option>
-              <option value="youtube" className="bg-surface text-text-primary">YouTube Music</option>
-              <option value="file" className="bg-surface text-text-primary">File Snapshot</option>
-              <option value="youtube_video" className="bg-surface text-text-primary">YouTube Video</option>
-              <option value="deezer" className="bg-surface text-text-primary">Deezer</option>
-              <option value="soundcloud" className="bg-surface text-text-primary">SoundCloud</option>
+              {selectableDestinations.length === 0 ? (
+                <option value={targetPlatform} disabled>
+                  {isEn ? "No accounts added" : "Belum ada akun"}
+                </option>
+              ) : (
+                selectableDestinations.map((d) => (
+                  <option key={d.platform} value={d.platform} className="bg-surface text-text-primary">
+                    {d.meta.name}
+                  </option>
+                ))
+              )}
             </select>
+
+            {currentPlatformAccounts.length > 0 && (
+              <>
+                <span className="text-text-muted">|</span>
+                <select
+                  value={activeTargetAccount?.id || currentPlatformAccounts[0]?.id}
+                  onChange={(e) => onChangeTargetAccount?.(e.target.value, targetPlatform)}
+                  className="bg-transparent text-xs font-medium text-text-primary focus:outline-none cursor-pointer max-w-[120px] sm:max-w-[160px] truncate"
+                >
+                  {currentPlatformAccounts.map((acc) => (
+                    <option key={acc.id} value={acc.id} className="bg-surface text-text-primary">
+                      {acc.localAlias}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
         </div>
 
@@ -369,7 +408,10 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
               onOpenMobileSidebar={() => setMobileQuickTab("picker")}
               sourcePlatform={sourcePlatform}
               targetPlatform={targetPlatform}
+              targetAccountId={targetAccountId}
+              accounts={accounts}
               onChangeTargetPlatform={onChangeTargetPlatform}
+              onChangeTargetAccount={onChangeTargetAccount}
             />
           </div>
         </div>
@@ -442,59 +484,73 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
               <span>{isEn ? "Select Destination Music Account" : "Pilih Akun Musik Tujuan"}</span>
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {accounts.map((acc) => {
-                const isSelected = destinationAccountId === acc.id;
-                return (
-                  <div
-                    key={acc.id}
-                    onClick={() => {
-                      setDestinationAccountId(acc.id);
-                      onChangeTargetPlatform?.(acc.platform);
-                    }}
-                    className={`p-3.5 rounded-lg border text-xs cursor-pointer transition-colors flex items-center justify-between btn-press ${
-                      isSelected
-                        ? "bg-accent/15 border-accent text-text-primary font-semibold shadow-sm"
-                        : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          getPlatformMeta(acc.platform).dotColor
-                        }`}
-                      />
-                      <div className="min-w-0">
-                        <div className="text-text-primary font-medium truncate">
-                          {acc.localAlias}
-                        </div>
-                        <div className="text-[11px] text-text-secondary">
-                          {getPlatformMeta(acc.platform).name}
+            {accounts.length === 0 ? (
+              <div className="p-4 rounded-lg bg-surface-elevated/70 border border-dashed border-border text-center space-y-2">
+                <p className="text-xs text-text-secondary">
+                  {isEn
+                    ? "No destination accounts connected yet. Connect an account in Account Settings to export."
+                    : "Belum ada akun tujuan yang terhubung. Hubungkan akun di Pengaturan Akun untuk mengekspor."}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {accounts.map((acc) => {
+                  const isSelected = destinationAccountId === acc.id;
+                  return (
+                    <div
+                      key={acc.id}
+                      onClick={() => {
+                        setDestinationAccountId(acc.id);
+                        onChangeTargetAccount?.(acc.id, acc.platform);
+                      }}
+                      className={`p-3.5 rounded-lg border text-xs cursor-pointer transition-colors flex items-center justify-between btn-press ${
+                        isSelected
+                          ? "bg-accent/15 border-accent text-text-primary font-semibold shadow-sm"
+                          : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            getPlatformMeta(acc.platform).dotColor
+                          }`}
+                        />
+                        <div className="min-w-0">
+                          <div className="text-text-primary font-medium truncate">
+                            {acc.localAlias}
+                          </div>
+                          <div className="text-[11px] text-text-secondary">
+                            {getPlatformMeta(acc.platform).name}
+                          </div>
                         </div>
                       </div>
+                      {isSelected && <Check className="w-4 h-4 text-accent" />}
                     </div>
-                    {isSelected && <Check className="w-4 h-4 text-accent" />}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
 
-            {/* Direct Platform Export Selector */}
+            {/* Direct Platform Export Selector (Guardrailed: only connected platforms + file snapshot) */}
             <div className="pt-2 border-t border-border/60">
               <span className="text-[11px] font-medium text-text-secondary block mb-2">
-                {isEn ? "Or export directly to platform library / snapshot:" : "Atau ekspor langsung ke platform / snapshot:"}
+                {isEn ? "Select target platform:" : "Pilih platform tujuan:"}
               </span>
               <div className="flex flex-wrap gap-2">
-                {(["spotify", "apple", "youtube", "file", "youtube_video", "deezer", "soundcloud"] as const).map((plat) => {
-                  const meta = getPlatformMeta(plat);
-                  const isPlatActive = targetPlatform === plat && !destinationAccountId;
+                {selectableDestinations.map((dest) => {
+                  const isPlatActive = targetPlatform === dest.platform && !destinationAccountId;
                   return (
                     <button
-                      key={plat}
+                      key={dest.platform}
                       type="button"
                       onClick={() => {
                         setDestinationAccountId("");
-                        onChangeTargetPlatform?.(plat);
+                        const firstAcc = dest.accounts[0];
+                        if (firstAcc) {
+                          onChangeTargetAccount?.(firstAcc.id, dest.platform);
+                        } else {
+                          onChangeTargetPlatform?.(dest.platform);
+                        }
                       }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition btn-press ${
                         isPlatActive
@@ -502,11 +558,27 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
                           : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"
                       }`}
                     >
-                      <span className={`w-2 h-2 rounded-full ${meta.dotColor}`} />
-                      <span>{meta.name}</span>
+                      <span className={`w-2 h-2 rounded-full ${dest.meta.dotColor}`} />
+                      <span>{dest.meta.name}</span>
                     </button>
                   );
                 })}
+                {/* File snapshot export option */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDestinationAccountId("");
+                    onChangeTargetPlatform?.("file");
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition btn-press ${
+                    targetPlatform === "file" && !destinationAccountId
+                      ? "bg-accent/15 border-accent text-accent font-semibold"
+                      : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-slate-400" />
+                  <span>{isEn ? "File Snapshot (JSON)" : "Snapshot File (JSON)"}</span>
+                </button>
               </div>
             </div>
           </div>

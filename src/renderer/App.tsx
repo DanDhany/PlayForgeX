@@ -35,6 +35,7 @@ import {
   DEMO_ACTIVITY,
 } from "./demoData";
 import { getPlatformMeta } from "./utils/platform-meta";
+import { resolveTargetExportSelection } from "./utils/export-guardrails";
 
 function getStoredToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -93,6 +94,12 @@ export const App: React.FC = () => {
       if (saved) return saved;
     }
     return "spotify";
+  });
+  const [selectedTargetAccountId, setSelectedTargetAccountId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("playforgex_target_account_id") || "";
+    }
+    return "";
   });
   const [trackItems, setTrackItems] = useState<TransferTrackItem[]>([]);
   const [isMatching, setIsMatching] = useState(false);
@@ -677,7 +684,7 @@ export const App: React.FC = () => {
     const sourcePl = allPlaylists.find((p) => p.id === selectedPlaylist.id);
     const sourcePlatform = sourcePl?.platform || selectedPlaylist.platform || "youtube";
     const targetPlatform = options.targetPlatform || effectiveTargetPlatform;
-    const targetAccountId = options.targetAccountId;
+    const targetAccountId = options.targetAccountId || effectiveTargetAccountId;
 
     const job: TransferJob = {
       playlistId: selectedPlaylist.id,
@@ -788,8 +795,39 @@ export const App: React.FC = () => {
     if (typeof window !== "undefined") {
       localStorage.setItem("playforgex_target_platform", platform);
     }
+    const matchingAcc = accounts.find((a) => a.platform === platform);
+    if (matchingAcc) {
+      setSelectedTargetAccountId(matchingAcc.id);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("playforgex_target_account_id", matchingAcc.id);
+      }
+    }
     if (selectedPlaylist) {
-      handleSelectPlaylistForTransfer(selectedPlaylist, true, { targetPlatform: platform });
+      handleSelectPlaylistForTransfer(selectedPlaylist, true, {
+        targetPlatform: platform,
+        targetAccountId: matchingAcc?.id,
+      });
+    }
+  };
+
+  const handleUpdateTargetAccount = (accountId: string, platform?: string) => {
+    setSelectedTargetAccountId(accountId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("playforgex_target_account_id", accountId);
+    }
+    const acc = accounts.find((a) => a.id === accountId);
+    const plat = platform || acc?.platform || selectedTargetPlatform;
+    if (plat !== selectedTargetPlatform) {
+      setSelectedTargetPlatform(plat);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("playforgex_target_platform", plat);
+      }
+    }
+    if (selectedPlaylist) {
+      handleSelectPlaylistForTransfer(selectedPlaylist, true, {
+        targetPlatform: plat,
+        targetAccountId: accountId,
+      });
     }
   };
 
@@ -797,11 +835,14 @@ export const App: React.FC = () => {
     ? allPlaylists.find((p) => p.id === selectedPlaylist.id)
     : null;
   const currentSourcePlatform = currentSourcePl?.platform || selectedPlaylist?.platform || "youtube";
-  const effectiveTargetPlatform =
-    selectedTargetPlatform === currentSourcePlatform
-      ? (accounts.find((a) => a.platform !== currentSourcePlatform)?.platform ||
-         (currentSourcePlatform === "spotify" ? "youtube" : "spotify"))
-      : selectedTargetPlatform;
+
+  const { targetPlatform: effectiveTargetPlatform, targetAccountId: effectiveTargetAccountId } =
+    resolveTargetExportSelection(
+      accounts,
+      selectedTargetPlatform,
+      selectedTargetAccountId,
+      currentSourcePlatform
+    );
 
   if (viewMode === "landing") {
     return <LandingPage onOpenStudio={handleOpenStudio} />;
@@ -885,6 +926,7 @@ export const App: React.FC = () => {
                 isTransferring={transferJob?.status === "processing"}
                 sourcePlatform={currentSourcePlatform}
                 targetPlatform={effectiveTargetPlatform}
+                targetAccountId={effectiveTargetAccountId}
                 onSelectPlaylist={handleSelectPlaylistForTransfer}
                 onToggleExclude={handleToggleExclude}
                 onOpenAlternativePicker={setEditingItem}
@@ -892,6 +934,7 @@ export const App: React.FC = () => {
                 onReMatch={() => selectedPlaylist && handleSelectPlaylistForTransfer(selectedPlaylist, true)}
                 onNavigateAccounts={() => setActiveTab("accounts")}
                 onChangeTargetPlatform={handleUpdateTargetPlatform}
+                onChangeTargetAccount={handleUpdateTargetAccount}
               />
             )}
 
@@ -952,8 +995,10 @@ export const App: React.FC = () => {
         onConfirm={handleExecuteTransfer}
         defaultTitle={selectedPlaylist?.title || "Playlist"}
         targetPlatform={effectiveTargetPlatform}
+        targetAccountId={effectiveTargetAccountId}
         availableAccounts={accounts}
         onChangeTargetPlatform={handleUpdateTargetPlatform}
+        onChangeTargetAccount={handleUpdateTargetAccount}
         trackCount={trackItems.filter((t) => !t.excluded && t.selectedCandidate).length}
         isMatching={isMatching}
       />

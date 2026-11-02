@@ -11,7 +11,7 @@ import {
   X,
   ListMusic,
 } from "lucide-react";
-import { TransferTrackItem, PlaylistSummary } from "../../shared/types";
+import { TransferTrackItem, PlaylistSummary, AccountConnection } from "../../shared/types";
 import {
   FilterTab,
   filterReviewTracks,
@@ -21,6 +21,7 @@ import { TrackRow } from "./TrackRow";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useLanguage } from "../context/LanguageContext";
 import { getPlatformMeta } from "../utils/platform-meta";
+import { getSelectableExportPlatforms } from "../utils/export-guardrails";
 
 interface ReviewStudioProps {
   selectedPlaylist: PlaylistSummary | null;
@@ -35,7 +36,10 @@ interface ReviewStudioProps {
   onOpenMobileSidebar?: () => void;
   sourcePlatform?: string;
   targetPlatform?: string;
+  targetAccountId?: string;
+  accounts?: AccountConnection[];
   onChangeTargetPlatform?: (platform: string) => void;
+  onChangeTargetAccount?: (accountId: string, platform?: string) => void;
 }
 
 export const ReviewStudio: React.FC<ReviewStudioProps> = ({
@@ -50,8 +54,11 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
   onReMatch,
   onOpenMobileSidebar,
   sourcePlatform = "youtube",
-  targetPlatform = "apple",
+  targetPlatform = "spotify",
+  targetAccountId,
+  accounts = [],
   onChangeTargetPlatform,
+  onChangeTargetAccount,
 }) => {
   const { t, lang } = useLanguage();
   const isEn = lang === "en";
@@ -129,9 +136,16 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
     );
   }
 
+  const selectableDestinations = getSelectableExportPlatforms(accounts);
+  const currentPlatformAccounts = accounts.filter((a) => a.platform === targetPlatform);
+  const activeTargetAccount =
+    accounts.find((a) => a.id === targetAccountId) || currentPlatformAccounts[0];
+
   const sourceMeta = getPlatformMeta(sourcePlatform);
   const targetMeta = getPlatformMeta(targetPlatform);
-  const destinationName = targetMeta.name;
+  const destinationName = activeTargetAccount
+    ? `${activeTargetAccount.localAlias} (${targetMeta.shortCode})`
+    : targetMeta.name;
 
   return (
     <main className="flex-1 w-full h-full min-h-0 flex flex-col bg-background select-none overflow-hidden relative">
@@ -166,7 +180,7 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
                     title={isEn ? "Click to change target platform or export" : "Klik untuk pilih platform tujuan"}
                     className={`font-semibold underline decoration-dotted underline-offset-2 hover:opacity-80 transition cursor-pointer ${targetMeta.textColor}`}
                   >
-                    {targetMeta.name}
+                    {activeTargetAccount ? activeTargetAccount.localAlias : targetMeta.name}
                   </button>
                 </span>
               </div>
@@ -178,24 +192,53 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
 
           {/* Mobile Actions Header (Visible < 640px) */}
           <div className="flex sm:hidden items-center gap-1.5 flex-shrink-0">
-            {/* Target Platform Selector on Mobile */}
-            <div className="flex items-center gap-1 px-2 py-1 bg-surface-elevated border border-border rounded-lg text-xs">
+            {/* Target Platform & Account Selector on Mobile */}
+            <div className="flex items-center gap-1 px-2 py-1 bg-surface-elevated border border-border rounded-lg text-xs max-w-[210px]">
               <span className="text-[10px] font-medium text-text-secondary">
                 {isEn ? "To:" : "Ke:"}
               </span>
               <select
                 value={targetPlatform}
-                onChange={(e) => onChangeTargetPlatform?.(e.target.value)}
-                className="bg-transparent text-xs font-semibold text-accent focus:outline-none cursor-pointer"
+                onChange={(e) => {
+                  const newPlat = e.target.value;
+                  const firstAcc = accounts.find((a) => a.platform === newPlat);
+                  if (firstAcc) {
+                    onChangeTargetAccount?.(firstAcc.id, newPlat);
+                  } else {
+                    onChangeTargetPlatform?.(newPlat);
+                  }
+                }}
+                className="bg-transparent text-[11px] font-semibold text-accent focus:outline-none cursor-pointer max-w-[85px] truncate"
               >
-                <option value="spotify" className="bg-surface text-text-primary">Spotify</option>
-                <option value="apple" className="bg-surface text-text-primary">Apple Music</option>
-                <option value="youtube" className="bg-surface text-text-primary">YouTube Music</option>
-                <option value="file" className="bg-surface text-text-primary">File Snapshot</option>
-                <option value="youtube_video" className="bg-surface text-text-primary">YouTube Video</option>
-                <option value="deezer" className="bg-surface text-text-primary">Deezer</option>
-                <option value="soundcloud" className="bg-surface text-text-primary">SoundCloud</option>
+                {selectableDestinations.length === 0 ? (
+                  <option value={targetPlatform} disabled>
+                    {isEn ? "No acc" : "Belum ada"}
+                  </option>
+                ) : (
+                  selectableDestinations.map((d) => (
+                    <option key={d.platform} value={d.platform} className="bg-surface text-text-primary">
+                      {d.meta.shortCode}
+                    </option>
+                  ))
+                )}
               </select>
+
+              {currentPlatformAccounts.length > 0 && (
+                <>
+                  <span className="text-text-muted text-[10px]">/</span>
+                  <select
+                    value={activeTargetAccount?.id || currentPlatformAccounts[0]?.id}
+                    onChange={(e) => onChangeTargetAccount?.(e.target.value, targetPlatform)}
+                    className="bg-transparent text-[11px] font-medium text-text-primary focus:outline-none cursor-pointer max-w-[95px] truncate"
+                  >
+                    {currentPlatformAccounts.map((acc) => (
+                      <option key={acc.id} value={acc.id} className="bg-surface text-text-primary">
+                        {acc.localAlias}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
             </div>
 
             <button
@@ -210,24 +253,53 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
 
           {/* Desktop Actions */}
           <div className="hidden sm:flex items-center space-x-2 flex-shrink-0">
-            {/* Quick Export Destination Selector */}
+            {/* Quick Export Destination & Account Selector (Guardrailed) */}
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-elevated border border-border rounded-lg text-xs">
               <span className="text-[11px] font-medium text-text-secondary whitespace-nowrap">
                 {isEn ? "Export To:" : "Ekspor Ke:"}
               </span>
               <select
                 value={targetPlatform}
-                onChange={(e) => onChangeTargetPlatform?.(e.target.value)}
+                onChange={(e) => {
+                  const newPlat = e.target.value;
+                  const firstAcc = accounts.find((a) => a.platform === newPlat);
+                  if (firstAcc) {
+                    onChangeTargetAccount?.(firstAcc.id, newPlat);
+                  } else {
+                    onChangeTargetPlatform?.(newPlat);
+                  }
+                }}
                 className="bg-transparent text-xs font-semibold text-accent focus:outline-none cursor-pointer"
               >
-                <option value="spotify" className="bg-surface text-text-primary">Spotify</option>
-                <option value="apple" className="bg-surface text-text-primary">Apple Music</option>
-                <option value="youtube" className="bg-surface text-text-primary">YouTube Music</option>
-                <option value="file" className="bg-surface text-text-primary">File Snapshot</option>
-                <option value="youtube_video" className="bg-surface text-text-primary">YouTube Video</option>
-                <option value="deezer" className="bg-surface text-text-primary">Deezer</option>
-                <option value="soundcloud" className="bg-surface text-text-primary">SoundCloud</option>
+                {selectableDestinations.length === 0 ? (
+                  <option value={targetPlatform} disabled>
+                    {isEn ? "No accounts added" : "Belum ada akun"}
+                  </option>
+                ) : (
+                  selectableDestinations.map((d) => (
+                    <option key={d.platform} value={d.platform} className="bg-surface text-text-primary">
+                      {d.meta.name}
+                    </option>
+                  ))
+                )}
               </select>
+
+              {currentPlatformAccounts.length > 0 && (
+                <>
+                  <span className="text-text-muted">|</span>
+                  <select
+                    value={activeTargetAccount?.id || currentPlatformAccounts[0]?.id}
+                    onChange={(e) => onChangeTargetAccount?.(e.target.value, targetPlatform)}
+                    className="bg-transparent text-xs font-medium text-text-primary focus:outline-none cursor-pointer max-w-[150px] truncate"
+                  >
+                    {currentPlatformAccounts.map((acc) => (
+                      <option key={acc.id} value={acc.id} className="bg-surface text-text-primary">
+                        {acc.localAlias}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
             </div>
 
             <button
@@ -440,27 +512,55 @@ export const ReviewStudio: React.FC<ReviewStudioProps> = ({
         >
           <div className="bg-surface-elevated/95 border border-border backdrop-blur-xl p-2.5 rounded-2xl shadow-2xl flex items-center justify-between gap-2.5">
             <div className="min-w-0 flex-1 pl-1">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] font-medium text-text-primary truncate">
                   {stats.activeForImport} {isEn ? "tracks" : "lagu"}
                 </span>
                 <span className="text-text-muted text-[10px]">➔</span>
                 <select
                   value={targetPlatform}
-                  onChange={(e) => onChangeTargetPlatform?.(e.target.value)}
-                  className="bg-surface px-1.5 py-0.5 rounded text-[10px] font-semibold text-accent border border-border focus:outline-none"
+                  onChange={(e) => {
+                    const newPlat = e.target.value;
+                    const firstAcc = accounts.find((a) => a.platform === newPlat);
+                    if (firstAcc) {
+                      onChangeTargetAccount?.(firstAcc.id, newPlat);
+                    } else {
+                      onChangeTargetPlatform?.(newPlat);
+                    }
+                  }}
+                  className="bg-surface px-1.5 py-0.5 rounded text-[10px] font-semibold text-accent border border-border focus:outline-none max-w-[85px] truncate"
                 >
-                  <option value="spotify" className="bg-surface text-text-primary">Spotify</option>
-                  <option value="apple" className="bg-surface text-text-primary">Apple Music</option>
-                  <option value="youtube" className="bg-surface text-text-primary">YouTube Music</option>
-                  <option value="file" className="bg-surface text-text-primary">File Snapshot</option>
-                  <option value="youtube_video" className="bg-surface text-text-primary">YouTube Video</option>
-                  <option value="deezer" className="bg-surface text-text-primary">Deezer</option>
-                  <option value="soundcloud" className="bg-surface text-text-primary">SoundCloud</option>
+                  {selectableDestinations.length === 0 ? (
+                    <option value={targetPlatform} disabled>
+                      {isEn ? "No acc" : "Belum ada"}
+                    </option>
+                  ) : (
+                    selectableDestinations.map((d) => (
+                      <option key={d.platform} value={d.platform} className="bg-surface text-text-primary">
+                        {d.meta.shortCode}
+                      </option>
+                    ))
+                  )}
                 </select>
+
+                {currentPlatformAccounts.length > 0 && (
+                  <select
+                    value={activeTargetAccount?.id || currentPlatformAccounts[0]?.id}
+                    onChange={(e) => onChangeTargetAccount?.(e.target.value, targetPlatform)}
+                    className="bg-surface px-1.5 py-0.5 rounded text-[10px] font-medium text-text-primary border border-border focus:outline-none max-w-[100px] truncate"
+                  >
+                    {currentPlatformAccounts.map((acc) => (
+                      <option key={acc.id} value={acc.id} className="bg-surface text-text-primary">
+                        {acc.localAlias}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               <p className="text-[10px] text-text-secondary truncate mt-0.5">
-                {isEn ? `Ready to export to ${destinationName}` : `Siap diekspor ke ${destinationName}`}
+                {activeTargetAccount
+                  ? `${isEn ? "Target account" : "Akun tujuan"}: ${activeTargetAccount.localAlias}`
+                  : `${isEn ? "Ready to export to" : "Siap diekspor ke"} ${destinationName}`}
               </p>
             </div>
 
