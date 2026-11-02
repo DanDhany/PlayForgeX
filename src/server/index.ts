@@ -398,9 +398,15 @@ app.post("/api/accounts/:id/test", async (req: Request, res: Response) => {
   const accountId = String(req.params.id);
   try {
     const updated = await accountManager.testConnection(accountId);
-    res.json({ success: true, account: updated });
+    res.json({
+      success: updated.status === "connected",
+      account: updated,
+      localAlias: updated.localAlias,
+      status: updated.status,
+      error: updated.errorMessage,
+    });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, success: false });
   }
 });
 

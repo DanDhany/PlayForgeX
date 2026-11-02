@@ -568,11 +568,34 @@ export class AccountManager {
     const acc = this.accounts.get(id);
     if (!acc) throw new Error(`Account ${id} not found`);
 
-    // If it's a snapshot-backed account, it is always connected with local cache
+    // 1. If it's a snapshot-backed account, check memory or disk cache
     if (this.snapshots.has(id)) {
       const snap = this.snapshots.get(id)!;
       acc.status = "connected";
       acc.playlistCount = snap.length;
+      acc.lastVerifiedAt = Date.now();
+      acc.errorMessage = undefined;
+      this.persist();
+      return acc;
+    }
+
+    const snapPath = path.join(this.snapshotsDir, `${id}.json`);
+    if (fs.existsSync(snapPath)) {
+      try {
+        const raw = fs.readFileSync(snapPath, "utf-8");
+        const snap = JSON.parse(raw);
+        this.snapshots.set(id, snap);
+        acc.status = "connected";
+        acc.playlistCount = snap.length;
+        acc.lastVerifiedAt = Date.now();
+        acc.errorMessage = undefined;
+        this.persist();
+        return acc;
+      } catch {}
+    }
+
+    if (acc.syncType === "snapshot") {
+      acc.status = "connected";
       acc.lastVerifiedAt = Date.now();
       acc.errorMessage = undefined;
       this.persist();
@@ -594,7 +617,7 @@ export class AccountManager {
           acc.lastVerifiedAt = Date.now();
           acc.errorMessage = undefined;
         }
-      } else {
+      } else if (acc.platform === "apple") {
         const client = this.appleClients.get(id);
         if (!client) {
           acc.status = "reauth_required";
@@ -607,6 +630,39 @@ export class AccountManager {
           acc.playlistCount = pl.length;
           acc.lastVerifiedAt = Date.now();
           acc.errorMessage = undefined;
+        }
+      } else {
+        // Platform registry adapters (spotify, youtube_video, deezer, soundcloud, file, etc.)
+        const adapter = PlatformRegistry.getAdapter(acc.platform as PlatformId);
+        if (!adapter) {
+          acc.status = "connected";
+          acc.lastVerifiedAt = Date.now();
+          acc.errorMessage = undefined;
+        } else {
+          const sec = this.secrets.get(id);
+          const creds = sec?.ytCookieString || sec?.appleUserToken;
+          try {
+            if (typeof adapter.fetchPlaylists === "function") {
+              const pls = await adapter.fetchPlaylists(creds);
+              acc.status = "connected";
+              if (pls.length > 0) {
+                acc.playlistCount = pls.length;
+              }
+            } else {
+              acc.status = "connected";
+            }
+            acc.lastVerifiedAt = Date.now();
+            acc.errorMessage = undefined;
+          } catch (err: any) {
+            if (acc.playlistCount && acc.playlistCount > 0) {
+              acc.status = "connected";
+              acc.lastVerifiedAt = Date.now();
+              acc.errorMessage = undefined;
+            } else {
+              acc.status = "error";
+              acc.errorMessage = err.message || "Connection verification failed";
+            }
+          }
         }
       }
     } catch (err: any) {

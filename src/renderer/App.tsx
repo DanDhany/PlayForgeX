@@ -336,20 +336,55 @@ export const App: React.FC = () => {
   };
 
   const handleTestAccount = async (id: string) => {
+    if (IS_PAGES_OR_STATIC) {
+      const acc = accounts.find((a) => a.id === id);
+      const alias = acc?.localAlias || id;
+      alert(
+        isEn
+          ? `Account connection "${alias}" is active & healthy (Demo Mode)!`
+          : `Koneksi akun "${alias}" berhasil dan aktif (Mode Demo)!`
+      );
+      return;
+    }
+
     try {
       const res = await fetch(`/api/accounts/${id}/test`, {
         method: "POST",
         headers: getAuthHeaders(),
       });
       const data = await res.json();
-      if (res.ok) {
-        alert(isEn ? `Account connection "${data.localAlias}" is active & healthy!` : `Koneksi akun "${data.localAlias}" berhasil dan aktif!`);
+      const alias =
+        data.account?.localAlias ||
+        data.localAlias ||
+        accounts.find((a) => a.id === id)?.localAlias ||
+        id;
+
+      if (res.ok && (data.success || data.account?.status === "connected")) {
+        alert(
+          isEn
+            ? `Account connection "${alias}" is active & healthy!`
+            : `Koneksi akun "${alias}" berhasil dan aktif!`
+        );
       } else {
-        alert(isEn ? `Account connection failed: ${data.error || "Unknown error"}` : `Koneksi akun gagal: ${data.error || "Unknown error"}`);
+        const errorMsg =
+          data.account?.errorMessage ||
+          data.error ||
+          (isEn ? "Failed to verify connection" : "Gagal memverifikasi koneksi");
+        alert(
+          isEn
+            ? `Account connection "${alias}" check failed: ${errorMsg}`
+            : `Pemeriksaan koneksi akun "${alias}" gagal: ${errorMsg}`
+        );
       }
       await loadAccounts();
     } catch (err: any) {
-      alert(isEn ? `Connection test failed: ${err.message}` : `Koneksi gagal: ${err.message}`);
+      const acc = accounts.find((a) => a.id === id);
+      const alias = acc?.localAlias || id;
+      alert(
+        isEn
+          ? `Connection test failed for "${alias}": ${err.message}`
+          : `Pengujian koneksi gagal untuk "${alias}": ${err.message}`
+      );
     }
   };
 
