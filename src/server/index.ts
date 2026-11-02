@@ -1025,7 +1025,7 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
   const {
     playlistTitle,
     items,
-    targetPlatform = "apple",
+    targetPlatform = "spotify",
     targetAccountId,
     mode = "create",
     existingPlaylistId,
@@ -1135,10 +1135,30 @@ app.post("/api/transfer", async (req: Request, res: Response) => {
           destinationId = await adapter.createPlaylist(playlistTitle, "Imported via PlayForgeX", token);
         }
         if (adapter.addTracksToPlaylist) {
-          const uris = trackIds.map((id) => (id.startsWith("spotify:track:") ? id : `spotify:track:${id}`));
-          for (let i = 0; i < uris.length; i += 50) {
-            const chunk = uris.slice(i, i + 50);
-            await adapter.addTracksToPlaylist(destinationId, chunk, token);
+          const uris: string[] = [];
+          for (const item of activeItems) {
+            const candId = item.selectedCandidate?.id || "";
+            if (candId.startsWith("spotify:track:")) {
+              uris.push(candId);
+            } else if (/^[0-9A-Za-z]{22}$/.test(candId)) {
+              uris.push(`spotify:track:${candId}`);
+            } else {
+              try {
+                const searchRes = (await adapter.searchCatalog(
+                  `${item.source.artist} ${item.source.title}`,
+                  token
+                )) as any[];
+                if (searchRes && searchRes.length > 0 && searchRes[0].id) {
+                  uris.push(`spotify:track:${searchRes[0].id}`);
+                }
+              } catch {}
+            }
+          }
+          if (uris.length > 0) {
+            for (let i = 0; i < uris.length; i += 50) {
+              const chunk = uris.slice(i, i + 50);
+              await adapter.addTracksToPlaylist(destinationId, chunk, token);
+            }
           }
         }
         success = total;

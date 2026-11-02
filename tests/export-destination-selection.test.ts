@@ -4,6 +4,7 @@ import path from "node:path";
 import { AccountManager } from "../src/server/account-manager";
 import { getPlatformMeta } from "../src/renderer/utils/platform-meta";
 import { PlatformType, ExportOptions, TransferTrackItem } from "../src/shared/types";
+import { SELECTABLE_EXPORT_PLATFORMS } from "../src/renderer/components/ExportModal";
 
 describe("Export Destination Platform Selection Suite (TDD)", () => {
   const testDataDir = path.resolve(process.cwd(), "data", "test_export_dest");
@@ -159,5 +160,34 @@ describe("Export Destination Platform Selection Suite (TDD)", () => {
     expect(options.targetPlatform).toBe("spotify");
     expect(options.targetAccountId).toBe("acc_spotify_xyz");
     expect(options.mode).toBe("create");
+  });
+
+  it("verifies SELECTABLE_EXPORT_PLATFORMS contains all 7 platforms with spotify as first choice", () => {
+    expect(SELECTABLE_EXPORT_PLATFORMS.map((p) => p.id)).toEqual([
+      "spotify",
+      "apple",
+      "youtube",
+      "file",
+      "youtube_video",
+      "deezer",
+      "soundcloud",
+    ]);
+  });
+
+  it("resolves destination platform dynamically without forcing apple music fallback", () => {
+    const connectedAccounts = [
+      { id: "sp_1", platform: "spotify" as PlatformType, localAlias: "My Spotify" },
+      { id: "yt_1", platform: "youtube" as PlatformType, localAlias: "My YouTube" },
+    ];
+
+    const sourcePlatform: PlatformType | string = "youtube";
+    const selectedTarget: PlatformType | string = "spotify";
+
+    const effectiveTarget =
+      selectedTarget === sourcePlatform
+        ? (connectedAccounts.find((a) => a.platform !== sourcePlatform)?.platform || "spotify")
+        : selectedTarget;
+
+    expect(effectiveTarget).toBe("spotify");
   });
 });

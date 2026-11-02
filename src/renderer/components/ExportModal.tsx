@@ -35,12 +35,14 @@ export interface ExportModalProps {
   onChangeTargetPlatform?: (platform: PlatformType | string) => void;
 }
 
-const SELECTABLE_EXPORT_PLATFORMS: { id: PlatformType; name: string }[] = [
+export const SELECTABLE_EXPORT_PLATFORMS: { id: PlatformType; name: string }[] = [
+  { id: "spotify", name: "Spotify" },
   { id: "apple", name: "Apple Music" },
   { id: "youtube", name: "YouTube Music" },
-  { id: "spotify", name: "Spotify" },
-  { id: "youtube_video", name: "YouTube Video" },
   { id: "file", name: "File / Snapshot" },
+  { id: "youtube_video", name: "YouTube Video" },
+  { id: "deezer", name: "Deezer" },
+  { id: "soundcloud", name: "SoundCloud" },
 ];
 
 export const ExportModal: React.FC<ExportModalProps> = ({

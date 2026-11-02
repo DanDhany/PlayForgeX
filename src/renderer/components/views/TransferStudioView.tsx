@@ -80,18 +80,22 @@ export const TransferStudioView: React.FC<TransferStudioViewProps> = ({
     duplicatesCount: number;
   } | null>(null);
 
-  // Initialize destination account if available
+  // Initialize destination account if available based on targetPlatform
   useEffect(() => {
     if (!destinationAccountId && accounts.length > 0) {
-      const appleAcc = accounts.find((a) => a.platform === "apple");
-      if (appleAcc) setDestinationAccountId(appleAcc.id);
-      else setDestinationAccountId(accounts[0].id);
+      const matchingAcc = accounts.find((a) => a.platform === targetPlatform);
+      if (matchingAcc) {
+        setDestinationAccountId(matchingAcc.id);
+      } else {
+        const nonSourceAcc = accounts.find((a) => a.platform !== sourcePlatform);
+        setDestinationAccountId(nonSourceAcc ? nonSourceAcc.id : accounts[0].id);
+      }
     }
-  }, [accounts, destinationAccountId]);
+  }, [accounts, targetPlatform, sourcePlatform]);
 
-  // When a playlist is selected, default to review view on mobile
+  // When a playlist is selected, default to review view on mobile and retain active target platform
   const handlePickPlaylist = (pl: PlaylistSummary) => {
-    onSelectPlaylist(pl);
+    onSelectPlaylist(pl, false, { targetPlatform });
     setMobileQuickTab("review");
   };
 
